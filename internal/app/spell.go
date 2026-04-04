@@ -105,6 +105,12 @@ func ModN(value int, n int) int {
 	return value % n
 }
 
+// Query transforms a MagicLetter into a QueryLetter with resolved matrix coordinates.
+// Each character in the spell acts as a pointer into the password matrix.
+// The spell position determines the matrix row (wrapped via modulo to fit 10 rows),
+// and the letter determines the column via LetterGroup.
+// This creates a deterministic path through the matrix: the same spell always
+// reads the same cells, producing the same password from the same matrix.
 func (m MagicLetter) Query() QueryLetter {
 	return QueryLetter{
 		Letter:      m.Letter,

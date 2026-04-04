@@ -214,7 +214,9 @@ func TestQuery(t *testing.T) {
 	letter := MagicLetter{Letter: "x", LetterPosition: 17}
 	result := letter.Query()
 
-	if result.MatrixRow != ModN(17, PasswordMatrixRows) {
+	expectedRow := ModN(17, PasswordMatrixRows)
+
+	if result.MatrixRow != expectedRow {
 		t.Errorf("expected row 7, got %d", result.MatrixRow)
 	}
 	if result.Letter != "x" {
