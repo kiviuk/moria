@@ -1,6 +1,7 @@
 package main
 
 import (
+	"strings"
 	"testing"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -10,30 +11,30 @@ import (
 func TestLiveModel_MaxLen_AllowTyping(t *testing.T) {
 	// Verify that typing is blocked when password reaches maxLen
 	matrix := newTestMatrix()
-	m := newLiveModel(matrix, 6)
+	m := newLiveModel(matrix, 2*app.CharactersPerMatrixCell)
 
-	// Type "1" → password = 3 chars (00|)
+	// Type "1" → password = CharactersPerMatrixCell chars
 	m = simulateKey(m, "1")
-	if len(m.password) != 3 {
-		t.Errorf("after '1': expected 3 chars, got %d", len(m.password))
+	if len(m.password) != app.CharactersPerMatrixCell {
+		t.Errorf("after '1': expected %d chars, got %d", app.CharactersPerMatrixCell, len(m.password))
 	}
 	if m.err != "" {
 		t.Errorf("after '1': unexpected error: %s", m.err)
 	}
 
-	// Type "2" → password = 6 chars (00|10|)
+	// Type "2" → password = 2*CharactersPerMatrixCell chars
 	m = simulateKey(m, "2")
-	if len(m.password) != 6 {
-		t.Errorf("after '2': expected 6 chars, got %d", len(m.password))
+	if len(m.password) != 2*app.CharactersPerMatrixCell {
+		t.Errorf("after '2': expected %d chars, got %d", 2*app.CharactersPerMatrixCell, len(m.password))
 	}
 	if m.err != "" {
 		t.Errorf("after '2': unexpected error: %s", m.err)
 	}
 
-	// Type "3" → should be blocked (6 >= 6)
+	// Type "3" → should be blocked (at limit)
 	m = simulateKey(m, "3")
-	if len(m.password) != 6 {
-		t.Errorf("after '3': expected 6 chars (blocked), got %d", len(m.password))
+	if len(m.password) != 2*app.CharactersPerMatrixCell {
+		t.Errorf("after '3': expected %d chars (blocked), got %d", 2*app.CharactersPerMatrixCell, len(m.password))
 	}
 	if m.err == "" {
 		t.Error("after '3': expected error, got nil")
@@ -41,30 +42,35 @@ func TestLiveModel_MaxLen_AllowTyping(t *testing.T) {
 }
 
 func TestLiveModel_MaxLen_Partial(t *testing.T) {
-	// Verify maxLen=5 blocks at 6 chars, LiveMode truncates to 5
+	// Verify maxLen truncates password on exit, never exceeding maxLen
 	matrix := newTestMatrix()
-	m := newLiveModel(matrix, 5)
+	maxLen := 5
+	m := newLiveModel(matrix, maxLen)
 
 	m = simulateKey(m, "1")
-	if len(m.password) != 3 {
-		t.Errorf("after '1': expected 3 chars, got %d", len(m.password))
+	if len(m.password) != app.CharactersPerMatrixCell {
+		t.Errorf("after '1': expected %d chars, got %d", app.CharactersPerMatrixCell, len(m.password))
 	}
 
 	m = simulateKey(m, "2")
-	if len(m.password) != 6 {
-		t.Errorf("after '2': expected 6 chars, got %d", len(m.password))
+	if len(m.password) != 2*app.CharactersPerMatrixCell {
+		t.Errorf("after '2': expected %d chars, got %d", 2*app.CharactersPerMatrixCell, len(m.password))
 	}
 
-	// LiveMode truncates on exit
+	// LiveMode truncates on exit - result is min(password length, maxLen)
 	password := m.password
-	if maxLen := 5; maxLen > 0 && len(password) > maxLen {
+	if maxLen > 0 && len(password) > maxLen {
 		password = password[:maxLen]
 	}
-	if len(password) != 5 {
-		t.Errorf("truncated password: expected 5 chars, got %d", len(password))
+	expectedLen := len(m.password)
+	if expectedLen > maxLen {
+		expectedLen = maxLen
 	}
-	if password != "00|10" {
-		t.Errorf("truncated password: expected %q, got %q", "00|10", password)
+	if len(password) != expectedLen {
+		t.Errorf("truncated password: expected %d chars, got %d", expectedLen, len(password))
+	}
+	if len(password) > maxLen {
+		t.Errorf("password exceeds maxLen: %d > %d", len(password), maxLen)
 	}
 }
 
@@ -76,8 +82,8 @@ func TestLiveModel_MaxLen_NoLimit(t *testing.T) {
 	for i := 0; i < 10; i++ {
 		m = simulateKey(m, "a")
 	}
-	if len(m.password) != 30 {
-		t.Errorf("expected 30 chars, got %d", len(m.password))
+	if len(m.password) != 10*app.CharactersPerMatrixCell {
+		t.Errorf("expected %d chars, got %d", 10*app.CharactersPerMatrixCell, len(m.password))
 	}
 	if m.err != "" {
 		t.Errorf("unexpected error: %s", m.err)
@@ -87,24 +93,24 @@ func TestLiveModel_MaxLen_NoLimit(t *testing.T) {
 func TestLiveModel_MaxLen_Backspace(t *testing.T) {
 	// Verify backspace removes chars and allows re-typing
 	matrix := newTestMatrix()
-	m := newLiveModel(matrix, 6)
+	m := newLiveModel(matrix, 2*app.CharactersPerMatrixCell)
 
 	m = simulateKey(m, "1")
 	m = simulateKey(m, "2")
-	if len(m.password) != 6 {
-		t.Fatalf("expected 6 chars, got %d", len(m.password))
+	if len(m.password) != 2*app.CharactersPerMatrixCell {
+		t.Fatalf("expected %d chars, got %d", 2*app.CharactersPerMatrixCell, len(m.password))
 	}
 
-	// Backspace → password = 3 chars
+	// Backspace → password = CharactersPerMatrixCell chars
 	m = simulateBackspace(m)
-	if len(m.password) != 3 {
-		t.Errorf("after backspace: expected 3 chars, got %d", len(m.password))
+	if len(m.password) != app.CharactersPerMatrixCell {
+		t.Errorf("after backspace: expected %d chars, got %d", app.CharactersPerMatrixCell, len(m.password))
 	}
 
 	// Should be able to type again
 	m = simulateKey(m, "3")
-	if len(m.password) != 6 {
-		t.Errorf("after '3': expected 6 chars, got %d", len(m.password))
+	if len(m.password) != 2*app.CharactersPerMatrixCell {
+		t.Errorf("after '3': expected %d chars, got %d", 2*app.CharactersPerMatrixCell, len(m.password))
 	}
 }
 
@@ -120,9 +126,16 @@ func simulateBackspace(m liveModel) liveModel {
 
 func newTestMatrix() app.Matrix {
 	var m app.Matrix
+	cellChars := "abcdefghijklmnopqrstuvwxyz"
 	for row := 0; row < app.PasswordMatrixRows; row++ {
 		for col := 0; col < app.PasswordMatrixColumns; col++ {
-			m[row][col] = string(rune('0'+row)) + string(rune('0'+col)) + "|"
+			var sb strings.Builder
+			sb.WriteByte(byte('0' + row))
+			sb.WriteByte(byte('0' + col))
+			for i := 2; i < app.CharactersPerMatrixCell; i++ {
+				sb.WriteByte(cellChars[(row*app.PasswordMatrixColumns+col+i)%len(cellChars)])
+			}
+			m[row][col] = sb.String()
 		}
 	}
 	return m

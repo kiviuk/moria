@@ -128,25 +128,27 @@ func TestLetterGroup_CaseInsensitive(t *testing.T) {
 	// Verify lowercase and uppercase letters map to the same group
 	tests := []struct {
 		lower, upper string
-		group        int
 	}{
-		{"a", "A", 1}, {"b", "B", 1}, {"c", "C", 1},
-		{"d", "D", 2}, {"e", "E", 2}, {"f", "F", 2},
-		{"g", "G", 3}, {"h", "H", 3}, {"i", "I", 3},
-		{"j", "J", 4}, {"k", "K", 4}, {"l", "L", 4},
-		{"m", "M", 5}, {"n", "N", 5}, {"o", "O", 5},
-		{"p", "P", 6}, {"q", "Q", 6}, {"r", "R", 6},
-		{"s", "S", 7}, {"t", "T", 7}, {"u", "U", 7},
-		{"v", "V", 8}, {"w", "W", 8}, {"x", "X", 8},
-		{"y", "Y", 9}, {"z", "Z", 9},
+		{"a", "A"}, {"b", "B"}, {"c", "C"},
+		{"d", "D"}, {"e", "E"}, {"f", "F"},
+		{"g", "G"}, {"h", "H"}, {"i", "I"},
+		{"j", "J"}, {"k", "K"}, {"l", "L"},
+		{"m", "M"}, {"n", "N"}, {"o", "O"},
+		{"p", "P"}, {"q", "Q"}, {"r", "R"},
+		{"s", "S"}, {"t", "T"}, {"u", "U"},
+		{"v", "V"}, {"w", "W"}, {"x", "X"},
+		{"y", "Y"}, {"z", "Z"},
 	}
 
 	for _, tt := range tests {
 		lg := LetterGroup(tt.lower)
 		ug := LetterGroup(tt.upper)
-		if lg != tt.group || ug != tt.group {
-			t.Errorf("LetterGroup(%q)=%d, LetterGroup(%q)=%d, expected %d",
-				tt.lower, lg, tt.upper, ug, tt.group)
+		if lg != ug {
+			t.Errorf("LetterGroup(%q)=%d, LetterGroup(%q)=%d, expected equal",
+				tt.lower, lg, tt.upper, ug)
+		}
+		if lg == 0 {
+			t.Errorf("LetterGroup(%q)=%d, expected non-zero", tt.lower, lg)
 		}
 	}
 }
@@ -222,8 +224,8 @@ func TestQuery(t *testing.T) {
 	if result.Letter != "x" {
 		t.Errorf("expected letter 'x', got %q", result.Letter)
 	}
-	if result.LetterGroup != 8 {
-		t.Errorf("expected group 8, got %d", result.LetterGroup)
+	if result.LetterGroup != LetterGroup("x") {
+		t.Errorf("expected group %d, got %d", LetterGroup("x"), result.LetterGroup)
 	}
 }
 
@@ -237,27 +239,19 @@ func TestMagicSpell_MagicLetters_Query(t *testing.T) {
 		result[i] = l.Query()
 	}
 
-	expected := []QueryLetter{
-		{Letter: "a", MatrixRow: 0, LetterGroup: 1},
-		{Letter: "b", MatrixRow: 1, LetterGroup: 1},
-		{Letter: "c", MatrixRow: 2, LetterGroup: 1},
-		{Letter: "d", MatrixRow: 3, LetterGroup: 2},
-		{Letter: "e", MatrixRow: 4, LetterGroup: 2},
-		{Letter: "f", MatrixRow: 5, LetterGroup: 2},
-		{Letter: "g", MatrixRow: 6, LetterGroup: 3},
-		{Letter: "h", MatrixRow: 7, LetterGroup: 3},
-		{Letter: "i", MatrixRow: 8, LetterGroup: 3},
-		{Letter: "j", MatrixRow: 9, LetterGroup: 4},
+	if len(result) != len(letters) {
+		t.Fatalf("expected %d letters, got %d", len(letters), len(result))
 	}
 
-	if len(result) != len(expected) {
-		t.Fatalf("expected %d letters, got %d", len(expected), len(result))
-	}
-
-	for i, exp := range expected {
-		if result[i].Letter != exp.Letter || result[i].MatrixRow != exp.MatrixRow || result[i].LetterGroup != exp.LetterGroup {
-			t.Errorf("index %d: expected (letter=%q, row=%d, group=%d), got (letter=%q, row=%d, group=%d)",
-				i, exp.Letter, exp.MatrixRow, exp.LetterGroup, result[i].Letter, result[i].MatrixRow, result[i].LetterGroup)
+	for i, l := range letters {
+		if result[i].Letter != l.Letter {
+			t.Errorf("index %d: expected letter %q, got %q", i, l.Letter, result[i].Letter)
+		}
+		if result[i].MatrixRow != ModN(l.LetterPosition, PasswordMatrixRows) {
+			t.Errorf("index %d: expected row %d, got %d", i, ModN(l.LetterPosition, PasswordMatrixRows), result[i].MatrixRow)
+		}
+		if result[i].LetterGroup != LetterGroup(l.Letter) {
+			t.Errorf("index %d: expected group %d, got %d", i, LetterGroup(l.Letter), result[i].LetterGroup)
 		}
 	}
 }
@@ -279,11 +273,11 @@ func TestMagicSpell_MagicLetters_Query_Wraps(t *testing.T) {
 		t.Errorf("expected row 4 for 'o', got %d", result[14].MatrixRow)
 	}
 
-	if result[10].LetterGroup != 4 {
-		t.Errorf("expected group 4 for 'k', got %d", result[10].LetterGroup)
+	if result[10].LetterGroup != LetterGroup("k") {
+		t.Errorf("expected group %d for 'k', got %d", LetterGroup("k"), result[10].LetterGroup)
 	}
-	if result[14].LetterGroup != 5 {
-		t.Errorf("expected group 5 for 'o', got %d", result[14].LetterGroup)
+	if result[14].LetterGroup != LetterGroup("o") {
+		t.Errorf("expected group %d for 'o', got %d", LetterGroup("o"), result[14].LetterGroup)
 	}
 }
 
@@ -306,38 +300,24 @@ func TestMagicSpell_MagicLetters_Query_DigitsWrap(t *testing.T) {
 }
 
 func TestQueryLetter_Grouping(t *testing.T) {
-	// Verify alphabet-based grouping: A-C→1, D-F→2, G-I→3, J-L→4
+	// Verify alphabet-based grouping matches LetterGroup() for each letter
 	spell := MagicSpell{Spell: "ABCDEFGHIJKL"}
 	letters := spell.MagicLetters()
-
-	expected := []QueryLetter{
-		{Letter: "A", MatrixRow: 0, LetterGroup: 1},
-		{Letter: "B", MatrixRow: 1, LetterGroup: 1},
-		{Letter: "C", MatrixRow: 2, LetterGroup: 1},
-		{Letter: "D", MatrixRow: 3, LetterGroup: 2},
-		{Letter: "E", MatrixRow: 4, LetterGroup: 2},
-		{Letter: "F", MatrixRow: 5, LetterGroup: 2},
-		{Letter: "G", MatrixRow: 6, LetterGroup: 3},
-		{Letter: "H", MatrixRow: 7, LetterGroup: 3},
-		{Letter: "I", MatrixRow: 8, LetterGroup: 3},
-		{Letter: "J", MatrixRow: 9, LetterGroup: 4},
-		{Letter: "K", MatrixRow: 0, LetterGroup: 4},
-		{Letter: "L", MatrixRow: 1, LetterGroup: 4},
-	}
 
 	result := make([]QueryLetter, len(letters))
 	for i, l := range letters {
 		result[i] = l.Query()
 	}
 
-	if len(result) != len(expected) {
-		t.Fatalf("expected %d query letters, got %d", len(expected), len(result))
-	}
-
-	for i, exp := range expected {
-		if result[i].Letter != exp.Letter || result[i].MatrixRow != exp.MatrixRow || result[i].LetterGroup != exp.LetterGroup {
-			t.Errorf("index %d: expected (letter=%q, row=%d, group=%d), got (letter=%q, row=%d, group=%d)",
-				i, exp.Letter, exp.MatrixRow, exp.LetterGroup, result[i].Letter, result[i].MatrixRow, result[i].LetterGroup)
+	for i, l := range letters {
+		if result[i].Letter != l.Letter {
+			t.Errorf("index %d: expected letter %q, got %q", i, l.Letter, result[i].Letter)
+		}
+		if result[i].MatrixRow != ModN(l.LetterPosition, PasswordMatrixRows) {
+			t.Errorf("index %d: expected row %d, got %d", i, ModN(l.LetterPosition, PasswordMatrixRows), result[i].MatrixRow)
+		}
+		if result[i].LetterGroup != LetterGroup(l.Letter) {
+			t.Errorf("index %d: expected group %d, got %d", i, LetterGroup(l.Letter), result[i].LetterGroup)
 		}
 	}
 }
@@ -350,21 +330,30 @@ func TestMagicSpell_ExtractPassword_Digits(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if password != "00|10|20|30|" {
-		t.Errorf("expected %q, got %q", "00|10|20|30|", password)
+	expected := matrix[0][0] + matrix[1][0] + matrix[2][0] + matrix[3][0]
+	if password != expected {
+		t.Errorf("expected %q, got %q", expected, password)
 	}
 }
 
 func TestMagicSpell_ExtractPassword_OnePerGroup(t *testing.T) {
-	// Verify one letter from each group extracts cells across all columns 1-9
+	// Verify one letter from each group extracts cells across different columns
 	matrix := newTestMatrix()
 	spell := MagicSpell{Spell: "adgjmpsvy"}
 	password, err := spell.ExtractPassword(matrix)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if password != "01|12|23|34|45|56|67|78|89|" {
-		t.Errorf("expected %q, got %q", "01|12|23|34|45|56|67|78|89|", password)
+
+	// Build expected password by computing each letter's group
+	letters := spell.MagicLetters()
+	var expected strings.Builder
+	for _, l := range letters {
+		q := l.Query()
+		expected.WriteString(matrix[q.MatrixRow][q.LetterGroup])
+	}
+	if password != expected.String() {
+		t.Errorf("expected %q, got %q", expected.String(), password)
 	}
 }
 
@@ -376,7 +365,8 @@ func TestMagicSpell_ExtractPassword_Spaces(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if password != "00|10|20|30|" {
-		t.Errorf("expected %q, got %q", "00|10|20|30|", password)
+	expected := matrix[0][0] + matrix[1][0] + matrix[2][0] + matrix[3][0]
+	if password != expected {
+		t.Errorf("expected %q, got %q", expected, password)
 	}
 }

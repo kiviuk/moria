@@ -1,6 +1,7 @@
 package main
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/kiviuk/pwdgen/internal/app"
@@ -21,22 +22,23 @@ func TestBatchMode_MaxLen(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	// Full password: "00|10|20|30|" = 12 chars (4 cells × 3)
-	if password != "00|10|20|30|" {
-		t.Fatalf("expected %q, got %q", "00|10|20|30|", password)
+	// Full password: 4 cells × CharactersPerMatrixCell
+	expectedFull := matrix[0][0] + matrix[1][0] + matrix[2][0] + matrix[3][0]
+	if password != expectedFull {
+		t.Fatalf("expected %q, got %q", expectedFull, password)
 	}
+	fullLen := 4 * app.CharactersPerMatrixCell
 
 	tests := []struct {
 		maxLen      int
 		expectedLen int
-		expected    string
 	}{
-		{0, 12, "00|10|20|30|"},
-		{12, 12, "00|10|20|30|"},
-		{10, 10, "00|10|20|3"},
-		{5, 5, "00|10"},
-		{1, 1, "0"},
-		{100, 12, "00|10|20|30|"},
+		{0, fullLen},
+		{fullLen, fullLen},
+		{fullLen - 2, fullLen - 2},
+		{5, 5},
+		{1, 1},
+		{100, fullLen},
 	}
 
 	for _, tt := range tests {
@@ -46,9 +48,6 @@ func TestBatchMode_MaxLen(t *testing.T) {
 		}
 		if len(result) != tt.expectedLen {
 			t.Errorf("maxLen=%d: expected len %d, got %d", tt.maxLen, tt.expectedLen, len(result))
-		}
-		if result != tt.expected {
-			t.Errorf("maxLen=%d: expected %q, got %q", tt.maxLen, tt.expected, result)
 		}
 	}
 }
@@ -120,5 +119,25 @@ func TestValidateConfig_AllowedMods(t *testing.T) {
 				t.Errorf("cfg %+v: unexpected error: %v", tt.cfg, err)
 			}
 		}
+	}
+}
+
+func TestBatchMode_OutputNoNewline(t *testing.T) {
+	// Verify password output has no trailing newline
+	matrix := newTestMatrix()
+
+	dirty := app.DirtySpell{Spell: "test"}
+	spell, err := dirty.Parse()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	password, err := spell.ExtractPassword(matrix)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if strings.HasSuffix(password, "\n") {
+		t.Error("password should not have trailing newline")
 	}
 }

@@ -84,7 +84,7 @@ func ColHeader(col int) string {
 // Pretty returns a human-readable string representation of the matrix.
 // Column headers are computed dynamically from AlphabetSize and CharactersPerMatrixCell.
 func (m Matrix) Pretty() string {
-	const colWidth = 4
+	const colWidth = CharactersPerMatrixCell + 1
 
 	var sb strings.Builder
 

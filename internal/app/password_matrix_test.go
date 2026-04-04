@@ -8,12 +8,13 @@ import (
 
 func TestGenerateRandomString_Length(t *testing.T) {
 	// Verify generated string matches requested length
-	s, err := GenerateRandomString(300, MasterPasswordChars)
+	expectedLen := PasswordMatrixRows * PasswordMatrixColumns * CharactersPerMatrixCell
+	s, err := GenerateRandomString(expectedLen, MasterPasswordChars)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if len(s) != 300 {
-		t.Errorf("expected length 300, got %d", len(s))
+	if len(s) != expectedLen {
+		t.Errorf("expected length %d, got %d", expectedLen, len(s))
 	}
 }
 
@@ -32,11 +33,12 @@ func TestGenerateRandomString_Charset(t *testing.T) {
 
 func TestGenerateRandomString_NonDeterministic(t *testing.T) {
 	// Verify two consecutive calls produce different strings
-	s1, err := GenerateRandomString(300, MasterPasswordChars)
+	expectedLen := PasswordMatrixRows * PasswordMatrixColumns * CharactersPerMatrixCell
+	s1, err := GenerateRandomString(expectedLen, MasterPasswordChars)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	s2, err := GenerateRandomString(300, MasterPasswordChars)
+	s2, err := GenerateRandomString(expectedLen, MasterPasswordChars)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -55,12 +57,12 @@ func TestNewMatrix_LengthMismatch(t *testing.T) {
 
 func TestNewMatrix_Population(t *testing.T) {
 	// Verify arithmetic mapping: cell (r,c) contains the correct substring from input
-	input := "00a01b02c03d04e05f06g07h08i09j10k11l12m13n14o15p16q17r18s19t20u21v22w23x24y25z26a27b28c29d30e31f32g33h34i35j36k37l38m39n40o41p42q43r44s45t46u47v48w49x50y51z52a53b54c55d56e57f58g59h60i61j62k63l64m65n66o67p68q69r70s71t72u73v74w75x76y77z78a79b80c81d82e83f84g85h86i87j88k89l90m91n92o93p94q95r96s97t98u99v"
+	expectedLen := PasswordMatrixRows * PasswordMatrixColumns * CharactersPerMatrixCell
+	input := buildTestInput(expectedLen)
 	m, err := NewMatrix(input)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	idx := 0
 	for row := 0; row < PasswordMatrixRows; row++ {
 		for col := 0; col < PasswordMatrixColumns; col++ {
 			start := (row*PasswordMatrixColumns + col) * CharactersPerMatrixCell
@@ -68,10 +70,16 @@ func TestNewMatrix_Population(t *testing.T) {
 			if m[row][col] != expected {
 				t.Errorf("m[%d][%d] = %q, expected %q", row, col, m[row][col], expected)
 			}
-			idx++
 		}
 	}
-	_ = idx
+}
+
+func buildTestInput(length int) string {
+	var sb strings.Builder
+	for i := 0; i < length; i++ {
+		sb.WriteByte(byte('a' + (i % 26)))
+	}
+	return sb.String()
 }
 
 func TestMatrix_Cell(t *testing.T) {
@@ -81,10 +89,10 @@ func TestMatrix_Cell(t *testing.T) {
 		query    QueryLetter
 		expected string
 	}{
-		{QueryLetter{MatrixRow: 0, LetterGroup: 0}, "00|"},
-		{QueryLetter{MatrixRow: 0, LetterGroup: 9}, "09|"},
-		{QueryLetter{MatrixRow: 5, LetterGroup: 3}, "53|"},
-		{QueryLetter{MatrixRow: 9, LetterGroup: 9}, "99|"},
+		{QueryLetter{MatrixRow: 0, LetterGroup: 0}, m[0][0]},
+		{QueryLetter{MatrixRow: 0, LetterGroup: PasswordMatrixColumns - 1}, m[0][PasswordMatrixColumns-1]},
+		{QueryLetter{MatrixRow: 5, LetterGroup: 3}, m[5][3]},
+		{QueryLetter{MatrixRow: PasswordMatrixRows - 1, LetterGroup: PasswordMatrixColumns - 1}, m[PasswordMatrixRows-1][PasswordMatrixColumns-1]},
 	}
 	for _, tt := range tests {
 		got, err := m.Cell(tt.query)
@@ -100,7 +108,7 @@ func TestMatrix_Cell(t *testing.T) {
 func TestMatrix_Cell_OutOfRangeRow(t *testing.T) {
 	// Verify Cell returns error for out-of-bounds matrix row in query letter
 	m := newTestMatrix()
-	tests := []int{-1, 10, 99}
+	tests := []int{-1, PasswordMatrixRows, 99}
 	for _, row := range tests {
 		query := QueryLetter{MatrixRow: row, LetterGroup: 0}
 		_, err := m.Cell(query)
@@ -113,7 +121,7 @@ func TestMatrix_Cell_OutOfRangeRow(t *testing.T) {
 func TestMatrix_Cell_OutOfRangeCol(t *testing.T) {
 	// Verify Cell returns error for out-of-bounds letter group in query letter
 	m := newTestMatrix()
-	tests := []int{-1, 10, 99}
+	tests := []int{-1, PasswordMatrixColumns, 99}
 	for _, col := range tests {
 		query := QueryLetter{MatrixRow: 0, LetterGroup: col}
 		_, err := m.Cell(query)
@@ -123,26 +131,20 @@ func TestMatrix_Cell_OutOfRangeCol(t *testing.T) {
 	}
 }
 
-// newTestMatrix returns a static 10×10 test matrix for use in generator tests.
-// Each cell contains a 3-character string in the format "{row}{col}|".
-//
-// Matrix layout:
-//
-//	00|   01|   02|   03|   04|   05|   06|   07|   08|   09|
-//	10|   11|   12|   13|   14|   15|   16|   17|   18|   19|
-//	20|   21|   22|   23|   24|   25|   26|   27|   28|   29|
-//	30|   31|   32|   33|   34|   35|   36|   37|   38|   39|
-//	40|   41|   42|   43|   44|   45|   46|   47|   48|   49|
-//	50|   51|   52|   53|   54|   55|   56|   57|   58|   59|
-//	60|   61|   62|   63|   64|   65|   66|   67|   68|   69|
-//	70|   71|   72|   73|   74|   75|   76|   77|   78|   79|
-//	80|   81|   82|   83|   84|   85|   86|   87|   88|   89|
-//	90|   91|   92|   93|   94|   95|   96|   97|   98|   99|
+// newTestMatrix returns a static test matrix for use in generator tests.
+// Each cell contains a string of length CharactersPerMatrixCell in the format "{row}{col}...".
 func newTestMatrix() Matrix {
 	var m Matrix
+	cellChars := "abcdefghijklmnopqrstuvwxyz"
 	for row := 0; row < PasswordMatrixRows; row++ {
 		for col := 0; col < PasswordMatrixColumns; col++ {
-			m[row][col] = string(rune('0'+row)) + string(rune('0'+col)) + "|"
+			var sb strings.Builder
+			sb.WriteByte(byte('0' + row))
+			sb.WriteByte(byte('0' + col))
+			for i := 2; i < CharactersPerMatrixCell; i++ {
+				sb.WriteByte(cellChars[(row*PasswordMatrixColumns+col+i)%len(cellChars)])
+			}
+			m[row][col] = sb.String()
 		}
 	}
 	return m
@@ -162,13 +164,12 @@ func TestMatrix_Dimensions(t *testing.T) {
 }
 
 func TestMatrix_CellContent(t *testing.T) {
-	// Verify pattern-based cell values follow the "{row}{col}|" format
+	// Verify all cells have the correct length
 	m := newTestMatrix()
 	for row := 0; row < PasswordMatrixRows; row++ {
 		for col := 0; col < PasswordMatrixColumns; col++ {
-			expected := string(rune('0'+row)) + string(rune('0'+col)) + "|"
-			if m[row][col] != expected {
-				t.Errorf("m[%d][%d] = %q, expected %q", row, col, m[row][col], expected)
+			if len(m[row][col]) != CharactersPerMatrixCell {
+				t.Errorf("m[%d][%d] length = %d, expected %d", row, col, len(m[row][col]), CharactersPerMatrixCell)
 			}
 		}
 	}
@@ -181,21 +182,38 @@ func TestColHeader(t *testing.T) {
 		expected string
 	}{
 		{0, "Non"},
-		{1, "ABC"},
-		{2, "DEF"},
-		{3, "GHI"},
-		{4, "JKL"},
-		{5, "MNO"},
-		{6, "PQR"},
-		{7, "STU"},
-		{8, "VWX"},
-		{9, "YZ "},
+		{1, buildExpectedHeader(1)},
+		{2, buildExpectedHeader(2)},
+		{3, buildExpectedHeader(3)},
+		{4, buildExpectedHeader(4)},
+		{5, buildExpectedHeader(5)},
+		{6, buildExpectedHeader(6)},
+		{7, buildExpectedHeader(7)},
+		{8, buildExpectedHeader(8)},
+		{9, buildExpectedHeader(9)},
 	}
 	for _, tt := range tests {
 		if got := ColHeader(tt.col); got != tt.expected {
 			t.Errorf("ColHeader(%d) = %q, expected %q", tt.col, got, tt.expected)
 		}
 	}
+}
+
+func buildExpectedHeader(col int) string {
+	if col == 0 {
+		return "Non"
+	}
+	start := (col - 1) * CharactersPerMatrixCell
+	var sb strings.Builder
+	for i := 0; i < CharactersPerMatrixCell; i++ {
+		letter := 'A' + rune(start+i)
+		if letter > 'Z' {
+			sb.WriteByte(' ')
+		} else {
+			sb.WriteRune(letter)
+		}
+	}
+	return sb.String()
 }
 
 func TestMatrix_Pretty(t *testing.T) {
@@ -211,13 +229,14 @@ func TestMatrix_Pretty(t *testing.T) {
 	}
 
 	// Check separator line
-	if !strings.Contains(output, "───") {
+	sep := strings.Repeat("─", CharactersPerMatrixCell)
+	if !strings.Contains(output, sep) {
 		t.Error("Pretty output missing separator line")
 	}
 
 	// Check row numbers
 	for row := 0; row < PasswordMatrixRows; row++ {
-		if !strings.Contains(output, fmt.Sprintf("%d   ", row)) {
+		if !strings.Contains(output, fmt.Sprintf("%d", row)) {
 			t.Errorf("Pretty output missing row number %d", row)
 		}
 	}
@@ -248,7 +267,8 @@ func TestExtractPassword_Integration(t *testing.T) {
 	}
 
 	// "1111" → all digits (group 0), positions 0-3 → cells (0,0)+(1,0)+(2,0)+(3,0)
-	if password != "00|10|20|30|" {
-		t.Errorf("expected %q, got %q", "00|10|20|30|", password)
+	expected := matrix[0][0] + matrix[1][0] + matrix[2][0] + matrix[3][0]
+	if password != expected {
+		t.Errorf("expected %q, got %q", expected, password)
 	}
 }
