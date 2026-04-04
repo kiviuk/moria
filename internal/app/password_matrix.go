@@ -1,6 +1,9 @@
 package app
 
-import "fmt"
+import (
+	"crypto/rand"
+	"fmt"
+)
 
 // Matrix is a grid of password fragments used to generate passwords from a spell.
 // Rows (0-9) correspond to character positions in the spell, wrapped by PasswordMatrixRows.
@@ -36,4 +39,19 @@ func (m Matrix) Cell(row, col int) (string, error) {
 		return "", fmt.Errorf("col %d out of range [0, %d)", col, PasswordMatrixColumns)
 	}
 	return m[row][col], nil
+}
+
+// GenerateRandomString produces a cryptographically secure random string of the given length.
+// Characters are drawn from the allowed pool: letters, numbers, special characters, and space.
+func GenerateRandomString(length int) (string, error) {
+	b := make([]byte, length)
+	_, err := rand.Read(b)
+	if err != nil {
+		return "", err
+	}
+	pool := AllowedLetters + AllowedNumbers + AllowedSpecialChars + AllowedSpace
+	for i := range b {
+		b[i] = pool[int(b[i])%len(pool)]
+	}
+	return string(b), nil
 }

@@ -1,7 +1,6 @@
 package app
 
 import (
-	"crypto/rand"
 	"fmt"
 	"strings"
 )
@@ -104,17 +103,4 @@ func (m LetterTuple) MapModN() LetterTuple {
 		LetterPosition: ModN(m.LetterPosition, PasswordMatrixRows),
 		LetterGroup:    m.LetterGroup,
 	}
-}
-
-func GenerateRandomString(length int) (string, error) {
-	b := make([]byte, length)
-	_, err := rand.Read(b)
-	if err != nil {
-		return "", err
-	}
-	pool := AllowedLetters + AllowedNumbers + AllowedSpecialChars + AllowedSpace
-	for i := range b {
-		b[i] = pool[int(b[i])%len(pool)]
-	}
-	return string(b), nil
 }
