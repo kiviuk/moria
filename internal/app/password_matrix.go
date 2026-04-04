@@ -29,9 +29,9 @@ func NewMatrix(randomString string) (Matrix, error) {
 	return m, nil
 }
 
-// Cell returns the password fragment at the given row and column.
+// cell returns the password fragment at the given row and column.
 // Index validation is performed here as a defensive measure, even if input was validated upstream.
-func (m Matrix) Cell(row, col int) (string, error) {
+func (m Matrix) cell(row, col int) (string, error) {
 	if row < 0 || row >= PasswordMatrixRows {
 		return "", fmt.Errorf("row %d out of range [0, %d)", row, PasswordMatrixRows)
 	}
@@ -39,6 +39,12 @@ func (m Matrix) Cell(row, col int) (string, error) {
 		return "", fmt.Errorf("col %d out of range [0, %d)", col, PasswordMatrixColumns)
 	}
 	return m[row][col], nil
+}
+
+// Cell returns the password fragment for a resolved tuple.
+// The row is guaranteed valid by the ResolvedTuple type, but the column is still validated defensively.
+func (m Matrix) Cell(t ResolvedTuple) (string, error) {
+	return m.cell(t.MatrixRow, t.LetterGroup)
 }
 
 // GenerateRandomString produces a cryptographically secure random string of the given length.

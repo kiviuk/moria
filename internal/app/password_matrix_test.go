@@ -75,44 +75,50 @@ func TestNewMatrix_Population(t *testing.T) {
 }
 
 func TestMatrix_Cell(t *testing.T) {
-	// Verify Cell returns correct values for valid indices
+	// Verify Cell returns correct values for valid resolved tuples
 	m := newTestMatrix()
 	tests := []struct {
-		row, col int
+		tuple    ResolvedTuple
 		expected string
 	}{
-		{0, 0, "00|"},
-		{0, 9, "09|"},
-		{5, 3, "53|"},
-		{9, 9, "99|"},
+		{ResolvedTuple{MatrixRow: 0, LetterGroup: 0}, "00|"},
+		{ResolvedTuple{MatrixRow: 0, LetterGroup: 9}, "09|"},
+		{ResolvedTuple{MatrixRow: 5, LetterGroup: 3}, "53|"},
+		{ResolvedTuple{MatrixRow: 9, LetterGroup: 9}, "99|"},
 	}
 	for _, tt := range tests {
-		got, err := m.Cell(tt.row, tt.col)
+		got, err := m.Cell(tt.tuple)
 		if err != nil {
-			t.Errorf("Cell(%d, %d) unexpected error: %v", tt.row, tt.col, err)
+			t.Errorf("Cell(%+v) unexpected error: %v", tt.tuple, err)
 		}
 		if got != tt.expected {
-			t.Errorf("Cell(%d, %d) = %q, expected %q", tt.row, tt.col, got, tt.expected)
+			t.Errorf("Cell(%+v) = %q, expected %q", tt.tuple, got, tt.expected)
 		}
 	}
 }
 
-func TestMatrix_Cell_OutOfRange(t *testing.T) {
-	// Verify Cell returns error for out-of-bounds indices
+func TestMatrix_Cell_OutOfRangeRow(t *testing.T) {
+	// Verify Cell returns error for out-of-bounds matrix row in resolved tuple
 	m := newTestMatrix()
-	tests := []struct {
-		row, col int
-	}{
-		{-1, 0},
-		{10, 0},
-		{0, -1},
-		{0, 10},
-		{99, 99},
-	}
-	for _, tt := range tests {
-		_, err := m.Cell(tt.row, tt.col)
+	tests := []int{-1, 10, 99}
+	for _, row := range tests {
+		tuple := ResolvedTuple{MatrixRow: row, LetterGroup: 0}
+		_, err := m.Cell(tuple)
 		if err == nil {
-			t.Errorf("Cell(%d, %d) expected error, got nil", tt.row, tt.col)
+			t.Errorf("Cell with row %d expected error, got nil", row)
+		}
+	}
+}
+
+func TestMatrix_Cell_OutOfRangeCol(t *testing.T) {
+	// Verify Cell returns error for out-of-bounds letter group in resolved tuple
+	m := newTestMatrix()
+	tests := []int{-1, 10, 99}
+	for _, col := range tests {
+		tuple := ResolvedTuple{MatrixRow: 0, LetterGroup: col}
+		_, err := m.Cell(tuple)
+		if err == nil {
+			t.Errorf("Cell with col %d expected error, got nil", col)
 		}
 	}
 }

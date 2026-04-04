@@ -11,6 +11,14 @@ type LetterTuple struct {
 	LetterGroup    int
 }
 
+// ResolvedTuple is a LetterTuple whose position has been resolved to a valid matrix row.
+// MatrixRow is the wrapped row index (0-9), not the original spell position.
+type ResolvedTuple struct {
+	Letter      string
+	MatrixRow   int
+	LetterGroup int
+}
+
 type MagicSpell struct {
 	Spell string
 }
@@ -97,11 +105,11 @@ func ModN(value int, n int) int {
 	return value % n
 }
 
-func (m LetterTuple) MapModN() LetterTuple {
-	return LetterTuple{
-		Letter:         m.Letter,
-		LetterPosition: ModN(m.LetterPosition, PasswordMatrixRows),
-		LetterGroup:    m.LetterGroup,
+func (m LetterTuple) MapModN() ResolvedTuple {
+	return ResolvedTuple{
+		Letter:      m.Letter,
+		MatrixRow:   ModN(m.LetterPosition, PasswordMatrixRows),
+		LetterGroup: m.LetterGroup,
 	}
 }
 
@@ -109,8 +117,8 @@ func (m MagicSpell) ExtractPassword(matrix Matrix) (string, error) {
 	tuples := m.LetterTuples()
 	var password strings.Builder
 	for _, t := range tuples {
-		mapped := t.MapModN()
-		cell, err := matrix.Cell(mapped.LetterPosition, mapped.LetterGroup)
+		resolved := t.MapModN()
+		cell, err := matrix.Cell(resolved)
 		if err != nil {
 			return "", err
 		}

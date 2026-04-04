@@ -210,12 +210,12 @@ func TestModN(t *testing.T) {
 }
 
 func TestMapModN(t *testing.T) {
-	// Verify MapModN wraps position using PasswordMatrixRows while preserving letter and group
+	// Verify MapModN wraps position to MatrixRow while preserving letter and group
 	tuple := LetterTuple{Letter: "x", LetterPosition: 17, LetterGroup: 3}
 	result := tuple.MapModN()
 
-	if result.LetterPosition != ModN(17, PasswordMatrixRows) {
-		t.Errorf("expected position 7, got %d", result.LetterPosition)
+	if result.MatrixRow != ModN(17, PasswordMatrixRows) {
+		t.Errorf("expected row 7, got %d", result.MatrixRow)
 	}
 	if result.Letter != "x" {
 		t.Errorf("expected letter 'x', got %q", result.Letter)
@@ -226,26 +226,26 @@ func TestMapModN(t *testing.T) {
 }
 
 func TestMagicSpell_LetterTuples_MapModN(t *testing.T) {
-	// Verify full pipeline: LetterTuples then MapModN maps 10 letters to positions 0-9
+	// Verify full pipeline: LetterTuples then MapModN maps 10 letters to matrix rows 0-9
 	spell := MagicSpell{Spell: "abcdefghij"}
 	tuples := spell.LetterTuples()
 
-	result := make([]LetterTuple, len(tuples))
+	result := make([]ResolvedTuple, len(tuples))
 	for i, tuple := range tuples {
 		result[i] = tuple.MapModN()
 	}
 
-	expected := []LetterTuple{
-		{Letter: "a", LetterPosition: 0, LetterGroup: 1},
-		{Letter: "b", LetterPosition: 1, LetterGroup: 1},
-		{Letter: "c", LetterPosition: 2, LetterGroup: 1},
-		{Letter: "d", LetterPosition: 3, LetterGroup: 2},
-		{Letter: "e", LetterPosition: 4, LetterGroup: 2},
-		{Letter: "f", LetterPosition: 5, LetterGroup: 2},
-		{Letter: "g", LetterPosition: 6, LetterGroup: 3},
-		{Letter: "h", LetterPosition: 7, LetterGroup: 3},
-		{Letter: "i", LetterPosition: 8, LetterGroup: 3},
-		{Letter: "j", LetterPosition: 9, LetterGroup: 4},
+	expected := []ResolvedTuple{
+		{Letter: "a", MatrixRow: 0, LetterGroup: 1},
+		{Letter: "b", MatrixRow: 1, LetterGroup: 1},
+		{Letter: "c", MatrixRow: 2, LetterGroup: 1},
+		{Letter: "d", MatrixRow: 3, LetterGroup: 2},
+		{Letter: "e", MatrixRow: 4, LetterGroup: 2},
+		{Letter: "f", MatrixRow: 5, LetterGroup: 2},
+		{Letter: "g", MatrixRow: 6, LetterGroup: 3},
+		{Letter: "h", MatrixRow: 7, LetterGroup: 3},
+		{Letter: "i", MatrixRow: 8, LetterGroup: 3},
+		{Letter: "j", MatrixRow: 9, LetterGroup: 4},
 	}
 
 	if len(result) != len(expected) {
@@ -253,9 +253,9 @@ func TestMagicSpell_LetterTuples_MapModN(t *testing.T) {
 	}
 
 	for i, exp := range expected {
-		if result[i].Letter != exp.Letter || result[i].LetterPosition != exp.LetterPosition || result[i].LetterGroup != exp.LetterGroup {
-			t.Errorf("index %d: expected (letter=%q, pos=%d, group=%d), got (letter=%q, pos=%d, group=%d)",
-				i, exp.Letter, exp.LetterPosition, exp.LetterGroup, result[i].Letter, result[i].LetterPosition, result[i].LetterGroup)
+		if result[i].Letter != exp.Letter || result[i].MatrixRow != exp.MatrixRow || result[i].LetterGroup != exp.LetterGroup {
+			t.Errorf("index %d: expected (letter=%q, row=%d, group=%d), got (letter=%q, row=%d, group=%d)",
+				i, exp.Letter, exp.MatrixRow, exp.LetterGroup, result[i].Letter, result[i].MatrixRow, result[i].LetterGroup)
 		}
 	}
 }
@@ -265,16 +265,16 @@ func TestMagicSpell_LetterTuples_MapModN_Wraps(t *testing.T) {
 	spell := MagicSpell{Spell: "abcdefghijklmno"}
 	tuples := spell.LetterTuples()
 
-	result := make([]LetterTuple, len(tuples))
+	result := make([]ResolvedTuple, len(tuples))
 	for i, tuple := range tuples {
 		result[i] = tuple.MapModN()
 	}
 
-	if result[10].LetterPosition != 0 {
-		t.Errorf("expected position 0 for 'k', got %d", result[10].LetterPosition)
+	if result[10].MatrixRow != 0 {
+		t.Errorf("expected row 0 for 'k', got %d", result[10].MatrixRow)
 	}
-	if result[14].LetterPosition != 4 {
-		t.Errorf("expected position 4 for 'o', got %d", result[14].LetterPosition)
+	if result[14].MatrixRow != 4 {
+		t.Errorf("expected row 4 for 'o', got %d", result[14].MatrixRow)
 	}
 
 	if result[10].LetterGroup != 4 {
@@ -286,20 +286,20 @@ func TestMagicSpell_LetterTuples_MapModN_Wraps(t *testing.T) {
 }
 
 func TestMagicSpell_LetterTuples_MapModN_DigitsWrap(t *testing.T) {
-	// Verify digit string wraps: 11th character maps back to position 0
+	// Verify digit string wraps: 11th character maps back to row 0
 	spell := MagicSpell{Spell: "12345678900"}
 	tuples := spell.LetterTuples()
 
-	result := make([]LetterTuple, len(tuples))
+	result := make([]ResolvedTuple, len(tuples))
 	for i, tuple := range tuples {
 		result[i] = tuple.MapModN()
 	}
 
-	if result[10].LetterPosition != 0 {
-		t.Errorf("expected last '0' at position 0, got %d", result[10].LetterPosition)
+	if result[10].MatrixRow != 0 {
+		t.Errorf("expected last '0' at row 0, got %d", result[10].MatrixRow)
 	}
-	if result[9].LetterPosition != 9 {
-		t.Errorf("expected first '0' at position 9, got %d", result[9].LetterPosition)
+	if result[9].MatrixRow != 9 {
+		t.Errorf("expected first '0' at row 9, got %d", result[9].MatrixRow)
 	}
 }
 
