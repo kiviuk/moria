@@ -1,6 +1,95 @@
 package app
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
+
+func TestDirtySpell_Parse_Valid(t *testing.T) {
+	// Verify valid spell with letters, digits, specials, space passes
+	dirty := DirtySpell{Spell: "hello World123!@#"}
+	spell, err := dirty.Parse()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if spell.Spell != "hello World123!@#" {
+		t.Errorf("expected spell %q, got %q", "hello World123!@#", spell.Spell)
+	}
+}
+
+func TestDirtySpell_Parse_Empty(t *testing.T) {
+	// Verify empty spell returns valid empty MagicSpell
+	dirty := DirtySpell{Spell: ""}
+	spell, err := dirty.Parse()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if spell.Spell != "" {
+		t.Errorf("expected empty spell, got %q", spell.Spell)
+	}
+}
+
+func TestDirtySpell_Parse_RejectsNewline(t *testing.T) {
+	// Verify newline character is rejected as invalid
+	dirty := DirtySpell{Spell: "he\nllo"}
+	_, err := dirty.Parse()
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+	if !strings.Contains(err.Error(), `\n`) && !strings.Contains(err.Error(), "\n") {
+		t.Errorf("expected error about newline, got: %v", err)
+	}
+}
+
+func TestDirtySpell_Parse_RejectsTab(t *testing.T) {
+	// Verify tab character is rejected as invalid
+	dirty := DirtySpell{Spell: "he\tllo"}
+	_, err := dirty.Parse()
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+	if !strings.Contains(err.Error(), `\t`) && !strings.Contains(err.Error(), "\t") {
+		t.Errorf("expected error about tab, got: %v", err)
+	}
+}
+
+func TestDirtySpell_Parse_RejectsUnicode(t *testing.T) {
+	// Verify unicode characters are rejected as invalid
+	dirty := DirtySpell{Spell: "héllo"}
+	_, err := dirty.Parse()
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+}
+
+func TestDirtySpell_Parse_MultipleErrors(t *testing.T) {
+	// Verify all invalid characters are accumulated, not just the first
+	dirty := DirtySpell{Spell: "a\nb\tc\rd"}
+	_, err := dirty.Parse()
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+	errs := err.(Errors)
+	if len(errs) != 3 {
+		t.Errorf("expected 3 errors, got %d: %v", len(errs), errs)
+	}
+}
+
+func TestDirtySpell_Parse_Integration(t *testing.T) {
+	// Verify end-to-end: DirtySpell.Parse().LetterTuples() works
+	dirty := DirtySpell{Spell: "abc"}
+	spell, err := dirty.Parse()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	tuples := spell.LetterTuples()
+	if len(tuples) != 3 {
+		t.Fatalf("expected 3 tuples, got %d", len(tuples))
+	}
+	if tuples[0].Letter != "a" || tuples[1].Letter != "b" || tuples[2].Letter != "c" {
+		t.Errorf("unexpected letters: %v", tuples)
+	}
+}
 
 func TestMagicSpell_Length(t *testing.T) {
 	// Verify MagicSpell.Spell length is computed correctly

@@ -1,5 +1,10 @@
 package app
 
+import (
+	"fmt"
+	"strings"
+)
+
 type LetterTuple struct {
 	Letter         string
 	LetterPosition int
@@ -8,6 +13,56 @@ type LetterTuple struct {
 
 type MagicSpell struct {
 	Spell string
+}
+
+type DirtySpell struct {
+	Spell string
+}
+
+type ParseError struct {
+	Char     string
+	Position int
+}
+
+type Errors []ParseError
+
+func (e Errors) Error() string {
+	parts := make([]string, len(e))
+	for i, pe := range e {
+		parts[i] = fmt.Sprintf("%q at %d", pe.Char, pe.Position)
+	}
+	return "invalid chars: " + strings.Join(parts, ", ")
+}
+
+var allowedPattern = "[" + AllowedLetters + AllowedNumbers + AllowedSpecialChars + AllowedSpace + "]"
+
+func (d DirtySpell) Parse() (MagicSpell, error) {
+	var errs Errors
+	for i, r := range d.Spell {
+		s := string(r)
+		if s == "" {
+			continue
+		}
+		matched := false
+		if r >= 'a' && r <= 'z' {
+			matched = true
+		} else if r >= 'A' && r <= 'Z' {
+			matched = true
+		} else if r >= '0' && r <= '9' {
+			matched = true
+		} else if r == ' ' {
+			matched = true
+		} else if strings.ContainsRune(AllowedSpecialChars, r) {
+			matched = true
+		}
+		if !matched {
+			errs = append(errs, ParseError{Char: s, Position: i})
+		}
+	}
+	if len(errs) > 0 {
+		return MagicSpell{}, errs
+	}
+	return MagicSpell{Spell: d.Spell}, nil
 }
 
 func LetterGroup(letter string) int {
