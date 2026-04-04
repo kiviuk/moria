@@ -84,27 +84,29 @@ func colHeader(col int) string {
 // Pretty returns a human-readable string representation of the matrix.
 // Column headers are computed dynamically from AlphabetSize and CharactersPerMatrixCell.
 func (m Matrix) Pretty() string {
+	const colWidth = 4
+
 	var sb strings.Builder
 
 	// Header row
-	sb.WriteString("     ")
+	sb.WriteString(strings.Repeat(" ", colWidth))
 	for col := 0; col < PasswordMatrixColumns; col++ {
-		sb.WriteString(fmt.Sprintf("%-4s", colHeader(col)))
+		sb.WriteString(fmt.Sprintf("%-*s", colWidth, colHeader(col)))
 	}
 	sb.WriteByte('\n')
 
 	// Separator
-	sb.WriteString("     ")
+	sb.WriteString(strings.Repeat(" ", colWidth))
 	for col := 0; col < PasswordMatrixColumns; col++ {
-		sb.WriteString("──── ")
+		sb.WriteString("─── ")
 	}
 	sb.WriteByte('\n')
 
 	// Data rows
 	for row := 0; row < PasswordMatrixRows; row++ {
-		sb.WriteString(fmt.Sprintf("%-4d", row))
+		sb.WriteString(fmt.Sprintf("%-*d", colWidth, row))
 		for col := 0; col < PasswordMatrixColumns; col++ {
-			sb.WriteString(fmt.Sprintf("%-4s", m[row][col]))
+			sb.WriteString(fmt.Sprintf("%-*s", colWidth, m[row][col]))
 		}
 		sb.WriteByte('\n')
 	}
