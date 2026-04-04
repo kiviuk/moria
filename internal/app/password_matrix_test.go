@@ -211,7 +211,7 @@ func TestMatrix_Pretty(t *testing.T) {
 	}
 
 	// Check separator line
-	if !strings.Contains(output, "────") {
+	if !strings.Contains(output, "───") {
 		t.Error("Pretty output missing separator line")
 	}
 

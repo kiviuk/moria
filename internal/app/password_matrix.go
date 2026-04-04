@@ -98,7 +98,7 @@ func (m Matrix) Pretty() string {
 	// Separator
 	sb.WriteString(strings.Repeat(" ", colWidth))
 	for col := 0; col < PasswordMatrixColumns; col++ {
-		sb.WriteString("─── ")
+		sb.WriteString(strings.Repeat("─", colWidth-1) + " ")
 	}
 	sb.WriteByte('\n')
 
