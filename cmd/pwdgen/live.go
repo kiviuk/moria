@@ -9,11 +9,13 @@ import (
 	"github.com/kiviuk/pwdgen/internal/app"
 )
 
+const colWidth = app.CharactersPerMatrixCell + 1
+
 var (
-	cellStyle      = lipgloss.NewStyle().Width(4).Align(lipgloss.Center)
-	highlightStyle = lipgloss.NewStyle().Width(4).Align(lipgloss.Center).Foreground(lipgloss.Color("10"))
-	headerStyle    = lipgloss.NewStyle().Width(4).Align(lipgloss.Center).Bold(true)
-	rowNumStyle    = lipgloss.NewStyle().Width(4).Align(lipgloss.Center).Foreground(lipgloss.Color("241"))
+	cellStyle      = lipgloss.NewStyle().Width(colWidth).Align(lipgloss.Center)
+	highlightStyle = lipgloss.NewStyle().Width(colWidth).Align(lipgloss.Center).Foreground(lipgloss.Color("10"))
+	headerStyle    = lipgloss.NewStyle().Width(colWidth).Align(lipgloss.Center).Bold(true)
+	rowNumStyle    = lipgloss.NewStyle().Width(colWidth).Align(lipgloss.Center).Foreground(lipgloss.Color("241"))
 	spellStyle     = lipgloss.NewStyle().Foreground(lipgloss.Color("14")).Bold(true)
 	passStyle      = lipgloss.NewStyle().Foreground(lipgloss.Color("10")).Bold(true)
 	errorStyle     = lipgloss.NewStyle().Foreground(lipgloss.Color("1")).Bold(true)
@@ -89,15 +91,17 @@ func (m liveModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m liveModel) View() string {
 	var sb strings.Builder
 
-	sb.WriteString(strings.Repeat(" ", 4))
+	// Header row
+	sb.WriteString(strings.Repeat(" ", colWidth))
 	for col := 0; col < app.PasswordMatrixColumns; col++ {
 		sb.WriteString(headerStyle.Render(app.ColHeader(col)))
 	}
 	sb.WriteByte('\n')
 
-	sb.WriteString(strings.Repeat(" ", 4))
+	// Separator
+	sb.WriteString(strings.Repeat(" ", colWidth))
 	for col := 0; col < app.PasswordMatrixColumns; col++ {
-		sb.WriteString("─── ")
+		sb.WriteString(strings.Repeat("─", colWidth-1) + " ")
 	}
 	sb.WriteByte('\n')
 
