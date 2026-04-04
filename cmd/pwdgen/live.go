@@ -25,13 +25,15 @@ type liveModel struct {
 	spell        string
 	queryLetters []app.QueryLetter
 	password     string
+	maxLen       int
 	err          string
 }
 
-func newLiveModel(matrix app.Matrix) liveModel {
+func newLiveModel(matrix app.Matrix, maxLen int) liveModel {
 	return liveModel{
 		matrix:       matrix,
 		queryLetters: make([]app.QueryLetter, 0),
+		maxLen:       maxLen,
 	}
 }
 
@@ -63,6 +65,10 @@ func (m liveModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.err = fmt.Sprintf("invalid char: %q", s)
 					return m, nil
 				}
+				if m.maxLen > 0 && len(m.password) >= m.maxLen {
+					m.err = "max length reached"
+					return m, nil
+				}
 				m.spell += s
 				letter := app.MagicLetter{Letter: s, LetterPosition: len(m.spell) - 1}
 				query := letter.Query()
@@ -83,28 +89,24 @@ func (m liveModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m liveModel) View() string {
 	var sb strings.Builder
 
-	// Matrix header
 	sb.WriteString(strings.Repeat(" ", 4))
 	for col := 0; col < app.PasswordMatrixColumns; col++ {
 		sb.WriteString(headerStyle.Render(app.ColHeader(col)))
 	}
 	sb.WriteByte('\n')
 
-	// Separator
 	sb.WriteString(strings.Repeat(" ", 4))
 	for col := 0; col < app.PasswordMatrixColumns; col++ {
 		sb.WriteString("─── ")
 	}
 	sb.WriteByte('\n')
 
-	// Build visited set for highlighting
 	visited := make(map[string]bool)
 	for _, q := range m.queryLetters {
 		key := fmt.Sprintf("%d-%d", q.MatrixRow, q.LetterGroup)
 		visited[key] = true
 	}
 
-	// Data rows
 	for row := 0; row < app.PasswordMatrixRows; row++ {
 		sb.WriteString(rowNumStyle.Render(fmt.Sprintf("%d", row)))
 		for col := 0; col < app.PasswordMatrixColumns; col++ {
@@ -121,7 +123,6 @@ func (m liveModel) View() string {
 
 	sb.WriteByte('\n')
 
-	// Spell display
 	cursor := ""
 	if len(m.spell)%2 == 0 {
 		cursor = "█"
@@ -130,10 +131,15 @@ func (m liveModel) View() string {
 	}
 	sb.WriteString(fmt.Sprintf("  Spell:    %s%s\n", spellStyle.Render(m.spell), cursor))
 
-	// Password display
-	sb.WriteString(fmt.Sprintf("  Password: %s\n", passStyle.Render(m.password)))
+	if m.maxLen > 0 {
+		sb.WriteString(fmt.Sprintf("  Password: %s (%d/%d)\n", passStyle.Render(m.password), len(m.password), m.maxLen))
+		if len(m.password) >= m.maxLen {
+			sb.WriteString(fmt.Sprintf("  %s\n", errorStyle.Render("[MAX LENGTH REACHED]")))
+		}
+	} else {
+		sb.WriteString(fmt.Sprintf("  Password: %s\n", passStyle.Render(m.password)))
+	}
 
-	// Error message
 	if m.err != "" {
 		sb.WriteString(fmt.Sprintf("  %s\n", errorStyle.Render(m.err)))
 	}
@@ -145,13 +151,17 @@ func (m liveModel) View() string {
 	return sb.String()
 }
 
-func LiveMode(matrix app.Matrix) (string, error) {
-	m := newLiveModel(matrix)
+func LiveMode(matrix app.Matrix, maxLen int) (string, error) {
+	m := newLiveModel(matrix, maxLen)
 	p := tea.NewProgram(m, tea.WithAltScreen())
 	finalModel, err := p.Run()
 	if err != nil {
 		return "", err
 	}
 	lm := finalModel.(liveModel)
-	return lm.password, nil
+	password := lm.password
+	if maxLen > 0 && len(password) > maxLen {
+		password = password[:maxLen]
+	}
+	return password, nil
 }
