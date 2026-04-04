@@ -37,6 +37,9 @@ func (e Errors) Error() string {
 var allowedPattern = "[" + AllowedLetters + AllowedNumbers + AllowedSpecialChars + AllowedSpace + "]"
 
 func (d DirtySpell) Parse() (MagicSpell, error) {
+	if len(d.Spell) == 0 {
+		return MagicSpell{}, fmt.Errorf("spell cannot be empty")
+	}
 	var errs Errors
 	for i, r := range d.Spell {
 		s := string(r)

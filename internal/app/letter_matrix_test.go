@@ -18,14 +18,14 @@ func TestDirtySpell_Parse_Valid(t *testing.T) {
 }
 
 func TestDirtySpell_Parse_Empty(t *testing.T) {
-	// Verify empty spell returns valid empty MagicSpell
+	// Verify empty spell is rejected since it cannot produce a password
 	dirty := DirtySpell{Spell: ""}
-	spell, err := dirty.Parse()
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
+	_, err := dirty.Parse()
+	if err == nil {
+		t.Fatal("expected error for empty spell, got nil")
 	}
-	if spell.Spell != "" {
-		t.Errorf("expected empty spell, got %q", spell.Spell)
+	if !strings.Contains(err.Error(), "empty") {
+		t.Errorf("expected error about empty spell, got: %v", err)
 	}
 }
 
