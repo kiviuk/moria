@@ -127,13 +127,13 @@ func simulateBackspace(m liveModel) liveModel {
 func newTestMatrix() app.Matrix {
 	var m app.Matrix
 	cellChars := "abcdefghijklmnopqrstuvwxyz"
+	idx := 0
 	for row := 0; row < app.PasswordMatrixRows; row++ {
 		for col := 0; col < app.PasswordMatrixColumns; col++ {
 			var sb strings.Builder
-			sb.WriteByte(byte('0' + row))
-			sb.WriteByte(byte('0' + col))
-			for i := 2; i < app.CharactersPerMatrixCell; i++ {
-				sb.WriteByte(cellChars[(row*app.PasswordMatrixColumns+col+i)%len(cellChars)])
+			for i := 0; i < app.CharactersPerMatrixCell; i++ {
+				sb.WriteByte(cellChars[idx%len(cellChars)])
+				idx++
 			}
 			m[row][col] = sb.String()
 		}
