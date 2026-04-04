@@ -75,35 +75,35 @@ func TestNewMatrix_Population(t *testing.T) {
 }
 
 func TestMatrix_Cell(t *testing.T) {
-	// Verify Cell returns correct values for valid resolved tuples
+	// Verify Cell returns correct values for valid query letters
 	m := newTestMatrix()
 	tests := []struct {
-		tuple    ResolvedTuple
+		query    QueryLetter
 		expected string
 	}{
-		{ResolvedTuple{MatrixRow: 0, LetterGroup: 0}, "00|"},
-		{ResolvedTuple{MatrixRow: 0, LetterGroup: 9}, "09|"},
-		{ResolvedTuple{MatrixRow: 5, LetterGroup: 3}, "53|"},
-		{ResolvedTuple{MatrixRow: 9, LetterGroup: 9}, "99|"},
+		{QueryLetter{MatrixRow: 0, LetterGroup: 0}, "00|"},
+		{QueryLetter{MatrixRow: 0, LetterGroup: 9}, "09|"},
+		{QueryLetter{MatrixRow: 5, LetterGroup: 3}, "53|"},
+		{QueryLetter{MatrixRow: 9, LetterGroup: 9}, "99|"},
 	}
 	for _, tt := range tests {
-		got, err := m.Cell(tt.tuple)
+		got, err := m.Cell(tt.query)
 		if err != nil {
-			t.Errorf("Cell(%+v) unexpected error: %v", tt.tuple, err)
+			t.Errorf("Cell(%+v) unexpected error: %v", tt.query, err)
 		}
 		if got != tt.expected {
-			t.Errorf("Cell(%+v) = %q, expected %q", tt.tuple, got, tt.expected)
+			t.Errorf("Cell(%+v) = %q, expected %q", tt.query, got, tt.expected)
 		}
 	}
 }
 
 func TestMatrix_Cell_OutOfRangeRow(t *testing.T) {
-	// Verify Cell returns error for out-of-bounds matrix row in resolved tuple
+	// Verify Cell returns error for out-of-bounds matrix row in query letter
 	m := newTestMatrix()
 	tests := []int{-1, 10, 99}
 	for _, row := range tests {
-		tuple := ResolvedTuple{MatrixRow: row, LetterGroup: 0}
-		_, err := m.Cell(tuple)
+		query := QueryLetter{MatrixRow: row, LetterGroup: 0}
+		_, err := m.Cell(query)
 		if err == nil {
 			t.Errorf("Cell with row %d expected error, got nil", row)
 		}
@@ -111,12 +111,12 @@ func TestMatrix_Cell_OutOfRangeRow(t *testing.T) {
 }
 
 func TestMatrix_Cell_OutOfRangeCol(t *testing.T) {
-	// Verify Cell returns error for out-of-bounds letter group in resolved tuple
+	// Verify Cell returns error for out-of-bounds letter group in query letter
 	m := newTestMatrix()
 	tests := []int{-1, 10, 99}
 	for _, col := range tests {
-		tuple := ResolvedTuple{MatrixRow: 0, LetterGroup: col}
-		_, err := m.Cell(tuple)
+		query := QueryLetter{MatrixRow: 0, LetterGroup: col}
+		_, err := m.Cell(query)
 		if err == nil {
 			t.Errorf("Cell with col %d expected error, got nil", col)
 		}

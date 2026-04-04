@@ -5,15 +5,15 @@ import (
 	"strings"
 )
 
-type LetterTuple struct {
+type MagicLetter struct {
 	Letter         string
 	LetterPosition int
-	LetterGroup    int
 }
 
-// ResolvedTuple is a LetterTuple whose position has been resolved to a valid matrix row.
+// QueryLetter is a MagicLetter whose position has been resolved to a valid matrix row.
 // MatrixRow is the wrapped row index (0-9), not the original spell position.
-type ResolvedTuple struct {
+// This type is used to query the matrix for its password fragment.
+type QueryLetter struct {
 	Letter      string
 	MatrixRow   int
 	LetterGroup int
@@ -93,32 +93,32 @@ func LetterGroup(letter string) int {
 	return int(r-selected)/CharactersPerMatrixCell + 1
 }
 
-func (m MagicSpell) LetterTuples() []LetterTuple {
-	tuples := make([]LetterTuple, len(m.Spell))
+func (m MagicSpell) MagicLetters() []MagicLetter {
+	letters := make([]MagicLetter, len(m.Spell))
 	for i, r := range m.Spell {
-		tuples[i] = LetterTuple{Letter: string(r), LetterPosition: i, LetterGroup: LetterGroup(string(r))}
+		letters[i] = MagicLetter{Letter: string(r), LetterPosition: i}
 	}
-	return tuples
+	return letters
 }
 
 func ModN(value int, n int) int {
 	return value % n
 }
 
-func (m LetterTuple) MapModN() ResolvedTuple {
-	return ResolvedTuple{
+func (m MagicLetter) Query() QueryLetter {
+	return QueryLetter{
 		Letter:      m.Letter,
 		MatrixRow:   ModN(m.LetterPosition, PasswordMatrixRows),
-		LetterGroup: m.LetterGroup,
+		LetterGroup: LetterGroup(m.Letter),
 	}
 }
 
 func (m MagicSpell) ExtractPassword(matrix Matrix) (string, error) {
-	tuples := m.LetterTuples()
+	letters := m.MagicLetters()
 	var password strings.Builder
-	for _, t := range tuples {
-		resolved := t.MapModN()
-		cell, err := matrix.Cell(resolved)
+	for _, l := range letters {
+		query := l.Query()
+		cell, err := matrix.Cell(query)
 		if err != nil {
 			return "", err
 		}

@@ -20,8 +20,8 @@ func NewMatrix(randomString string) (Matrix, error) {
 		return Matrix{}, fmt.Errorf("random string length %d, expected %d", len(randomString), expectedLen)
 	}
 	var m Matrix
-	for row := 0; row < PasswordMatrixRows; row++ {
-		for col := 0; col < PasswordMatrixColumns; col++ {
+	for row := range PasswordMatrixRows {
+		for col := range PasswordMatrixColumns {
 			start := (row*PasswordMatrixColumns + col) * CharactersPerMatrixCell
 			m[row][col] = randomString[start : start+CharactersPerMatrixCell]
 		}
@@ -41,9 +41,9 @@ func (m Matrix) cell(row, col int) (string, error) {
 	return m[row][col], nil
 }
 
-// Cell returns the password fragment for a resolved tuple.
-// The row is guaranteed valid by the ResolvedTuple type, but the column is still validated defensively.
-func (m Matrix) Cell(t ResolvedTuple) (string, error) {
+// Cell returns the password fragment for a resolved query letter.
+// The row is guaranteed valid by the QueryLetter type, but the column is still validated defensively.
+func (m Matrix) Cell(t QueryLetter) (string, error) {
 	return m.cell(t.MatrixRow, t.LetterGroup)
 }
 

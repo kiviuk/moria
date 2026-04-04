@@ -76,18 +76,18 @@ func TestDirtySpell_Parse_MultipleErrors(t *testing.T) {
 }
 
 func TestDirtySpell_Parse_Integration(t *testing.T) {
-	// Verify end-to-end: DirtySpell.Parse().LetterTuples() works
+	// Verify end-to-end: DirtySpell.Parse().MagicLetters() works
 	dirty := DirtySpell{Spell: "abc"}
 	spell, err := dirty.Parse()
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	tuples := spell.LetterTuples()
-	if len(tuples) != 3 {
-		t.Fatalf("expected 3 tuples, got %d", len(tuples))
+	letters := spell.MagicLetters()
+	if len(letters) != 3 {
+		t.Fatalf("expected 3 letters, got %d", len(letters))
 	}
-	if tuples[0].Letter != "a" || tuples[1].Letter != "b" || tuples[2].Letter != "c" {
-		t.Errorf("unexpected letters: %v", tuples)
+	if letters[0].Letter != "a" || letters[1].Letter != "b" || letters[2].Letter != "c" {
+		t.Errorf("unexpected letters: %v", letters)
 	}
 }
 
@@ -99,27 +99,27 @@ func TestMagicSpell_Length(t *testing.T) {
 	}
 }
 
-func TestMagicSpell_LetterTuples(t *testing.T) {
-	// Verify LetterTuples builds correct position, letter, and group for each character
+func TestMagicSpell_MagicLetters(t *testing.T) {
+	// Verify MagicLetters builds correct position and letter for each character
 	spell := MagicSpell{Spell: "hello"}
-	tuples := spell.LetterTuples()
+	letters := spell.MagicLetters()
 
-	expected := []LetterTuple{
-		{Letter: "h", LetterPosition: 0, LetterGroup: 3},
-		{Letter: "e", LetterPosition: 1, LetterGroup: 2},
-		{Letter: "l", LetterPosition: 2, LetterGroup: 4},
-		{Letter: "l", LetterPosition: 3, LetterGroup: 4},
-		{Letter: "o", LetterPosition: 4, LetterGroup: 5},
+	expected := []MagicLetter{
+		{Letter: "h", LetterPosition: 0},
+		{Letter: "e", LetterPosition: 1},
+		{Letter: "l", LetterPosition: 2},
+		{Letter: "l", LetterPosition: 3},
+		{Letter: "o", LetterPosition: 4},
 	}
 
-	if len(tuples) != len(expected) {
-		t.Fatalf("expected %d tuples, got %d", len(expected), len(tuples))
+	if len(letters) != len(expected) {
+		t.Fatalf("expected %d letters, got %d", len(expected), len(letters))
 	}
 
 	for i, exp := range expected {
-		if tuples[i].LetterPosition != exp.LetterPosition || tuples[i].Letter != exp.Letter || tuples[i].LetterGroup != exp.LetterGroup {
-			t.Errorf("index %d: expected (pos=%d, letter=%q, group=%d), got (pos=%d, letter=%q, group=%d)",
-				i, exp.LetterPosition, exp.Letter, exp.LetterGroup, tuples[i].LetterPosition, tuples[i].Letter, tuples[i].LetterGroup)
+		if letters[i].LetterPosition != exp.LetterPosition || letters[i].Letter != exp.Letter {
+			t.Errorf("index %d: expected (pos=%d, letter=%q), got (pos=%d, letter=%q)",
+				i, exp.LetterPosition, exp.Letter, letters[i].LetterPosition, letters[i].Letter)
 		}
 	}
 }
@@ -209,10 +209,10 @@ func TestModN(t *testing.T) {
 	}
 }
 
-func TestMapModN(t *testing.T) {
-	// Verify MapModN wraps position to MatrixRow while preserving letter and group
-	tuple := LetterTuple{Letter: "x", LetterPosition: 17, LetterGroup: 3}
-	result := tuple.MapModN()
+func TestQuery(t *testing.T) {
+	// Verify Query wraps position to MatrixRow while preserving letter and group
+	letter := MagicLetter{Letter: "x", LetterPosition: 17}
+	result := letter.Query()
 
 	if result.MatrixRow != ModN(17, PasswordMatrixRows) {
 		t.Errorf("expected row 7, got %d", result.MatrixRow)
@@ -220,22 +220,22 @@ func TestMapModN(t *testing.T) {
 	if result.Letter != "x" {
 		t.Errorf("expected letter 'x', got %q", result.Letter)
 	}
-	if result.LetterGroup != 3 {
-		t.Errorf("expected group 3, got %d", result.LetterGroup)
+	if result.LetterGroup != 8 {
+		t.Errorf("expected group 8, got %d", result.LetterGroup)
 	}
 }
 
-func TestMagicSpell_LetterTuples_MapModN(t *testing.T) {
-	// Verify full pipeline: LetterTuples then MapModN maps 10 letters to matrix rows 0-9
+func TestMagicSpell_MagicLetters_Query(t *testing.T) {
+	// Verify full pipeline: MagicLetters then Query maps 10 letters to matrix rows 0-9
 	spell := MagicSpell{Spell: "abcdefghij"}
-	tuples := spell.LetterTuples()
+	letters := spell.MagicLetters()
 
-	result := make([]ResolvedTuple, len(tuples))
-	for i, tuple := range tuples {
-		result[i] = tuple.MapModN()
+	result := make([]QueryLetter, len(letters))
+	for i, l := range letters {
+		result[i] = l.Query()
 	}
 
-	expected := []ResolvedTuple{
+	expected := []QueryLetter{
 		{Letter: "a", MatrixRow: 0, LetterGroup: 1},
 		{Letter: "b", MatrixRow: 1, LetterGroup: 1},
 		{Letter: "c", MatrixRow: 2, LetterGroup: 1},
@@ -249,7 +249,7 @@ func TestMagicSpell_LetterTuples_MapModN(t *testing.T) {
 	}
 
 	if len(result) != len(expected) {
-		t.Fatalf("expected %d tuples, got %d", len(expected), len(result))
+		t.Fatalf("expected %d letters, got %d", len(expected), len(result))
 	}
 
 	for i, exp := range expected {
@@ -260,14 +260,14 @@ func TestMagicSpell_LetterTuples_MapModN(t *testing.T) {
 	}
 }
 
-func TestMagicSpell_LetterTuples_MapModN_Wraps(t *testing.T) {
+func TestMagicSpell_MagicLetters_Query_Wraps(t *testing.T) {
 	// Verify positions wrap correctly beyond PasswordMatrixRows and groups remain unchanged
 	spell := MagicSpell{Spell: "abcdefghijklmno"}
-	tuples := spell.LetterTuples()
+	letters := spell.MagicLetters()
 
-	result := make([]ResolvedTuple, len(tuples))
-	for i, tuple := range tuples {
-		result[i] = tuple.MapModN()
+	result := make([]QueryLetter, len(letters))
+	for i, l := range letters {
+		result[i] = l.Query()
 	}
 
 	if result[10].MatrixRow != 0 {
@@ -285,14 +285,14 @@ func TestMagicSpell_LetterTuples_MapModN_Wraps(t *testing.T) {
 	}
 }
 
-func TestMagicSpell_LetterTuples_MapModN_DigitsWrap(t *testing.T) {
+func TestMagicSpell_MagicLetters_Query_DigitsWrap(t *testing.T) {
 	// Verify digit string wraps: 11th character maps back to row 0
 	spell := MagicSpell{Spell: "12345678900"}
-	tuples := spell.LetterTuples()
+	letters := spell.MagicLetters()
 
-	result := make([]ResolvedTuple, len(tuples))
-	for i, tuple := range tuples {
-		result[i] = tuple.MapModN()
+	result := make([]QueryLetter, len(letters))
+	for i, l := range letters {
+		result[i] = l.Query()
 	}
 
 	if result[10].MatrixRow != 0 {
@@ -303,34 +303,39 @@ func TestMagicSpell_LetterTuples_MapModN_DigitsWrap(t *testing.T) {
 	}
 }
 
-func TestMagicSpell_LetterTuples_WithGroup(t *testing.T) {
-	// Verify alphabet-based grouping: A-C→1, D-F→2, G-I→3
+func TestQueryLetter_Grouping(t *testing.T) {
+	// Verify alphabet-based grouping: A-C→1, D-F→2, G-I→3, J-L→4
 	spell := MagicSpell{Spell: "ABCDEFGHIJKL"}
-	tuples := spell.LetterTuples()
+	letters := spell.MagicLetters()
 
-	expected := []LetterTuple{
-		{Letter: "A", LetterPosition: 0, LetterGroup: 1},
-		{Letter: "B", LetterPosition: 1, LetterGroup: 1},
-		{Letter: "C", LetterPosition: 2, LetterGroup: 1},
-		{Letter: "D", LetterPosition: 3, LetterGroup: 2},
-		{Letter: "E", LetterPosition: 4, LetterGroup: 2},
-		{Letter: "F", LetterPosition: 5, LetterGroup: 2},
-		{Letter: "G", LetterPosition: 6, LetterGroup: 3},
-		{Letter: "H", LetterPosition: 7, LetterGroup: 3},
-		{Letter: "I", LetterPosition: 8, LetterGroup: 3},
-		{Letter: "J", LetterPosition: 9, LetterGroup: 4},
-		{Letter: "K", LetterPosition: 10, LetterGroup: 4},
-		{Letter: "L", LetterPosition: 11, LetterGroup: 4},
+	expected := []QueryLetter{
+		{Letter: "A", MatrixRow: 0, LetterGroup: 1},
+		{Letter: "B", MatrixRow: 1, LetterGroup: 1},
+		{Letter: "C", MatrixRow: 2, LetterGroup: 1},
+		{Letter: "D", MatrixRow: 3, LetterGroup: 2},
+		{Letter: "E", MatrixRow: 4, LetterGroup: 2},
+		{Letter: "F", MatrixRow: 5, LetterGroup: 2},
+		{Letter: "G", MatrixRow: 6, LetterGroup: 3},
+		{Letter: "H", MatrixRow: 7, LetterGroup: 3},
+		{Letter: "I", MatrixRow: 8, LetterGroup: 3},
+		{Letter: "J", MatrixRow: 9, LetterGroup: 4},
+		{Letter: "K", MatrixRow: 0, LetterGroup: 4},
+		{Letter: "L", MatrixRow: 1, LetterGroup: 4},
 	}
 
-	if len(tuples) != len(expected) {
-		t.Fatalf("expected %d tuples, got %d", len(expected), len(tuples))
+	result := make([]QueryLetter, len(letters))
+	for i, l := range letters {
+		result[i] = l.Query()
+	}
+
+	if len(result) != len(expected) {
+		t.Fatalf("expected %d query letters, got %d", len(expected), len(result))
 	}
 
 	for i, exp := range expected {
-		if tuples[i].LetterPosition != exp.LetterPosition || tuples[i].Letter != exp.Letter || tuples[i].LetterGroup != exp.LetterGroup {
-			t.Errorf("index %d: expected (pos=%d, letter=%q, group=%d), got (pos=%d, letter=%q, group=%d)",
-				i, exp.LetterPosition, exp.Letter, exp.LetterGroup, tuples[i].LetterPosition, tuples[i].Letter, tuples[i].LetterGroup)
+		if result[i].Letter != exp.Letter || result[i].MatrixRow != exp.MatrixRow || result[i].LetterGroup != exp.LetterGroup {
+			t.Errorf("index %d: expected (letter=%q, row=%d, group=%d), got (letter=%q, row=%d, group=%d)",
+				i, exp.Letter, exp.MatrixRow, exp.LetterGroup, result[i].Letter, result[i].MatrixRow, result[i].LetterGroup)
 		}
 	}
 }
