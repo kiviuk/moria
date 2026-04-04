@@ -62,9 +62,9 @@ func GenerateRandomString(length int, pool string) (string, error) {
 	return string(b), nil
 }
 
-// colHeader returns the display name for a matrix column.
+// ColHeader returns the display name for a matrix column.
 // Column 0 is "Non" (non-letters), columns 1-9 are letter groups (ABC, DEF, ..., YZ).
-func colHeader(col int) string {
+func ColHeader(col int) string {
 	if col == 0 {
 		return "Non"
 	}
@@ -91,7 +91,7 @@ func (m Matrix) Pretty() string {
 	// Header row
 	sb.WriteString(strings.Repeat(" ", colWidth))
 	for col := 0; col < PasswordMatrixColumns; col++ {
-		sb.WriteString(fmt.Sprintf("%-*s", colWidth, colHeader(col)))
+		sb.WriteString(fmt.Sprintf("%-*s", colWidth, ColHeader(col)))
 	}
 	sb.WriteByte('\n')
 

@@ -11,9 +11,10 @@ import (
 
 func main() {
 	if len(os.Args) < 2 {
-		fmt.Fprintf(os.Stderr, "Usage: pwdgen [--magic|--pretty] <spell>\n")
+		fmt.Fprintf(os.Stderr, "Usage: pwdgen [--magic|--pretty|--live] <spell>\n")
 		fmt.Fprintf(os.Stderr, "  --magic    Generate a 300-character master password\n")
 		fmt.Fprintf(os.Stderr, "  --pretty   Display the password matrix from your master password\n")
+		fmt.Fprintf(os.Stderr, "  --live     Interactive mode: type your spell and see the password build in real-time\n")
 		fmt.Fprintf(os.Stderr, "  <spell>    Generate a service password from your spell\n")
 		os.Exit(1)
 	}
@@ -25,6 +26,52 @@ func main() {
 			os.Exit(1)
 		}
 		fmt.Println(master)
+		return
+	}
+
+	if os.Args[1] == "--live" {
+		master := readMasterPassword()
+		expectedLen := app.PasswordMatrixRows * app.PasswordMatrixColumns * app.CharactersPerMatrixCell
+		if len(master) != expectedLen {
+			fmt.Fprintf(os.Stderr, "Master password must be %d characters (got %d)\n", expectedLen, len(master))
+			os.Exit(1)
+		}
+		matrix, err := app.NewMatrix(master)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Failed to create matrix: %v\n", err)
+			os.Exit(1)
+		}
+		password, err := LiveMode(matrix)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Live mode error: %v\n", err)
+			os.Exit(1)
+		}
+		if password != "" {
+			fmt.Println(password)
+		}
+		return
+	}
+
+	if os.Args[1] == "--live" {
+		master := readMasterPassword()
+		expectedLen := app.PasswordMatrixRows * app.PasswordMatrixColumns * app.CharactersPerMatrixCell
+		if len(master) != expectedLen {
+			fmt.Fprintf(os.Stderr, "Master password must be %d characters (got %d)\n", expectedLen, len(master))
+			os.Exit(1)
+		}
+		matrix, err := app.NewMatrix(master)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Failed to create matrix: %v\n", err)
+			os.Exit(1)
+		}
+		password, err := LiveMode(matrix)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Live mode error: %v\n", err)
+			os.Exit(1)
+		}
+		if password != "" {
+			fmt.Println(password)
+		}
 		return
 	}
 

@@ -192,8 +192,8 @@ func TestColHeader(t *testing.T) {
 		{9, "YZ "},
 	}
 	for _, tt := range tests {
-		if got := colHeader(tt.col); got != tt.expected {
-			t.Errorf("colHeader(%d) = %q, expected %q", tt.col, got, tt.expected)
+		if got := ColHeader(tt.col); got != tt.expected {
+			t.Errorf("ColHeader(%d) = %q, expected %q", tt.col, got, tt.expected)
 		}
 	}
 }
@@ -205,8 +205,8 @@ func TestMatrix_Pretty(t *testing.T) {
 
 	// Check header row contains all column labels
 	for col := 0; col < PasswordMatrixColumns; col++ {
-		if !strings.Contains(output, colHeader(col)) {
-			t.Errorf("Pretty output missing column header %q", colHeader(col))
+		if !strings.Contains(output, ColHeader(col)) {
+			t.Errorf("Pretty output missing column header %q", ColHeader(col))
 		}
 	}
 
