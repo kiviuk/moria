@@ -48,14 +48,13 @@ func (m Matrix) Cell(t QueryLetter) (string, error) {
 }
 
 // GenerateRandomString produces a cryptographically secure random string of the given length.
-// Characters are drawn from the allowed pool: letters, numbers, special characters, and space.
-func GenerateRandomString(length int) (string, error) {
+// Characters are drawn from the provided pool.
+func GenerateRandomString(length int, pool string) (string, error) {
 	b := make([]byte, length)
 	_, err := rand.Read(b)
 	if err != nil {
 		return "", err
 	}
-	pool := AllowedLetters + AllowedNumbers + AllowedSpecialChars + AllowedSpace
 	for i := range b {
 		b[i] = pool[int(b[i])%len(pool)]
 	}

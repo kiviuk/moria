@@ -28,3 +28,7 @@ const AllowedSpecialChars = `!@#$%^&*()-_=+[]{}|;:,.<>?/~` + "`\"'"
 
 // AllowedSpace represents the only permitted whitespace character.
 const AllowedSpace = " "
+
+// MasterPasswordChars contains shell-safe characters for master password generation.
+// Excludes shell metacharacters: {} [] ~ " ' space $ ! # & * ? ( ) | < > ; \ `
+const MasterPasswordChars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789@-_=+:%.^/,"

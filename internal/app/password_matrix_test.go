@@ -7,7 +7,7 @@ import (
 
 func TestGenerateRandomString_Length(t *testing.T) {
 	// Verify generated string matches requested length
-	s, err := GenerateRandomString(300)
+	s, err := GenerateRandomString(300, MasterPasswordChars)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -18,13 +18,12 @@ func TestGenerateRandomString_Length(t *testing.T) {
 
 func TestGenerateRandomString_Charset(t *testing.T) {
 	// Verify all characters in generated string are from the allowed pool
-	pool := AllowedLetters + AllowedNumbers + AllowedSpecialChars + AllowedSpace
-	s, err := GenerateRandomString(1000)
+	s, err := GenerateRandomString(1000, MasterPasswordChars)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	for i, r := range s {
-		if !strings.ContainsRune(pool, r) {
+		if !strings.ContainsRune(MasterPasswordChars, r) {
 			t.Errorf("char %q at %d not in allowed pool", r, i)
 		}
 	}
@@ -32,11 +31,11 @@ func TestGenerateRandomString_Charset(t *testing.T) {
 
 func TestGenerateRandomString_NonDeterministic(t *testing.T) {
 	// Verify two consecutive calls produce different strings
-	s1, err := GenerateRandomString(300)
+	s1, err := GenerateRandomString(300, MasterPasswordChars)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	s2, err := GenerateRandomString(300)
+	s2, err := GenerateRandomString(300, MasterPasswordChars)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
