@@ -3,6 +3,7 @@ package app
 import (
 	"crypto/rand"
 	"fmt"
+	"strings"
 )
 
 // Matrix is a grid of password fragments used to generate passwords from a spell.
@@ -59,4 +60,54 @@ func GenerateRandomString(length int, pool string) (string, error) {
 		b[i] = pool[int(b[i])%len(pool)]
 	}
 	return string(b), nil
+}
+
+// colHeader returns the display name for a matrix column.
+// Column 0 is "Non" (non-letters), columns 1-9 are letter groups (ABC, DEF, ..., YZ).
+func colHeader(col int) string {
+	if col == 0 {
+		return "Non"
+	}
+	start := (col - 1) * CharactersPerMatrixCell
+	var sb strings.Builder
+	for i := 0; i < CharactersPerMatrixCell; i++ {
+		letter := 'A' + rune(start+i)
+		if letter > 'Z' {
+			sb.WriteByte(' ')
+		} else {
+			sb.WriteRune(letter)
+		}
+	}
+	return sb.String()
+}
+
+// Pretty returns a human-readable string representation of the matrix.
+// Column headers are computed dynamically from AlphabetSize and CharactersPerMatrixCell.
+func (m Matrix) Pretty() string {
+	var sb strings.Builder
+
+	// Header row
+	sb.WriteString("     ")
+	for col := 0; col < PasswordMatrixColumns; col++ {
+		sb.WriteString(fmt.Sprintf("%-4s", colHeader(col)))
+	}
+	sb.WriteByte('\n')
+
+	// Separator
+	sb.WriteString("     ")
+	for col := 0; col < PasswordMatrixColumns; col++ {
+		sb.WriteString("──── ")
+	}
+	sb.WriteByte('\n')
+
+	// Data rows
+	for row := 0; row < PasswordMatrixRows; row++ {
+		sb.WriteString(fmt.Sprintf("%-4d", row))
+		for col := 0; col < PasswordMatrixColumns; col++ {
+			sb.WriteString(fmt.Sprintf("%-4s", m[row][col]))
+		}
+		sb.WriteByte('\n')
+	}
+
+	return sb.String()
 }

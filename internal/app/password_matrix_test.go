@@ -1,6 +1,7 @@
 package app
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 )
@@ -170,5 +171,84 @@ func TestMatrix_CellContent(t *testing.T) {
 				t.Errorf("m[%d][%d] = %q, expected %q", row, col, m[row][col], expected)
 			}
 		}
+	}
+}
+
+func TestColHeader(t *testing.T) {
+	// Verify column headers are computed correctly from constants
+	tests := []struct {
+		col      int
+		expected string
+	}{
+		{0, "Non"},
+		{1, "ABC"},
+		{2, "DEF"},
+		{3, "GHI"},
+		{4, "JKL"},
+		{5, "MNO"},
+		{6, "PQR"},
+		{7, "STU"},
+		{8, "VWX"},
+		{9, "YZ "},
+	}
+	for _, tt := range tests {
+		if got := colHeader(tt.col); got != tt.expected {
+			t.Errorf("colHeader(%d) = %q, expected %q", tt.col, got, tt.expected)
+		}
+	}
+}
+
+func TestMatrix_Pretty(t *testing.T) {
+	// Verify Pretty produces a human-readable matrix with headers, separator, and rows
+	m := newTestMatrix()
+	output := m.Pretty()
+
+	// Check header row contains all column labels
+	for col := 0; col < PasswordMatrixColumns; col++ {
+		if !strings.Contains(output, colHeader(col)) {
+			t.Errorf("Pretty output missing column header %q", colHeader(col))
+		}
+	}
+
+	// Check separator line
+	if !strings.Contains(output, "────") {
+		t.Error("Pretty output missing separator line")
+	}
+
+	// Check row numbers
+	for row := 0; row < PasswordMatrixRows; row++ {
+		if !strings.Contains(output, fmt.Sprintf("%d   ", row)) {
+			t.Errorf("Pretty output missing row number %d", row)
+		}
+	}
+
+	// Check cell values are present
+	for row := 0; row < PasswordMatrixRows; row++ {
+		for col := 0; col < PasswordMatrixColumns; col++ {
+			if !strings.Contains(output, m[row][col]) {
+				t.Errorf("Pretty output missing cell value %q at [%d][%d]", m[row][col], row, col)
+			}
+		}
+	}
+}
+
+func TestExtractPassword_Integration(t *testing.T) {
+	// Verify end-to-end pipeline: matrix → spell → extracted password
+	matrix := newTestMatrix()
+
+	dirty := DirtySpell{Spell: "1111"}
+	spell, err := dirty.Parse()
+	if err != nil {
+		t.Fatalf("unexpected error parsing spell: %v", err)
+	}
+
+	password, err := spell.ExtractPassword(matrix)
+	if err != nil {
+		t.Fatalf("unexpected error extracting password: %v", err)
+	}
+
+	// "1111" → all digits (group 0), positions 0-3 → cells (0,0)+(1,0)+(2,0)+(3,0)
+	if password != "00|10|20|30|" {
+		t.Errorf("expected %q, got %q", "00|10|20|30|", password)
 	}
 }
