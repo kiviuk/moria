@@ -124,6 +124,33 @@ func TestMagicSpell_LetterTuples(t *testing.T) {
 	}
 }
 
+func TestLetterGroup_CaseInsensitive(t *testing.T) {
+	// Verify lowercase and uppercase letters map to the same group
+	tests := []struct {
+		lower, upper string
+		group        int
+	}{
+		{"a", "A", 1}, {"b", "B", 1}, {"c", "C", 1},
+		{"d", "D", 2}, {"e", "E", 2}, {"f", "F", 2},
+		{"g", "G", 3}, {"h", "H", 3}, {"i", "I", 3},
+		{"j", "J", 4}, {"k", "K", 4}, {"l", "L", 4},
+		{"m", "M", 5}, {"n", "N", 5}, {"o", "O", 5},
+		{"p", "P", 6}, {"q", "Q", 6}, {"r", "R", 6},
+		{"s", "S", 7}, {"t", "T", 7}, {"u", "U", 7},
+		{"v", "V", 8}, {"w", "W", 8}, {"x", "X", 8},
+		{"y", "Y", 9}, {"z", "Z", 9},
+	}
+
+	for _, tt := range tests {
+		lg := LetterGroup(tt.lower)
+		ug := LetterGroup(tt.upper)
+		if lg != tt.group || ug != tt.group {
+			t.Errorf("LetterGroup(%q)=%d, LetterGroup(%q)=%d, expected %d",
+				tt.lower, lg, tt.upper, ug, tt.group)
+		}
+	}
+}
+
 func TestLetterGroup_Digits(t *testing.T) {
 	// Verify digits 0-9 return group 0 since they are not letters
 	tests := []struct {
