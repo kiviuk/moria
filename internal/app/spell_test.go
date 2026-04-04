@@ -305,7 +305,7 @@ func TestMagicSpell_LetterTuples_MapModN_DigitsWrap(t *testing.T) {
 
 func TestMagicSpell_LetterTuples_WithGroup(t *testing.T) {
 	// Verify alphabet-based grouping: A-C→1, D-F→2, G-I→3
-	spell := MagicSpell{Spell: "ABCDEFGHI"}
+	spell := MagicSpell{Spell: "ABCDEFGHIJKL"}
 	tuples := spell.LetterTuples()
 
 	expected := []LetterTuple{
@@ -318,6 +318,9 @@ func TestMagicSpell_LetterTuples_WithGroup(t *testing.T) {
 		{Letter: "G", LetterPosition: 6, LetterGroup: 3},
 		{Letter: "H", LetterPosition: 7, LetterGroup: 3},
 		{Letter: "I", LetterPosition: 8, LetterGroup: 3},
+		{Letter: "J", LetterPosition: 9, LetterGroup: 4},
+		{Letter: "K", LetterPosition: 10, LetterGroup: 4},
+		{Letter: "L", LetterPosition: 11, LetterGroup: 4},
 	}
 
 	if len(tuples) != len(expected) {
@@ -329,5 +332,44 @@ func TestMagicSpell_LetterTuples_WithGroup(t *testing.T) {
 			t.Errorf("index %d: expected (pos=%d, letter=%q, group=%d), got (pos=%d, letter=%q, group=%d)",
 				i, exp.LetterPosition, exp.Letter, exp.LetterGroup, tuples[i].LetterPosition, tuples[i].Letter, tuples[i].LetterGroup)
 		}
+	}
+}
+
+func TestMagicSpell_ExtractPassword_Digits(t *testing.T) {
+	// Verify digits map to group 0 and extract correct cells from the test matrix
+	matrix := newTestMatrix()
+	spell := MagicSpell{Spell: "1111"}
+	password, err := spell.ExtractPassword(matrix)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if password != "00|10|20|30|" {
+		t.Errorf("expected %q, got %q", "00|10|20|30|", password)
+	}
+}
+
+func TestMagicSpell_ExtractPassword_OnePerGroup(t *testing.T) {
+	// Verify one letter from each group extracts cells across all columns 1-9
+	matrix := newTestMatrix()
+	spell := MagicSpell{Spell: "adgjmpsvy"}
+	password, err := spell.ExtractPassword(matrix)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if password != "01|12|23|34|45|56|67|78|89|" {
+		t.Errorf("expected %q, got %q", "01|12|23|34|45|56|67|78|89|", password)
+	}
+}
+
+func TestMagicSpell_ExtractPassword_Spaces(t *testing.T) {
+	// Verify spaces map to group 0 same as digits, extracting identical cells
+	matrix := newTestMatrix()
+	spell := MagicSpell{Spell: "    "}
+	password, err := spell.ExtractPassword(matrix)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if password != "00|10|20|30|" {
+		t.Errorf("expected %q, got %q", "00|10|20|30|", password)
 	}
 }

@@ -81,10 +81,10 @@ func TestMatrix_Cell(t *testing.T) {
 		row, col int
 		expected string
 	}{
-		{0, 0, "00a"},
-		{0, 9, "09j"},
-		{5, 3, "53b"},
-		{9, 9, "99v"},
+		{0, 0, "00|"},
+		{0, 9, "09|"},
+		{5, 3, "53|"},
+		{9, 9, "99|"},
 	}
 	for _, tt := range tests {
 		got, err := m.Cell(tt.row, tt.col)
@@ -118,28 +118,25 @@ func TestMatrix_Cell_OutOfRange(t *testing.T) {
 }
 
 // newTestMatrix returns a static 10×10 test matrix for use in generator tests.
-// Each cell contains a 3-character string in the format "{row}{col}{filler}".
+// Each cell contains a 3-character string in the format "{row}{col}|".
 //
 // Matrix layout:
 //
-//	00a   01b   02c   03d   04e   05f   06g   07h   08i   09j
-//	10k   11l   12m   13n   14o   15p   16q   17r   18s   19t
-//	20u   21v   22w   23x   24y   25z   26a   27b   28c   29d
-//	30e   31f   32g   33h   34i   35j   36k   37l   38m   39n
-//	40o   41p   42q   43r   44s   45t   46u   47v   48w   49x
-//	50y   51z   52a   53b   54c   55d   56e   57f   58g   59h
-//	60i   61j   62k   63l   64m   65n   66o   67p   68q   69r
-//	70s   71t   72u   73v   74w   75x   76y   77z   78a   79b
-//	80c   81d   82e   83f   84g   85h   86i   87j   88k   89l
-//	90m   91n   92o   93p   94q   95r   96s   97t   98u   99v
+//	00|   01|   02|   03|   04|   05|   06|   07|   08|   09|
+//	10|   11|   12|   13|   14|   15|   16|   17|   18|   19|
+//	20|   21|   22|   23|   24|   25|   26|   27|   28|   29|
+//	30|   31|   32|   33|   34|   35|   36|   37|   38|   39|
+//	40|   41|   42|   43|   44|   45|   46|   47|   48|   49|
+//	50|   51|   52|   53|   54|   55|   56|   57|   58|   59|
+//	60|   61|   62|   63|   64|   65|   66|   67|   68|   69|
+//	70|   71|   72|   73|   74|   75|   76|   77|   78|   79|
+//	80|   81|   82|   83|   84|   85|   86|   87|   88|   89|
+//	90|   91|   92|   93|   94|   95|   96|   97|   98|   99|
 func newTestMatrix() Matrix {
 	var m Matrix
-	idx := 0
 	for row := 0; row < PasswordMatrixRows; row++ {
 		for col := 0; col < PasswordMatrixColumns; col++ {
-			filler := rune('a' + rune(idx%26))
-			m[row][col] = string(rune('0'+row)) + string(rune('0'+col)) + string(filler)
-			idx++
+			m[row][col] = string(rune('0'+row)) + string(rune('0'+col)) + "|"
 		}
 	}
 	return m
@@ -159,17 +156,14 @@ func TestMatrix_Dimensions(t *testing.T) {
 }
 
 func TestMatrix_CellContent(t *testing.T) {
-	// Verify pattern-based cell values follow the "{row}{col}{filler}" format
+	// Verify pattern-based cell values follow the "{row}{col}|" format
 	m := newTestMatrix()
-	idx := 0
 	for row := 0; row < PasswordMatrixRows; row++ {
 		for col := 0; col < PasswordMatrixColumns; col++ {
-			filler := rune('a' + rune(idx%26))
-			expected := string(rune('0'+row)) + string(rune('0'+col)) + string(filler)
+			expected := string(rune('0'+row)) + string(rune('0'+col)) + "|"
 			if m[row][col] != expected {
 				t.Errorf("m[%d][%d] = %q, expected %q", row, col, m[row][col], expected)
 			}
-			idx++
 		}
 	}
 }

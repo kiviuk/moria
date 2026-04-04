@@ -104,3 +104,17 @@ func (m LetterTuple) MapModN() LetterTuple {
 		LetterGroup:    m.LetterGroup,
 	}
 }
+
+func (m MagicSpell) ExtractPassword(matrix Matrix) (string, error) {
+	tuples := m.LetterTuples()
+	var password strings.Builder
+	for _, t := range tuples {
+		mapped := t.MapModN()
+		cell, err := matrix.Cell(mapped.LetterPosition, mapped.LetterGroup)
+		if err != nil {
+			return "", err
+		}
+		password.WriteString(cell)
+	}
+	return password.String(), nil
+}
