@@ -24,7 +24,7 @@ func LetterGroup(letter string) int {
 	if selected == 0 {
 		return 0
 	}
-	return int(r-selected)/3 + 1
+	return int(r-selected)/GroupSize + 1
 }
 
 func (m MagicSpell) LetterTuples() []LetterTuple {

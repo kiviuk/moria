@@ -35,6 +35,44 @@ func TestMagicSpell_LetterTuples(t *testing.T) {
 	}
 }
 
+func TestLetterGroup_Digits(t *testing.T) {
+	// Verify digits 0-9 return group 0 since they are not letters
+	tests := []struct {
+		letter   string
+		expected int
+	}{
+		{"0", 0}, {"1", 0}, {"2", 0}, {"3", 0}, {"4", 0},
+		{"5", 0}, {"6", 0}, {"7", 0}, {"8", 0}, {"9", 0},
+	}
+
+	for _, tt := range tests {
+		if got := LetterGroup(tt.letter); got != tt.expected {
+			t.Errorf("LetterGroup(%q) = %d, expected %d", tt.letter, got, tt.expected)
+		}
+	}
+}
+
+func TestLetterGroup_SpecialChars(t *testing.T) {
+	// Verify special characters return group 0 since they are not letters
+	tests := []struct {
+		letter   string
+		expected int
+	}{
+		{"!", 0}, {"@", 0}, {"#", 0}, {"$", 0}, {"%", 0},
+		{"^", 0}, {"&", 0}, {"*", 0}, {"(", 0}, {")", 0},
+		{"-", 0}, {"_", 0}, {"=", 0}, {"+", 0}, {"[", 0},
+		{"]", 0}, {"{", 0}, {"}", 0}, {"|", 0}, {";", 0},
+		{":", 0}, {"'", 0}, {"\"", 0}, {",", 0}, {".", 0},
+		{"/", 0}, {"?", 0}, {" ", 0}, {"\t", 0}, {"\n", 0},
+	}
+
+	for _, tt := range tests {
+		if got := LetterGroup(tt.letter); got != tt.expected {
+			t.Errorf("LetterGroup(%q) = %d, expected %d", tt.letter, got, tt.expected)
+		}
+	}
+}
+
 func TestModN(t *testing.T) {
 	// Verify modulo operation returns correct remainders for various inputs
 	tests := []struct {
