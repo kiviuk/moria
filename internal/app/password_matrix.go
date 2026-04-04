@@ -1,8 +1,39 @@
 package app
 
+import "fmt"
+
 // Matrix is a grid of password fragments used to generate passwords from a spell.
 // Rows (0-9) correspond to character positions in the spell, wrapped by PasswordMatrixRows.
 // Columns (0-9) correspond to letter groups: column 0 for non-letters,
 // columns 1-9 for letter groups A-C through X-Z (CharactersPerMatrixCell letters per group).
 // Each cell holds CharactersPerMatrixCell characters that are concatenated to form the password.
 type Matrix [PasswordMatrixRows][PasswordMatrixColumns]string
+
+// NewMatrix distributes a random string into the 2D matrix using arithmetic.
+// The random string must be exactly PasswordMatrixRows * PasswordMatrixColumns * CharactersPerMatrixCell bytes.
+func NewMatrix(randomString string) (Matrix, error) {
+	expectedLen := PasswordMatrixRows * PasswordMatrixColumns * CharactersPerMatrixCell
+	if len(randomString) != expectedLen {
+		return Matrix{}, fmt.Errorf("random string length %d, expected %d", len(randomString), expectedLen)
+	}
+	var m Matrix
+	for row := 0; row < PasswordMatrixRows; row++ {
+		for col := 0; col < PasswordMatrixColumns; col++ {
+			start := (row*PasswordMatrixColumns + col) * CharactersPerMatrixCell
+			m[row][col] = randomString[start : start+CharactersPerMatrixCell]
+		}
+	}
+	return m, nil
+}
+
+// Cell returns the password fragment at the given row and column.
+// Index validation is performed here as a defensive measure, even if input was validated upstream.
+func (m Matrix) Cell(row, col int) (string, error) {
+	if row < 0 || row >= PasswordMatrixRows {
+		return "", fmt.Errorf("row %d out of range [0, %d)", row, PasswordMatrixRows)
+	}
+	if col < 0 || col >= PasswordMatrixColumns {
+		return "", fmt.Errorf("col %d out of range [0, %d)", col, PasswordMatrixColumns)
+	}
+	return m[row][col], nil
+}
