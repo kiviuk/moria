@@ -132,17 +132,17 @@ func TestMatrix_Cell_OutOfRangeCol(t *testing.T) {
 }
 
 // newTestMatrix returns a static test matrix for use in generator tests.
-// Each cell contains a string of length CharactersPerMatrixCell in the format "{row}{col}...".
+// Each cell contains a string of length CharactersPerMatrixCell.
 func newTestMatrix() Matrix {
 	var m Matrix
 	cellChars := "abcdefghijklmnopqrstuvwxyz"
+	idx := 0
 	for row := 0; row < PasswordMatrixRows; row++ {
 		for col := 0; col < PasswordMatrixColumns; col++ {
 			var sb strings.Builder
-			sb.WriteByte(byte('0' + row))
-			sb.WriteByte(byte('0' + col))
-			for i := 2; i < CharactersPerMatrixCell; i++ {
-				sb.WriteByte(cellChars[(row*PasswordMatrixColumns+col+i)%len(cellChars)])
+			for i := 0; i < CharactersPerMatrixCell; i++ {
+				sb.WriteByte(cellChars[idx%len(cellChars)])
+				idx++
 			}
 			m[row][col] = sb.String()
 		}

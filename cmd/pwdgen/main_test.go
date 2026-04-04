@@ -30,24 +30,37 @@ func TestBatchMode_MaxLen(t *testing.T) {
 	fullLen := 4 * app.CharactersPerMatrixCell
 
 	tests := []struct {
-		maxLen      int
-		expectedLen int
+		maxLen int
 	}{
-		{0, fullLen},
-		{fullLen, fullLen},
-		{fullLen - 2, fullLen - 2},
-		{5, 5},
-		{1, 1},
-		{100, fullLen},
+		{0},
+		{fullLen},
+		{fullLen - 2},
+		{5},
+		{1},
+		{100},
 	}
 
 	for _, tt := range tests {
 		result := password
+		expectedLen := fullLen
 		if tt.maxLen > 0 && len(result) > tt.maxLen {
 			result = result[:tt.maxLen]
+			expectedLen = tt.maxLen
 		}
-		if len(result) != tt.expectedLen {
-			t.Errorf("maxLen=%d: expected len %d, got %d", tt.maxLen, tt.expectedLen, len(result))
+		if len(result) != expectedLen {
+			t.Errorf("maxLen=%d: expected len %d, got %d", tt.maxLen, expectedLen, len(result))
+		}
+	}
+
+	for _, tt := range tests {
+		result := password
+		expectedLen := fullLen
+		if tt.maxLen > 0 && len(result) > tt.maxLen {
+			result = result[:tt.maxLen]
+			expectedLen = tt.maxLen
+		}
+		if len(result) != expectedLen {
+			t.Errorf("maxLen=%d: expected len %d, got %d", tt.maxLen, expectedLen, len(result))
 		}
 	}
 }
