@@ -26,6 +26,13 @@ type ParseError struct {
 
 type Errors []ParseError
 
+// Matrix is a grid of password fragments used to generate passwords from a spell.
+// Rows (0-9) correspond to character positions in the spell, wrapped by PasswordMatrixRows.
+// Columns (0-9) correspond to letter groups: column 0 for non-letters,
+// columns 1-9 for letter groups A-C through X-Z (CharactersPerMatrixCell letters per group).
+// Each cell holds CharactersPerMatrixCell characters that are concatenated to form the password.
+type Matrix [PasswordMatrixRows][PasswordMatrixColumns]string
+
 func (e Errors) Error() string {
 	parts := make([]string, len(e))
 	for i, pe := range e {
@@ -82,7 +89,7 @@ func LetterGroup(letter string) int {
 	if selected == 0 {
 		return 0
 	}
-	return int(r-selected)/GroupSize + 1
+	return int(r-selected)/CharactersPerMatrixCell + 1
 }
 
 func (m MagicSpell) LetterTuples() []LetterTuple {
@@ -100,7 +107,7 @@ func ModN(value int, n int) int {
 func (m LetterTuple) MapModN() LetterTuple {
 	return LetterTuple{
 		Letter:         m.Letter,
-		LetterPosition: ModN(m.LetterPosition, MatrixN),
+		LetterPosition: ModN(m.LetterPosition, PasswordMatrixRows),
 		LetterGroup:    m.LetterGroup,
 	}
 }

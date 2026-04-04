@@ -210,11 +210,11 @@ func TestModN(t *testing.T) {
 }
 
 func TestMapModN(t *testing.T) {
-	// Verify MapModN wraps position using MatrixN while preserving letter and group
+	// Verify MapModN wraps position using PasswordMatrixRows while preserving letter and group
 	tuple := LetterTuple{Letter: "x", LetterPosition: 17, LetterGroup: 3}
 	result := tuple.MapModN()
 
-	if result.LetterPosition != ModN(17, MatrixN) {
+	if result.LetterPosition != ModN(17, PasswordMatrixRows) {
 		t.Errorf("expected position 7, got %d", result.LetterPosition)
 	}
 	if result.Letter != "x" {
@@ -261,7 +261,7 @@ func TestMagicSpell_LetterTuples_MapModN(t *testing.T) {
 }
 
 func TestMagicSpell_LetterTuples_MapModN_Wraps(t *testing.T) {
-	// Verify positions wrap correctly beyond MatrixN and groups remain unchanged
+	// Verify positions wrap correctly beyond PasswordMatrixRows and groups remain unchanged
 	spell := MagicSpell{Spell: "abcdefghijklmno"}
 	tuples := spell.LetterTuples()
 
