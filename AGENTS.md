@@ -23,9 +23,11 @@ pwdgen/
 ├── cmd/pwdgen/main.go          # CLI entry point
 ├── internal/app/
 │   ├── config.go               # Package-level constants
-│   ├── letter_matrix.go        # Core domain types & logic
+│   ├── spell.go                # Core domain types & logic (DirtySpell, MagicSpell, LetterTuple)
+│   ├── password_matrix.go      # Matrix type for password fragment grid
+│   ├── password_matrix_test.go # Static test matrix & matrix dimension/content tests
 │   ├── app_test.go             # Placeholder test
-│   └── spell_test.go           # Comprehensive test suite
+│   └── spell_test.go           # Comprehensive test suite for parsing/grouping
 ├── go.mod                      # Module: github.com/kiviuk/pwdgen (go 1.26.1)
 └── Makefile
 ```
