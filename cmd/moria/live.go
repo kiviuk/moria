@@ -12,10 +12,10 @@ import (
 const colWidth = app.CharactersPerMatrixCell + 1
 
 var (
-	cellStyle      = lipgloss.NewStyle().Width(colWidth).Align(lipgloss.Center)
-	highlightStyle = lipgloss.NewStyle().Width(colWidth).Align(lipgloss.Center).Foreground(lipgloss.Color("10"))
-	headerStyle    = lipgloss.NewStyle().Width(colWidth).Align(lipgloss.Center).Bold(true)
-	rowNumStyle    = lipgloss.NewStyle().Width(colWidth).Align(lipgloss.Center).Foreground(lipgloss.Color("241"))
+	cellStyle      = lipgloss.NewStyle().Width(colWidth).Align(lipgloss.Left)
+	highlightStyle = lipgloss.NewStyle().Width(colWidth).Align(lipgloss.Left).Foreground(lipgloss.Color("10"))
+	headerStyle    = lipgloss.NewStyle().Width(colWidth).Align(lipgloss.Left).Bold(true)
+	rowNumStyle    = lipgloss.NewStyle().Width(colWidth).Align(lipgloss.Left).Foreground(lipgloss.Color("241"))
 	spellStyle     = lipgloss.NewStyle().Foreground(lipgloss.Color("14")).Bold(true)
 	passStyle      = lipgloss.NewStyle().Foreground(lipgloss.Color("10")).Bold(true)
 	errorStyle     = lipgloss.NewStyle().Foreground(lipgloss.Color("1")).Bold(true)
