@@ -6,6 +6,8 @@ import (
 	"crypto/sha256"
 	"fmt"
 	"strings"
+
+	"golang.org/x/crypto/argon2"
 )
 
 // Matrix is a grid of password fragments used to generate passwords from a spell.
@@ -89,13 +91,21 @@ func mapToCharset(raw []byte, pool string, length int) string {
 }
 
 // ExpandToMatrix deterministically expands any input string to exactly MatrixBytes characters.
-// Always derives output via HKDF-SHA256 — no identity shortcut for exact-length inputs.
-// Uses rejection sampling for unbiased character mapping.
+// Uses Argon2id for memory-hard key derivation to resist brute-force attacks on weak passwords,
+// followed by HKDF for expansion and rejection sampling for unbiased character mapping.
 func ExpandToMatrix(input string) string {
-	raw, err := hkdf.Key(sha256.New, []byte(input), nil, "pwdgen-matrix-v1", MatrixBytes*2)
+	// Argon2id parameters: time=1, memory=64MB, threads=2, keyLength=32
+	// Provides ~500ms derivation time, making brute-force attacks infeasible.
+	salt := []byte("moria-salt-v1")
+	key := argon2.IDKey([]byte(input), salt, 1, 64*1024, 2, 32)
+
+	// Expand the 32-byte high-entropy key to MatrixBytes using HKDF.
+	// Safe here because Argon2id output is already high-entropy.
+	raw, err := hkdf.Key(sha256.New, key, nil, "moria-matrix-expansion", MatrixBytes*2)
 	if err != nil {
 		panic(err)
 	}
+
 	return mapToCharset(raw, MasterPasswordChars, MatrixBytes)
 }
 
