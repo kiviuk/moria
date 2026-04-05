@@ -41,7 +41,7 @@ The binary is built to `bin/moria`.
 ./bin/moria --magic
 ```
 
-This outputs a 300-character shell-safe random string. **Save this securely** — it's your master key. Store it in KeePass, 1Password, or any password manager.
+This outputs a 1,200-character shell-safe random string. **Save this securely** — it's your master key. Store it in KeePass, 1Password, or any password manager.
 
 ### 2. Generate a Service Password
 
@@ -64,9 +64,9 @@ cat master.txt | ./bin/moria --pretty
 Shows the full password matrix with column headers:
 
 ```
-       Non    ABC    DEF    GHI    JKL    MNO    PQR    STU    VWX    YZ
-       ───    ───    ───    ───    ───    ───    ───    ───    ───    ───
-0      xK9    !mP    2@n    Q7#    rT5    $wY    8aB    cD4    eF6    gH7
+       Non      ABC      DEF      GHI      JKL      MNO      PQR      STU      VWX      YZ
+       ──────   ──────   ──────   ──────   ──────   ──────   ──────   ──────   ──────   ──────
+0      xK9!mP   2@nQ7#   rT5$wY   8aBcD4   eF6gH7   jK1lM2   nO3pQ4   rS5tU6   vW7xY8   zA9bC0
 1      ...
 ...
 ```
@@ -110,7 +110,7 @@ Spell: `"amazon"` (6 characters)
 | o | 4 | 4 | 5 | 5 | (4,5) |
 | n | 5 | 5 | 5 | 5 | (5,5) |
 
-Output: 6 cells × 3 chars = 18-character password.
+Output: 6 cells × 6 chars = 36-character password.
 
 ### Case Sensitivity
 
@@ -125,8 +125,8 @@ Uppercase letters shift the row by `PasswordMatrixRows/2`, making `"amazon"` and
 - **Spell** — the service name (e.g., "amazon"). An attacker knowing this gets nothing without the master password.
 
 ### Entropy
-- **Matrix**: 300 chars × ~6 bits/char = ~1800 bits of entropy
-- **Password**: For a 6-letter spell, 18 chars × ~6 bits = ~108 bits
+- **Matrix**: 1,200 chars × ~6 bits/char = ~7,200 bits of entropy
+- **Password**: For a 6-letter spell, 36 chars × ~6 bits = ~216 bits
 - **Brute force**: Computationally infeasible
 
 ### Key Derivation
@@ -143,8 +143,8 @@ All matrix dimensions are compile-time constants in `internal/app/config.go`:
 
 | Constant | Default | Description |
 |----------|---------|-------------|
-| `PasswordMatrixRows` | 10 | Number of rows (position modulus) |
-| `CharactersPerMatrixCell` | 3 | Characters per cell (password length multiplier) |
+| `PasswordMatrixRows` | 20 | Number of rows (position modulus) |
+| `CharactersPerMatrixCell` | 6 | Characters per cell (password length multiplier) |
 | `AlphabetSize` | 26 | Letters in the alphabet |
 | `MasterPasswordChars` | 64 chars | Shell-safe character pool for `--magic` |
 
