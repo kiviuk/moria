@@ -82,7 +82,9 @@ func mapToCharset(raw []byte, pool string, length int) string {
 			}
 			if j >= len(raw) {
 				more := make([]byte, length*2)
-				rand.Read(more)
+				if _, err := rand.Read(more); err != nil {
+					panic(err)
+				}
 				raw = append(raw, more...)
 			}
 		}

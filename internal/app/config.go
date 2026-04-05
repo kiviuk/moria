@@ -1,3 +1,12 @@
+// Package app provides the core domain logic for moria, a deterministic
+// matrix-based password generator.
+//
+// The package defines types for parsing spells (DirtySpell, MagicSpell),
+// resolving them to matrix coordinates (MagicLetter, QueryLetter), and
+// generating password matrices from master secrets using Argon2id and HKDF.
+//
+// All matrix dimensions and character sets are defined as compile-time
+// constants, allowing the package to work with any configuration.
 package app
 
 // PasswordMatrixRows is the number of rows in the password fragment matrix.

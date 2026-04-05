@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	tea "github.com/charmbracelet/bubbletea"
+
 	"github.com/kiviuk/moria/internal/app"
 	"github.com/kiviuk/moria/internal/testutil"
 )

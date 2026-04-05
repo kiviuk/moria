@@ -7,11 +7,13 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 )
 
+// passwordModel is the Bubbletea model for the interactive masked password prompt.
 type passwordModel struct {
 	input textinput.Model
 	err   error
 }
 
+// newPasswordModel creates a passwordModel with a focused, masked text input.
 func newPasswordModel() passwordModel {
 	ti := textinput.New()
 	ti.Placeholder = "master password"
@@ -24,10 +26,12 @@ func newPasswordModel() passwordModel {
 	}
 }
 
+// Init starts the text input blink animation.
 func (m passwordModel) Init() tea.Cmd {
 	return textinput.Blink
 }
 
+// Update handles keyboard input for the password prompt.
 func (m passwordModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 
@@ -46,6 +50,7 @@ func (m passwordModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, cmd
 }
 
+// View renders the password prompt screen.
 func (m passwordModel) View() string {
 	return fmt.Sprintf(
 		"Enter master password:\n\n  %s\n\n  (press Enter to confirm, Esc to cancel)",
@@ -53,6 +58,7 @@ func (m passwordModel) View() string {
 	)
 }
 
+// getPassword runs the interactive password prompt and returns the entered value.
 func getPassword() (string, error) {
 	p := tea.NewProgram(newPasswordModel())
 
@@ -61,7 +67,11 @@ func getPassword() (string, error) {
 		return "", err
 	}
 
-	m := finalModel.(passwordModel)
+	pm, ok := finalModel.(passwordModel)
+	if !ok {
+		return "", fmt.Errorf("unexpected model type returned by bubbletea")
+	}
+	m := pm
 	if m.err != nil {
 		return "", m.err
 	}

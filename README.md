@@ -43,7 +43,7 @@ The binary is built to `bin/moria`.
 ./bin/moria --magic
 ```
 
-This outputs a 1,200-character shell-safe random string. **Save this securely** — it's your master key. You have two options for using it:
+This outputs a 600-character shell-safe random string. **Save this securely** — it's your master key. You have two options for using it:
 
 **Option A: Save to a file and pipe it**
 ```bash
@@ -132,7 +132,7 @@ Spell: `"amazon"` (6 characters)
 | o | 4 | 4 | 5 | 5 | (4,5) |
 | n | 5 | 5 | 5 | 5 | (5,5) |
 
-Output: 6 cells × 6 chars = 36-character password.
+Output: 6 cells × 3 chars = 18-character password.
 
 ### Case Sensitivity
 
@@ -147,8 +147,8 @@ Uppercase letters shift the row by `PasswordMatrixRows/2`, making `"amazon"` and
 - **Spell** — the service name (e.g., "amazon"). An attacker knowing this gets nothing without the master password.
 
 ### Entropy
-- **Matrix**: 1,200 chars × ~6 bits/char = ~7,200 bits of entropy
-- **Password**: For a 6-letter spell, 36 chars × ~6 bits = ~216 bits
+- **Matrix**: 600 chars × ~6 bits/char = ~3,600 bits of entropy
+- **Password**: For a 6-letter spell, 18 chars × ~6 bits = ~108 bits
 - **Brute force**: Computationally infeasible
 
 ### Key Derivation
@@ -156,7 +156,7 @@ Uppercase letters shift the row by `PasswordMatrixRows/2`, making `"amazon"` and
 Your master password goes through a two-stage process to become the matrix:
 
 1. **Argon2id** — Your input is first passed through Argon2id (1 iteration, 64MB memory, 2 threads), a memory-hard key derivation function. This slows down the derivation to ~500ms, making brute-force attacks computationally expensive even if your master password is weak.
-2. **HKDF-SHA256** — The 32-byte high-entropy output from Argon2id is then expanded to the full matrix size (1,200 characters) using HKDF.
+2. **HKDF-SHA256** — The 32-byte high-entropy output from Argon2id is then expanded to the full matrix size (600 characters) using HKDF.
 
 This means you can safely use a memorable passphrase, an SSH key, or any other input:
 
@@ -181,7 +181,7 @@ All matrix dimensions are compile-time constants in `internal/app/config.go`:
 | Constant | Default | Description |
 |----------|---------|-------------|
 | `PasswordMatrixRows` | 20 | Number of rows (position modulus) |
-| `CharactersPerMatrixCell` | 6 | Characters per cell (password length multiplier) |
+| `CharactersPerMatrixCell` | 3 | Characters per cell (password length multiplier) |
 | `AlphabetSize` | 26 | Letters in the alphabet |
 | `MasterPasswordChars` | 64 chars | Shell-safe character pool for `--magic` |
 
@@ -190,14 +190,15 @@ To change the matrix size, edit the constants and run `make test && make build`.
 ## CLI Reference
 
 ```
-Usage: moria [--magic|--pretty|--live] [--max-len N] <spell>
+Usage: moria [--magic|--pretty|--live] [--max-len N] [--ignore-paste] <spell>
 
 Options:
-  --magic    Generate a master password
-  --pretty   Display the password matrix from your master password
-  --live     Interactive mode: type your spell and see the password build in real-time
-  --max-len  Truncate output to N characters (live and batch modes only)
-  -h, --help Show this help message
+  --magic          Generate a master password
+  --pretty         Display the password matrix from your master password
+  --live           Interactive mode: type your spell and see the password build in real-time
+  --max-len        Truncate output to N characters (live and batch modes only)
+  --ignore-paste   Ignore pasted input in live mode (single characters only, live mode only)
+  -h, --help       Show this help message
 ```
 
 ## Project Structure
@@ -208,8 +209,9 @@ moria/
 │   ├── main.go                # CLI entry point
 │   ├── live.go                # Bubbletea TUI for interactive mode
 │   ├── live_test.go           # Tests for live mode
-│   ├── main_test.go           # Tests for CLI, flag parsing, validation
-│   └── password_prompt.go     # Bubbletea password input prompt
+│   ├── password_prompt.go     # Bubbletea password input prompt
+│   ├── messages.go            # CLI error messages and live mode UI strings
+│   └── main_test.go           # Tests for CLI, flag parsing, validation
 ├── internal/
 │   ├── app/
 │   │   ├── config.go               # Package-level constants
@@ -219,6 +221,7 @@ moria/
 │   │   └── password_matrix_test.go # Matrix dimension, content, and integration tests
 │   └── testutil/
 │       └── testutil.go             # Shared test data generator (no import cycles)
+├── .golangci.yml                   # golangci-lint configuration
 ├── go.mod
 └── Makefile
 ```
@@ -227,6 +230,7 @@ moria/
 
 ```bash
 make test                          # Run all tests
+make lint                          # Run golangci-lint
 go clean -testcache && make test   # Clear cache and re-run
 go test ./internal/app/ -v         # Verbose output for app tests
 go test ./cmd/moria/ -v            # Verbose output for cmd tests

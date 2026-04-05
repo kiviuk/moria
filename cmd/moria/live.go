@@ -1,27 +1,35 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 
-	"github.com/charmbracelet/bubbletea"
+	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+
 	"github.com/kiviuk/moria/internal/app"
 )
 
 const colWidth = app.CharactersPerMatrixCell + 1
 
+// PasteMode controls whether pasted (multi-character) input is accepted in live mode.
 type PasteMode int
 
 const (
+	// PasteAllowed allows both single-key and pasted multi-character input.
 	PasteAllowed PasteMode = iota
+	// PasteIgnored rejects pasted input, accepting only single keystrokes.
 	PasteIgnored
 )
 
+// LiveState represents the current input state of the live model.
 type LiveState int
 
 const (
+	// StateNormal indicates normal typing is allowed.
 	StateNormal LiveState = iota
+	// StateMaxLenReached indicates the password has reached the configured max length.
 	StateMaxLenReached
 )
 
@@ -36,6 +44,7 @@ var (
 	hintStyle      = lipgloss.NewStyle().Foreground(lipgloss.Color("241"))
 )
 
+// liveModel holds the state for the interactive live mode TUI.
 type liveModel struct {
 	matrix       app.Matrix
 	spell        string
@@ -47,6 +56,7 @@ type liveModel struct {
 	err          string
 }
 
+// newLiveModel creates a liveModel initialized with the given matrix and settings.
 func newLiveModel(matrix app.Matrix, maxLen int, pasteMode PasteMode) liveModel {
 	return liveModel{
 		matrix:       matrix,
@@ -57,10 +67,12 @@ func newLiveModel(matrix app.Matrix, maxLen int, pasteMode PasteMode) liveModel 
 	}
 }
 
+// Init is the Bubbletea model initialization. Returns nil for no initial command.
 func (m liveModel) Init() tea.Cmd {
 	return nil
 }
 
+// Update handles keyboard input and updates the model state.
 func (m liveModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
@@ -70,7 +82,7 @@ func (m liveModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case tea.KeyEnter:
 			return m, tea.Quit
 		case tea.KeyBackspace:
-			if len(m.spell) > 0 {
+			if m.spell != "" {
 				m.spell = m.spell[:len(m.spell)-1]
 				m.queryLetters = m.queryLetters[:len(m.queryLetters)-1]
 				m.password = m.password[:len(m.password)-app.CharactersPerMatrixCell]
@@ -119,6 +131,7 @@ func (m liveModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
+// View renders the live mode TUI screen.
 func (m liveModel) View() string {
 	var sb strings.Builder
 
@@ -186,6 +199,8 @@ func (m liveModel) View() string {
 	return sb.String()
 }
 
+// LiveMode starts the interactive live mode TUI and returns the final model state.
+// It runs the Bubbletea program with an alternate screen buffer.
 func LiveMode(matrix app.Matrix, maxLen int, pasteMode PasteMode) (liveModel, error) {
 	m := newLiveModel(matrix, maxLen, pasteMode)
 	p := tea.NewProgram(m, tea.WithAltScreen())
@@ -197,7 +212,7 @@ func LiveMode(matrix app.Matrix, maxLen int, pasteMode PasteMode) (liveModel, er
 
 	lm, ok := final.(liveModel)
 	if !ok {
-		return liveModel{}, fmt.Errorf(ErrUnexpectedModel)
+		return liveModel{}, errors.New(ErrUnexpectedModel)
 	}
 
 	return lm, nil

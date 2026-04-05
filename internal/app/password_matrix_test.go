@@ -193,7 +193,7 @@ func TestMatrix_Cell_OutOfRangeCol(t *testing.T) {
 
 func TestMatrix_Dimensions(t *testing.T) {
 	// Verify the static test matrix has the correct dimensions based on constants
-	m := newTestMatrix()
+	m := newTestMatrix() //nolint:staticcheck // m is used in assertions below
 	if len(m) != PasswordMatrixRows {
 		t.Errorf("expected %d rows, got %d", PasswordMatrixRows, len(m))
 	}

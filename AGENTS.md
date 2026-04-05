@@ -6,12 +6,15 @@
 make build          # Compile to bin/moria
 make run            # Build and execute
 make test           # Run all tests: go test ./...
+make lint           # Run golangci-lint (auto-installs if missing via make deps)
 make clean          # Remove bin/
 go clean -testcache && make test   # Clear cache and re-run all tests
 go test ./internal/app/ -v         # Verbose test output
 go test ./cmd/moria/ -v            # Verbose output for cmd tests
 go test ./... -run TestQuery       # Run single test by name
 ```
+
+**Linting:** `make lint` runs `golangci-lint` against all packages. The binary is auto-installed to `$GOPATH/bin` if not found. Config lives in `.golangci.yml`.
 
 **Running a single test:** `go test ./... -run <TestName>` is the standard way.
 Use `-v` for verbose output showing each test's PASS/FAIL status.
@@ -25,6 +28,7 @@ moria/
 │   ├── live.go                # Bubbletea TUI for interactive password generation
 │   ├── live_test.go           # Tests for live mode model
 │   ├── password_prompt.go     # Bubbletea password input prompt (masked with •)
+│   ├── messages.go            # CLI error messages and live mode UI strings
 │   └── main_test.go           # Tests for batch mode, flag parsing, validation, pipe input
 ├── internal/
 │   ├── app/
@@ -35,6 +39,7 @@ moria/
 │   │   └── password_matrix_test.go # Matrix dimension, content, and integration tests
 │   └── testutil/
 │       └── testutil.go             # Shared test data generator (no import cycles)
+├── .golangci.yml                   # golangci-lint configuration
 ├── go.mod                          # Module: github.com/kiviuk/moria (go 1.26.1)
 └── Makefile
 ```
@@ -86,7 +91,10 @@ moria -h
 
 ### Formatting
 - Use `gofmt` — tabs for indentation, no trailing whitespace.
-- No `.golangci.yml` or `.editorconfig` — follow `gofmt` defaults.
+- Linting is enforced via `golangci-lint`. Config lives in `.golangci.yml` at the project root.
+- Run `make lint` before committing. The `make deps` target auto-installs `golangci-lint` if missing.
+- Enabled linters: `govet`, `staticcheck`, `errcheck`, `revive`, `gocyclo` (max 20), `gosec`, `goimports`, `misspell`, `unconvert`, `predeclared`, `ineffassign`, `unused`, `gocritic`, `noctx`.
+- Test files (`*_test.go`) are excluded from `errcheck`, `gosec`, `gocyclo`, and `revive`.
 
 ### Naming Conventions
 - **Exported types:** `PascalCase` — `MagicLetter`, `QueryLetter`, `MagicSpell`, `DirtySpell`, `Matrix`, `ParseError`, `Errors`
