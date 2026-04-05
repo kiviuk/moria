@@ -135,7 +135,7 @@ func printUsage() {
 	fmt.Println("  --magic    Generate a master password")
 	fmt.Println("  --pretty   Display the password matrix from your master password")
 	fmt.Println("  --live     Interactive mode: type your spell and see the password build in real-time")
-	fmt.Println("  --max-len  Truncate output to N characters (live and batch modes only)")
+	fmt.Println("  --max-len  Truncate generated output to N characters (live and batch modes only)")
 	fmt.Println("  -h, --help Show this help message")
 	fmt.Println()
 	fmt.Println("Examples:")
