@@ -114,7 +114,7 @@ cat master.txt | ./bin/moria --max-len 16 "amazon"
 Display time-to-guess estimates across four attack scenarios. The password goes to stdout, the strength table goes to stderr — piping stays clean:
 
 ```bash
-cat master.txt | ./bin/moria --show-pwd-strength "amazon"
+cat master.txt | ./bin/moria --strength "amazon"
 ```
 
 Output:
@@ -123,18 +123,22 @@ xK9!mPaB2@cD4eF6
 
 Password entropy: 108 bits
 Master entropy:   370 bits
-Effective:        108 bits
 
-Time to guess:
+Time to guess (generated password):
   Online (rate-limited)    372.6 billion times the age of the universe
   Offline (bcrypt/Argon2)  37.3 billion times the age of the universe
   Offline (MD5/SHA1)       37.3 thousand times the age of the universe
-  GPU cluster (8x 4090)    3.7 thousand times the age of the universe
+  GPU cluster (8x 4090)    15 times the age of the universe
+
+Time to guess (master password, via Argon2id):
+  Single CPU               effectively uncrackable
+  Single GPU               effectively uncrackable
+  GPU cluster (8x 4090)    effectively uncrackable
 ```
 
 Short spell example:
 ```bash
-cat master.txt | ./bin/moria --show-pwd-strength "ab"
+cat master.txt | ./bin/moria --strength "ab"
 ```
 
 Output:
@@ -143,13 +147,17 @@ AG_Vp9
 
 Password entropy: 36 bits
 Master entropy:   370 bits
-Effective:        36 bits
 
-Time to guess:
+Time to guess (generated password):
   Online (rate-limited)    2 years
   Offline (bcrypt/Argon2)  79 days
   Offline (MD5/SHA1)       instant
   GPU cluster (8x 4090)    instant
+
+Time to guess (master password, via Argon2id):
+  Single CPU               effectively uncrackable
+  Single GPU               effectively uncrackable
+  GPU cluster (8x 4090)    effectively uncrackable
 ```
 
 ## How It Works
@@ -233,7 +241,7 @@ To change the matrix size, edit the constants and run `make test && make build`.
 ## CLI Reference
 
 ```
-Usage: moria [--magic|--pretty|--live] [--max-len N] [--ignore-paste] [--show-pwd-strength] <spell>
+Usage: moria [--magic|--pretty|--live] [--max-len N] [--ignore-paste] [--strength] <spell>
 
 Options:
   --magic              Generate a master password
@@ -241,7 +249,7 @@ Options:
   --live               Interactive mode: type your spell and see the password build in real-time
   --max-len            Truncate output to N characters (live and batch modes only)
   --ignore-paste       Ignore pasted input in live mode (single characters only, live mode only)
-  --show-pwd-strength  Show time-to-guess estimates for the generated password (batch mode only)
+  --strength           Show time-to-guess estimates for the generated password (batch mode only)
   -h, --help           Show this help message
 ```
 

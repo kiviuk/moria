@@ -13,6 +13,15 @@ import (
 
 const colWidth = app.CharactersPerMatrixCell + 1
 
+const (
+	colorRed         = lipgloss.Color("1")
+	colorYellow      = lipgloss.Color("3")
+	colorGreen       = lipgloss.Color("10")
+	colorBrightGreen = lipgloss.Color("46")
+	colorCyan        = lipgloss.Color("14")
+	colorGray        = lipgloss.Color("241")
+)
+
 // PasteMode controls whether pasted (multi-character) input is accepted in live mode.
 type PasteMode int
 
@@ -35,18 +44,26 @@ const (
 
 var (
 	cellStyle      = lipgloss.NewStyle().Width(colWidth).Align(lipgloss.Left)
-	highlightStyle = lipgloss.NewStyle().Width(colWidth).Align(lipgloss.Left).Foreground(lipgloss.Color("10"))
+	highlightStyle = lipgloss.NewStyle().Width(colWidth).Align(lipgloss.Left).Foreground(colorGreen)
 	headerStyle    = lipgloss.NewStyle().Width(colWidth).Align(lipgloss.Left).Bold(true)
-	rowNumStyle    = lipgloss.NewStyle().Width(colWidth).Align(lipgloss.Left).Foreground(lipgloss.Color("241"))
-	spellStyle     = lipgloss.NewStyle().Foreground(lipgloss.Color("14")).Bold(true)
-	passStyle      = lipgloss.NewStyle().Foreground(lipgloss.Color("10")).Bold(true)
-	errorStyle     = lipgloss.NewStyle().Foreground(lipgloss.Color("1")).Bold(true)
-	hintStyle      = lipgloss.NewStyle().Foreground(lipgloss.Color("241"))
+	rowNumStyle    = lipgloss.NewStyle().Width(colWidth).Align(lipgloss.Left).Foreground(colorGray)
+	spellStyle     = lipgloss.NewStyle().Foreground(colorCyan).Bold(true)
+	passStyle      = lipgloss.NewStyle().Foreground(colorGreen).Bold(true)
+	errorStyle     = lipgloss.NewStyle().Foreground(colorRed).Bold(true)
+	hintStyle      = lipgloss.NewStyle().Foreground(colorGray)
+)
+
+var (
+	strengthWeak       = lipgloss.NewStyle().Foreground(colorRed)
+	strengthReasonable = lipgloss.NewStyle().Foreground(colorYellow)
+	strengthStrong     = lipgloss.NewStyle().Foreground(colorGreen)
+	strengthSafe       = lipgloss.NewStyle().Foreground(colorBrightGreen)
 )
 
 // liveModel holds the state for the interactive live mode TUI.
 type liveModel struct {
 	matrix       app.Matrix
+	masterRaw    string
 	spell        string
 	queryLetters []app.QueryLetter
 	password     string
@@ -57,9 +74,10 @@ type liveModel struct {
 }
 
 // newLiveModel creates a liveModel initialized with the given matrix and settings.
-func newLiveModel(matrix app.Matrix, maxLen int, pasteMode PasteMode) liveModel {
+func newLiveModel(matrix app.Matrix, masterRaw string, maxLen int, pasteMode PasteMode) liveModel {
 	return liveModel{
 		matrix:       matrix,
+		masterRaw:    masterRaw,
 		queryLetters: make([]app.QueryLetter, 0),
 		maxLen:       maxLen,
 		pasteMode:    pasteMode,
@@ -177,32 +195,93 @@ func (m liveModel) View() string {
 	} else {
 		cursor = " "
 	}
-	fmt.Fprintf(&sb, "  Spell:    %s%s\n", spellStyle.Render(m.spell), cursor)
+	fmt.Fprintf(&sb, MsgSpellPrompt, spellStyle.Render(m.spell), cursor)
 
 	if m.maxLen > 0 {
-		fmt.Fprintf(&sb, "  Password: %s (%d/%d)\n", passStyle.Render(m.password), len(m.password), m.maxLen)
+		fmt.Fprintf(&sb, MsgPasswordWithMaxLen, passStyle.Render(m.password), len(m.password), m.maxLen)
 		if m.state == StateMaxLenReached {
-			fmt.Fprintf(&sb, "  %s\n", errorStyle.Render(fmt.Sprintf(MsgMaxPasswordReached, m.maxLen)))
+			fmt.Fprintf(&sb, MsgLiveError, errorStyle.Render(fmt.Sprintf(MsgMaxPasswordReached, m.maxLen)))
 		}
 	} else {
-		fmt.Fprintf(&sb, "  Password: %s\n", passStyle.Render(m.password))
+		fmt.Fprintf(&sb, MsgPasswordNoMaxLen, passStyle.Render(m.password), len(m.password))
+	}
+
+	pwdEntropy := len(m.password) * app.CharsetBits
+	masterEntropy := app.EstimateMasterEntropy(m.masterRaw)
+	effective := pwdEntropy
+	if masterEntropy < effective {
+		effective = masterEntropy
+	}
+	fmt.Fprintf(&sb, MsgStrengthBar, strengthBar(effective, pwdEntropy, masterEntropy))
+
+	if m.password != "" {
+		pwdTime := app.TimeToGuess(pwdEntropy, app.GPUSupercluster)
+		masterTime := app.TimeToGuess(masterEntropy, app.MasterPasswordGPUCluster)
+		if masterTime < pwdTime {
+			fmt.Fprintf(&sb, MsgTimeToGuessMasterPass, app.FormatSecondsCompact(masterTime))
+		} else {
+			fmt.Fprintf(&sb, MsgTimeToGuessGeneratedPass, app.FormatSecondsCompact(pwdTime))
+		}
 	}
 
 	if m.err != "" {
-		fmt.Fprintf(&sb, "  %s\n", errorStyle.Render(m.err))
+		fmt.Fprintf(&sb, MsgLiveError, errorStyle.Render(m.err))
 	}
 
 	sb.WriteByte('\n')
-	sb.WriteString(hintStyle.Render("  [Backspace] delete  [Enter] finish  [Ctrl+C]|[ESC] quit"))
+	sb.WriteString(hintStyle.Render(MsgLiveHint))
 	sb.WriteByte('\n')
 
 	return sb.String()
 }
 
+const safeThreshold = 82
+const strengthSegments = 24
+
+func strengthBar(effective, pwd, master int) string {
+	fill := effective * strengthSegments / safeThreshold
+	if fill > strengthSegments {
+		fill = strengthSegments
+	}
+
+	var bar strings.Builder
+	for i := 0; i < strengthSegments; i++ {
+		if i < fill {
+			bar.WriteString("█")
+		} else {
+			bar.WriteString("░")
+		}
+	}
+
+	var style lipgloss.Style
+	var label string
+	switch {
+	case effective < 60:
+		style = strengthWeak
+		label = "Dangerous"
+	case effective < 72:
+		style = strengthReasonable
+		label = "Weak"
+	case effective < safeThreshold:
+		style = strengthStrong
+		label = "Strong"
+	default:
+		style = strengthSafe
+		label = "Safe"
+	}
+
+	suffix := ""
+	if master < pwd && master > 0 {
+		suffix = ", master limited"
+	}
+
+	return style.Render(fmt.Sprintf("%s %s (%d bits%s)", bar.String(), label, effective, suffix))
+}
+
 // LiveMode starts the interactive live mode TUI and returns the final model state.
 // It runs the Bubbletea program with an alternate screen buffer.
-func LiveMode(matrix app.Matrix, maxLen int, pasteMode PasteMode) (liveModel, error) {
-	m := newLiveModel(matrix, maxLen, pasteMode)
+func LiveMode(matrix app.Matrix, maxLen int, pasteMode PasteMode, masterRaw string) (liveModel, error) {
+	m := newLiveModel(matrix, masterRaw, maxLen, pasteMode)
 	p := tea.NewProgram(m, tea.WithAltScreen())
 
 	final, err := p.Run()

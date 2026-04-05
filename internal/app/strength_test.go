@@ -15,7 +15,6 @@ func TestCrackTime_Basic(t *testing.T) {
 		{36, 1_000, math.Exp2(35) / 1_000},
 		{36, 10_000, math.Exp2(35) / 10_000},
 		{108, 100_000_000_000, math.Exp2(107) / 100_000_000_000},
-		{0, 1_000, 0.5 / 1_000},
 	}
 
 	for _, tt := range tests {
@@ -131,25 +130,38 @@ func TestMagicSpell_Entropy(t *testing.T) {
 	}
 }
 
-func TestEstimateMasterEntropy(t *testing.T) {
-	// Verify master password entropy estimation based on length and character diversity
-	tests := []struct {
-		input   string
-		minBits int
-		maxBits int
-	}{
-		{"", 0, 0},
-		{"a", 4, 5},
-		{"password", 37, 38},
-		{"Password1", 53, 54},
-		{"P@ssw0rd!", 58, 59},
-		{MasterPasswordChars[:64], 418, 420},
+func TestTimeToGuess_NoOverflow(t *testing.T) {
+	// Verify high entropy values don't cause float64 overflow
+	// 256 bits is large but still within float64 range
+	got := TimeToGuess(256, 1_000)
+	if math.IsInf(got, 1) {
+		t.Errorf("TimeToGuess(256, 1000) = +Inf, expected finite large number")
 	}
+	if got < 1e50 {
+		t.Errorf("TimeToGuess(256, 1000) = %e, expected very large number", got)
+	}
+}
 
-	for _, tt := range tests {
-		got := EstimateMasterEntropy(tt.input)
-		if got < tt.minBits || got > tt.maxBits {
-			t.Errorf("EstimateMasterEntropy(%q) = %d, expected %d-%d", tt.input, got, tt.minBits, tt.maxBits)
-		}
+func TestTimeToGuess_VeryHighEntropy(t *testing.T) {
+	// Verify extremely high entropy returns +Inf (effectively uncrackable)
+	got := TimeToGuess(1080, 1_000)
+	if !math.IsInf(got, 1) {
+		t.Errorf("TimeToGuess(1080, 1000) = %e, expected +Inf", got)
+	}
+}
+
+func TestTimeToGuess_ZeroEntropy(t *testing.T) {
+	// Verify zero entropy returns zero
+	got := TimeToGuess(0, 1_000)
+	if got != 0 {
+		t.Errorf("TimeToGuess(0, 1000) = %f, expected 0", got)
+	}
+}
+
+func TestTimeToGuess_ZeroSpeed(t *testing.T) {
+	// Verify zero speed returns infinity
+	got := TimeToGuess(64, 0)
+	if !math.IsInf(got, 1) {
+		t.Errorf("TimeToGuess(64, 0) = %f, expected +Inf", got)
 	}
 }

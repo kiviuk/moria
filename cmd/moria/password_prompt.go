@@ -41,7 +41,7 @@ func (m passwordModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case tea.KeyEnter:
 			return m, tea.Quit
 		case tea.KeyCtrlC, tea.KeyEsc:
-			m.err = fmt.Errorf("password entry cancelled")
+			m.err = fmt.Errorf("%s", MsgPasswordCancelled)
 			return m, tea.Quit
 		}
 	}
@@ -53,7 +53,7 @@ func (m passwordModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 // View renders the password prompt screen.
 func (m passwordModel) View() string {
 	return fmt.Sprintf(
-		"Enter master password:\n\n  %s\n\n  (press Enter to confirm, Esc to cancel)",
+		MsgPasswordPrompt,
 		m.input.View(),
 	)
 }
