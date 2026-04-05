@@ -1,12 +1,20 @@
 package main
 
 import (
-	"strings"
 	"testing"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/kiviuk/pwdgen/internal/app"
+	"github.com/kiviuk/pwdgen/internal/testutil"
 )
+
+func newTestMatrix() app.Matrix {
+	m, err := app.NewMatrix(testutil.NewTestMatrixData(app.PasswordMatrixRows, app.PasswordMatrixColumns, app.CharactersPerMatrixCell))
+	if err != nil {
+		panic(err)
+	}
+	return m
+}
 
 func TestLiveModel_MaxLen_AllowTyping(t *testing.T) {
 	// Verify that typing is blocked when password reaches maxLen
@@ -122,21 +130,4 @@ func simulateKey(m liveModel, key string) liveModel {
 func simulateBackspace(m liveModel) liveModel {
 	result, _ := m.Update(tea.KeyMsg{Type: tea.KeyBackspace})
 	return result.(liveModel)
-}
-
-func newTestMatrix() app.Matrix {
-	var m app.Matrix
-	cellChars := "abcdefghijklmnopqrstuvwxyz"
-	idx := 0
-	for row := 0; row < app.PasswordMatrixRows; row++ {
-		for col := 0; col < app.PasswordMatrixColumns; col++ {
-			var sb strings.Builder
-			for i := 0; i < app.CharactersPerMatrixCell; i++ {
-				sb.WriteByte(cellChars[idx%len(cellChars)])
-				idx++
-			}
-			m[row][col] = sb.String()
-		}
-	}
-	return m
 }

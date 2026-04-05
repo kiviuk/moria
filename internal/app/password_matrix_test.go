@@ -4,7 +4,19 @@ import (
 	"fmt"
 	"strings"
 	"testing"
+
+	"github.com/kiviuk/pwdgen/internal/testutil"
 )
+
+// newTestMatrix returns a static test matrix for use in generator tests.
+// Each cell contains a string of length CharactersPerMatrixCell.
+func newTestMatrix() Matrix {
+	m, err := NewMatrix(testutil.NewTestMatrixData(PasswordMatrixRows, PasswordMatrixColumns, CharactersPerMatrixCell))
+	if err != nil {
+		panic(err)
+	}
+	return m
+}
 
 func TestGenerateRandomString_Length(t *testing.T) {
 	// Verify generated string matches requested length
@@ -57,8 +69,7 @@ func TestNewMatrix_LengthMismatch(t *testing.T) {
 
 func TestNewMatrix_Population(t *testing.T) {
 	// Verify arithmetic mapping: cell (r,c) contains the correct substring from input
-	expectedLen := PasswordMatrixRows * PasswordMatrixColumns * CharactersPerMatrixCell
-	input := buildTestInput(expectedLen)
+	input := testutil.NewTestMatrixData(PasswordMatrixRows, PasswordMatrixColumns, CharactersPerMatrixCell)
 	m, err := NewMatrix(input)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -72,14 +83,6 @@ func TestNewMatrix_Population(t *testing.T) {
 			}
 		}
 	}
-}
-
-func buildTestInput(length int) string {
-	var sb strings.Builder
-	for i := 0; i < length; i++ {
-		sb.WriteByte(byte('a' + (i % 26)))
-	}
-	return sb.String()
 }
 
 func TestMatrix_Cell(t *testing.T) {
@@ -129,25 +132,6 @@ func TestMatrix_Cell_OutOfRangeCol(t *testing.T) {
 			t.Errorf("Cell with col %d expected error, got nil", col)
 		}
 	}
-}
-
-// newTestMatrix returns a static test matrix for use in generator tests.
-// Each cell contains a string of length CharactersPerMatrixCell.
-func newTestMatrix() Matrix {
-	var m Matrix
-	cellChars := "abcdefghijklmnopqrstuvwxyz"
-	idx := 0
-	for row := 0; row < PasswordMatrixRows; row++ {
-		for col := 0; col < PasswordMatrixColumns; col++ {
-			var sb strings.Builder
-			for i := 0; i < CharactersPerMatrixCell; i++ {
-				sb.WriteByte(cellChars[idx%len(cellChars)])
-				idx++
-			}
-			m[row][col] = sb.String()
-		}
-	}
-	return m
 }
 
 func TestMatrix_Dimensions(t *testing.T) {
