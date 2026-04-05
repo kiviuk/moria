@@ -173,13 +173,32 @@ func FormatSeconds(seconds float64) string {
 // zxcvbn detects dictionary words, patterns, common substitutions, and keyboard walks,
 // providing a realistic entropy estimate rather than naive length × charset math.
 func CalculateMasterPasswordEntropy(input string) int {
+	result := CalculateMasterPasswordStrength(input)
+	return result.Entropy
+}
+
+// MasterPasswordResult contains the strength analysis from zxcvbn.
+type MasterPasswordResult struct {
+	Entropy          int
+	CrackTimeDisplay string
+	CrackTimeSeconds float64
+	Score            int
+}
+
+// CalculateMasterPasswordStrength returns detailed strength analysis from zxcvbn.
+func CalculateMasterPasswordStrength(input string) MasterPasswordResult {
 	if input == "" {
-		return 0
+		return MasterPasswordResult{}
 	}
 	match := zxcvbn.PasswordStrength(input, nil)
 	entropy := match.Entropy
 	if entropy < 0 {
-		return 0
+		entropy = 0
 	}
-	return int(entropy)
+	return MasterPasswordResult{
+		Entropy:          int(entropy),
+		CrackTimeDisplay: match.CrackTimeDisplay,
+		CrackTimeSeconds: match.CrackTime,
+		Score:            match.Score,
+	}
 }

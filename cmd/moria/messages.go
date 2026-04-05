@@ -17,11 +17,13 @@ const (
 	// ErrMaxLenRequiresValue is returned when --max-len is provided without a value.
 	ErrMaxLenRequiresValue = "--max-len requires a value"
 	// ErrMaxLenNotNumber is returned when --max-len value is not a valid integer.
-	ErrMaxLenNotNumber = "--max-len value must be a number"
+	ErrMaxLenNotNumber = "--max-len value must be a number greater than 0"
 	// ErrUnknownMode is returned when an unrecognized mode is detected.
 	ErrUnknownMode = "unknown mode: %s"
 	// ErrModNotAllowed is a format string returned when a flag is not permitted in the current mode.
 	ErrModNotAllowed = "%s not allowed in %s mode"
+	// ErrMasterPasswordStrengthNoSpell is returned when --master-password-strength is used with a spell.
+	ErrMasterPasswordStrengthNoSpell = "--master-password-strength is standalone, spell not allowed"
 	// ErrSpellRequired is a format string returned when a mode requires a spell but none was provided.
 	ErrSpellRequired = "%s mode requires a spell"
 	// ErrFailedReadMaster is a format string returned when reading the master password from stdin fails.
@@ -40,14 +42,12 @@ const (
 	ErrUnexpectedModel = "unexpected model type returned by bubbletea"
 )
 
-// Strength display messages for batch mode output.
+// Strength display messages for master password strength mode.
 const (
-	// MsgPwdEntropy is the label for generated password entropy.
-	MsgPwdEntropy = "\nPassword entropy: %d bits\n"
 	// MsgMasterEntropy is the label for master password entropy.
-	MsgMasterEntropy = "Master entropy:   %d bits\n"
-	// MsgTimeToGuessGenerated is the header for generated password crack times.
-	MsgTimeToGuessGenerated = "\nTime to guess (generated password):\n"
+	MsgMasterEntropy = "Master password entropy: %d bits\n"
+	// MsgZxcvbnCrackTime is the header for zxcvbn's generic crack time estimate.
+	MsgZxcvbnCrackTime = "zxcvbn crack time estimate (generic): %s\n"
 	// MsgTimeToGuessMaster is the header for master password crack times.
 	MsgTimeToGuessMaster = "\nTime to guess (master password, via Argon2id):\n"
 	// MsgStrengthTableRow is the format for each row in the strength table.
@@ -62,12 +62,6 @@ const (
 	MsgPasswordWithMaxLen = "  Password: %s (%d/%d)\n" //nolint:gosec // "Password" refers to the generated password, not a credential
 	// MsgPasswordNoMaxLen is the format string for password display without max length.
 	MsgPasswordNoMaxLen = "  Password: %s (%d)\n" //nolint:gosec // "Password" refers to the generated password, not a credential
-	// MsgStrengthBar is the format string for the strength bar line.
-	MsgStrengthBar = "  Strength: %s\n"
-	// MsgTimeToGuessMasterPass is shown when the master password is the bottleneck.
-	MsgTimeToGuessMasterPass = "  Time to guess (8x 4090): %s (bottleneck: master pass)\n" //nolint:gosec // "pass" is short for password, not a credential literal
-	// MsgTimeToGuessGeneratedPass is shown when the generated password is the bottleneck.
-	MsgTimeToGuessGeneratedPass = "  Time to guess (8x 4090): %s (bottleneck: generated pass)\n" //nolint:gosec // "pass" is short for password, not a credential literal
 	// MsgLiveHint is the hint line shown at the bottom of live mode.
 	MsgLiveHint = "  [Backspace] delete  [Enter] finish  [Ctrl+C]|[ESC] quit"
 	// MsgLiveError is the format string for error display in live mode.
@@ -87,23 +81,23 @@ const (
 	// MsgUsageTitle is the title line of the help output.
 	MsgUsageTitle = "moria — deterministic password generator"
 	// MsgUsageHeader is the usage format line.
-	MsgUsageHeader = "Usage: moria [--magic|--pretty|--live] [--max-len N] [--ignore-paste] [--super-strength] <spell>"
+	MsgUsageHeader = "Usage: moria [--magic|--pretty|--live] [--max-len N] [--ignore-paste] <spell>"
 	// MsgUsageOptions is the options header.
 	MsgUsageOptions = "Options:"
 	// MsgOptMagic is the description for --magic.
-	MsgOptMagic = "  --magic              Generate a master password"
+	MsgOptMagic = "  --magic                   Generate a master password"
 	// MsgOptPretty is the description for --pretty.
-	MsgOptPretty = "  --pretty             Display the password matrix from your master password"
+	MsgOptPretty = "  --pretty                  Display the password matrix from your master password"
 	// MsgOptLive is the description for --live.
-	MsgOptLive = "  --live               Interactive mode: type your spell and see the password build in real-time"
+	MsgOptLive = "  --live                    Interactive mode: type your spell and see the password build in real-time"
 	// MsgOptMaxLen is the description for --max-len.
-	MsgOptMaxLen = "  --max-len            Truncate generated output to N characters (live and batch modes only)"
+	MsgOptMaxLen = "  --max-len                 Truncate generated output to N characters (live and batch modes only)"
 	// MsgOptIgnorePaste is the description for --ignore-paste.
-	MsgOptIgnorePaste = "  --ignore-paste       Ignore pasted input in live mode (single characters only, live mode only)"
-	// MsgOptStrength is the description for --super-strength.
-	MsgOptStrength = "  --super-strength     Show time-to-guess estimates (SLOW: ~20s, batch mode only)"
+	MsgOptIgnorePaste = "  --ignore-paste            Ignore pasted input in live mode (single characters only, live mode only)"
+	// MsgOptMasterPasswordStrength is the description for --master-password-strength.
+	MsgOptMasterPasswordStrength = "  --master-password-strength  Show entropy for master password from stdin (standalone, no spell)"
 	// MsgOptHelp is the description for --help.
-	MsgOptHelp = "  -h, --help           Show this help message"
+	MsgOptHelp = "  -h, --help                Show this help message"
 	// MsgUsageExamples is the examples header.
 	MsgUsageExamples = "Examples:"
 	// MsgExMagic is the example for --magic.
@@ -120,16 +114,8 @@ const (
 	MsgExLiveIgnorePaste = "  cat master.txt | moria --live --ignore-paste # Interactive mode (paste blocked)"
 	// MsgExMaxLen is the example for --max-len.
 	MsgExMaxLen = "  cat master.txt | moria --max-len 16 \"amazon\"  # Limited length"
-	// MsgExStrength is the example for --super-strength.
-	MsgExStrength = "  cat master.txt | moria --super-strength \"amazon\"  # SLOW: ~20s"
-)
-
-// Strength display messages for time formatting.
-const (
-	// MsgUncrackableCompact is the short label for extremely high entropy values (live mode).
-	MsgUncrackableCompact = "uncrackable"
-	// MsgUncrackable is the full label for extremely high entropy values (batch mode).
-	MsgUncrackable = "effectively uncrackable"
+	// MsgExMasterPasswordStrength is the example for --master-password-strength.
+	MsgExMasterPasswordStrength = "  echo \"mymasterpass\" | moria --master-password-strength  # Show master password strength"
 )
 
 // Generic CLI messages.

@@ -14,16 +14,11 @@ import (
 const colWidth = app.CharactersPerMatrixCell + 1
 
 const (
-	colorRed         = lipgloss.Color("1")
-	colorYellow      = lipgloss.Color("3")
-	colorGreen       = lipgloss.Color("10")
-	colorBrightGreen = lipgloss.Color("46")
-	colorCyan        = lipgloss.Color("14")
-	colorGray        = lipgloss.Color("241")
+	colorRed   = lipgloss.Color("1")
+	colorGreen = lipgloss.Color("10")
+	colorCyan  = lipgloss.Color("14")
+	colorGray  = lipgloss.Color("241")
 )
-
-// MasterPasswordEntropy represents the estimated entropy of the master password in bits.
-type MasterPasswordEntropy int
 
 // PasteMode controls whether pasted (multi-character) input is accepted in live mode.
 type PasteMode int
@@ -56,47 +51,29 @@ var (
 	hintStyle      = lipgloss.NewStyle().Foreground(colorGray)
 )
 
-var (
-	strengthWeak       = lipgloss.NewStyle().Foreground(colorRed)
-	strengthReasonable = lipgloss.NewStyle().Foreground(colorYellow)
-	strengthStrong     = lipgloss.NewStyle().Foreground(colorGreen)
-	strengthSafe       = lipgloss.NewStyle().Foreground(colorBrightGreen)
-)
-
 // liveModel holds the state for the interactive live mode TUI.
 type liveModel struct {
-	matrix                app.Matrix
-	masterPasswordRaw     string
-	masterPasswordEntropy MasterPasswordEntropy
-	spell                 string
-	queryLetters          []app.QueryLetter
-	password              string
-	maxLen                int
-	pasteMode             PasteMode
-	state                 LiveState
-	err                   string
+	matrix            app.Matrix
+	masterPasswordRaw string
+	spell             string
+	queryLetters      []app.QueryLetter
+	password          string
+	maxLen            int
+	pasteMode         PasteMode
+	state             LiveState
+	err               string
 }
 
 // newLiveModel creates a liveModel initialized with the given matrix and settings.
 func newLiveModel(matrix app.Matrix, masterPasswordRaw string, maxLen int, pasteMode PasteMode) liveModel {
-	entropy := calculateLiveEntropy(masterPasswordRaw)
 	return liveModel{
-		matrix:                matrix,
-		masterPasswordRaw:     masterPasswordRaw,
-		masterPasswordEntropy: entropy,
-		queryLetters:          make([]app.QueryLetter, 0),
-		maxLen:                maxLen,
-		pasteMode:             pasteMode,
-		state:                 StateNormal,
+		matrix:            matrix,
+		masterPasswordRaw: masterPasswordRaw,
+		queryLetters:      make([]app.QueryLetter, 0),
+		maxLen:            maxLen,
+		pasteMode:         pasteMode,
+		state:             StateNormal,
 	}
-}
-
-// calculateLiveEntropy returns the entropy of the master password for live mode.
-func calculateLiveEntropy(masterPasswordRaw string) MasterPasswordEntropy {
-	if masterPasswordRaw == "" {
-		return 0
-	}
-	return MasterPasswordEntropy(app.CalculateMasterPasswordEntropy(masterPasswordRaw))
 }
 
 // Init is the Bubbletea model initialization. Returns nil for no initial command.
@@ -220,24 +197,6 @@ func (m liveModel) View() string {
 		fmt.Fprintf(&sb, MsgPasswordNoMaxLen, passStyle.Render(m.password), len(m.password))
 	}
 
-	pwdEntropy := len(m.password) * app.CharsetBits
-	masterEntropy := int(m.masterPasswordEntropy)
-	effective := pwdEntropy
-	if masterEntropy < effective {
-		effective = masterEntropy
-	}
-	fmt.Fprintf(&sb, MsgStrengthBar, strengthBar(effective, pwdEntropy, masterEntropy))
-
-	if m.password != "" {
-		pwdTime := app.TimeToGuess(pwdEntropy, app.GPUSupercluster)
-		masterTime := app.TimeToGuess(masterEntropy, app.MasterPasswordGPUCluster)
-		if masterTime < pwdTime {
-			fmt.Fprintf(&sb, MsgTimeToGuessMasterPass, app.FormatSecondsCompact(masterTime))
-		} else {
-			fmt.Fprintf(&sb, MsgTimeToGuessGeneratedPass, app.FormatSecondsCompact(pwdTime))
-		}
-	}
-
 	if m.err != "" {
 		fmt.Fprintf(&sb, MsgLiveError, errorStyle.Render(m.err))
 	}
@@ -247,49 +206,6 @@ func (m liveModel) View() string {
 	sb.WriteByte('\n')
 
 	return sb.String()
-}
-
-const safeThreshold = 82
-const strengthSegments = 24
-
-func strengthBar(effective, pwd, master int) string {
-	fill := effective * strengthSegments / safeThreshold
-	if fill > strengthSegments {
-		fill = strengthSegments
-	}
-
-	var bar strings.Builder
-	for i := 0; i < strengthSegments; i++ {
-		if i < fill {
-			bar.WriteString("█")
-		} else {
-			bar.WriteString("░")
-		}
-	}
-
-	var style lipgloss.Style
-	var label string
-	switch {
-	case effective < 60:
-		style = strengthWeak
-		label = "Dangerous"
-	case effective < 72:
-		style = strengthReasonable
-		label = "Weak"
-	case effective < safeThreshold:
-		style = strengthStrong
-		label = "Strong"
-	default:
-		style = strengthSafe
-		label = "Safe"
-	}
-
-	suffix := ""
-	if master < pwd && master > 0 {
-		suffix = ", master limited"
-	}
-
-	return style.Render(fmt.Sprintf("%s %s (%d bits%s)", bar.String(), label, effective, suffix))
 }
 
 // LiveMode starts the interactive live mode TUI and returns the final model state.

@@ -1,7 +1,6 @@
 package main
 
 import (
-	"strings"
 	"testing"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -219,90 +218,4 @@ func simulateKey(m liveModel, key string) liveModel {
 func simulateBackspace(m liveModel) liveModel {
 	result, _ := m.Update(tea.KeyMsg{Type: tea.KeyBackspace})
 	return result.(liveModel)
-}
-
-func TestStrengthBar_Dangerous(t *testing.T) {
-	// Verify dangerous entropy renders red bar with "Dangerous" label
-	got := strengthBar(18, 18, 100)
-	if !strings.Contains(got, "Dangerous") {
-		t.Errorf("strengthBar(18) missing 'Dangerous', got: %q", got)
-	}
-	if !strings.Contains(got, "18 bits") {
-		t.Errorf("strengthBar(18) missing '18 bits', got: %q", got)
-	}
-}
-
-func TestStrengthBar_Weak(t *testing.T) {
-	// Verify weak entropy renders yellow bar with "Weak" label
-	got := strengthBar(66, 66, 100)
-	if !strings.Contains(got, "Weak") {
-		t.Errorf("strengthBar(66) missing 'Weak', got: %q", got)
-	}
-	if !strings.Contains(got, "66 bits") {
-		t.Errorf("strengthBar(66) missing '66 bits', got: %q", got)
-	}
-}
-
-func TestStrengthBar_Strong(t *testing.T) {
-	// Verify strong entropy renders green bar with "Strong" label
-	got := strengthBar(72, 72, 100)
-	if !strings.Contains(got, "Strong") {
-		t.Errorf("strengthBar(72) missing 'Strong', got: %q", got)
-	}
-	if !strings.Contains(got, "72 bits") {
-		t.Errorf("strengthBar(72) missing '72 bits', got: %q", got)
-	}
-}
-
-func TestStrengthBar_Safe(t *testing.T) {
-	// Verify safe entropy renders bright green bar with "Safe" label
-	got := strengthBar(108, 108, 200)
-	if !strings.Contains(got, "Safe") {
-		t.Errorf("strengthBar(108) missing 'Safe', got: %q", got)
-	}
-	if !strings.Contains(got, "108 bits") {
-		t.Errorf("strengthBar(108) missing '108 bits', got: %q", got)
-	}
-}
-
-func TestStrengthBar_MasterLimited(t *testing.T) {
-	// Verify master-limited scenario shows "master limited" suffix
-	got := strengthBar(28, 108, 28)
-	if !strings.Contains(got, "master limited") {
-		t.Errorf("strengthBar(28, 108, 28) missing 'master limited', got: %q", got)
-	}
-	if !strings.Contains(got, "28 bits") {
-		t.Errorf("strengthBar(28, 108, 28) missing '28 bits', got: %q", got)
-	}
-}
-
-func TestStrengthBar_NoMasterLimit(t *testing.T) {
-	// Verify non-limited scenario omits "master limited" suffix
-	got := strengthBar(108, 108, 200)
-	if strings.Contains(got, "master limited") {
-		t.Errorf("strengthBar(108, 108, 200) should not contain 'master limited', got: %q", got)
-	}
-}
-
-func TestStrengthBar_FullBar(t *testing.T) {
-	// Verify bar at safe threshold is completely filled
-	got := strengthBar(82, 82, 200)
-	if !strings.Contains(got, "Safe") {
-		t.Errorf("strengthBar(82) missing 'Safe', got: %q", got)
-	}
-	// 24 segments all filled
-	if strings.Contains(got, "░") {
-		t.Errorf("strengthBar(82) should have no empty segments, got: %q", got)
-	}
-}
-
-func TestStrengthBar_EmptyBar(t *testing.T) {
-	// Verify zero entropy produces completely empty bar
-	got := strengthBar(0, 0, 0)
-	if !strings.Contains(got, "Dangerous") {
-		t.Errorf("strengthBar(0) missing 'Dangerous', got: %q", got)
-	}
-	if strings.Contains(got, "█") {
-		t.Errorf("strengthBar(0) should have no filled segments, got: %q", got)
-	}
 }

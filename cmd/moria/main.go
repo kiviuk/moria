@@ -34,16 +34,18 @@ const (
 	ModePretty
 	// ModeLive runs an interactive TUI for building passwords character by character.
 	ModeLive
+	// ModeMasterPasswordStrength analyzes the entropy of a master password from stdin.
+	ModeMasterPasswordStrength
 )
 
 // String returns the human-readable name of the mode.
 func (m Mode) String() string {
-	return [...]string{"batch", "magic", "pretty", "live"}[m]
+	return [...]string{"batch", "magic", "pretty", "live", "master-password-strength"}[m]
 }
 
 // needsStdin reports whether this mode requires reading a master password from stdin.
 func (m Mode) needsStdin() bool {
-	return m == ModePretty || m == ModeLive || m == ModeBatch
+	return m == ModePretty || m == ModeLive || m == ModeBatch || m == ModeMasterPasswordStrength
 }
 
 // needsSpell reports whether this mode requires a spell argument.
@@ -57,7 +59,9 @@ func (m Mode) allowedMods() []string {
 	case ModeLive:
 		return []string{"--max-len", "--ignore-paste"}
 	case ModeBatch:
-		return []string{"--max-len", "--super-strength"}
+		return []string{"--max-len"}
+	case ModeMasterPasswordStrength:
+		return []string{}
 	default:
 		return nil
 	}
@@ -75,8 +79,6 @@ type Config struct {
 	Master string
 	// MasterRaw is the original unexpanded master input for entropy estimation.
 	MasterRaw string
-	// Strength enables time-to-guess display after password output.
-	Strength bool
 }
 
 // contains reports whether slice contains item.
@@ -153,12 +155,15 @@ func parseArgs(args []string) (Config, map[string]bool, error) {
 			if err != nil {
 				return cfg, flags, fmt.Errorf("%s", ErrMaxLenNotNumber)
 			}
+			if val <= 0 {
+				return cfg, flags, fmt.Errorf("%s", ErrMaxLenNotNumber)
+			}
 			cfg.MaxLen = val
 		case "--ignore-paste":
 			flags["--ignore-paste"] = true
-		case "--super-strength":
-			flags["--super-strength"] = true
-			cfg.Strength = true
+		case "--master-password-strength":
+			flags["--master-password-strength"] = true
+			cfg.Mode = ModeMasterPasswordStrength
 		case "--help", "-h":
 			flags["--help"] = true
 		default:
@@ -179,12 +184,16 @@ func validateConfig(cfg Config, flags map[string]bool) error {
 		if !present {
 			continue
 		}
-		if flag == "--magic" || flag == "--pretty" || flag == "--live" || flag == "--help" {
+		if flag == "--magic" || flag == "--pretty" || flag == "--live" || flag == "--help" || flag == "--master-password-strength" {
 			continue
 		}
 		if !contains(cfg.Mode.allowedMods(), flag) {
 			return fmt.Errorf(ErrModNotAllowed, flag, cfg.Mode)
 		}
+	}
+
+	if cfg.Mode == ModeMasterPasswordStrength && cfg.Spell != "" {
+		return fmt.Errorf("%s", ErrMasterPasswordStrengthNoSpell)
 	}
 
 	if cfg.Mode.needsSpell() && cfg.Spell == "" {
@@ -206,7 +215,7 @@ func printUsage() {
 	fmt.Println(MsgOptLive)
 	fmt.Println(MsgOptMaxLen)
 	fmt.Println(MsgOptIgnorePaste)
-	fmt.Println(MsgOptStrength)
+	fmt.Println(MsgOptMasterPasswordStrength)
 	fmt.Println(MsgOptHelp)
 	fmt.Println()
 	fmt.Println(MsgUsageExamples)
@@ -217,28 +226,20 @@ func printUsage() {
 	fmt.Println(MsgExLive)
 	fmt.Println(MsgExLiveIgnorePaste)
 	fmt.Println(MsgExMaxLen)
-	fmt.Println(MsgExStrength)
+	fmt.Println(MsgExMasterPasswordStrength)
 }
 
-// printStrengthTable outputs time-to-guess estimates to stderr for two separate attack vectors.
-func printStrengthTable(pwdEntropy, masterEntropy int) {
-	fmt.Fprintf(os.Stderr, MsgPwdEntropy, pwdEntropy)
-	fmt.Fprintf(os.Stderr, MsgMasterEntropy, masterEntropy)
+// printStrengthTable outputs time-to-guess estimates to stderr.
+func printStrengthTable(masterResult app.MasterPasswordResult) {
+	if masterResult.Entropy == 0 {
+		return
+	}
 
-	fmt.Fprint(os.Stderr, MsgTimeToGuessGenerated)
-	pwdScenarios := []struct {
-		label string
-		speed uint64
-	}{
-		{"Online (rate-limited)", app.OnlineRateLimited},
-		{"Offline (bcrypt/Argon2)", app.OfflineSlowHash},
-		{"Offline (MD5/SHA1)", app.OfflineFastHash},
-		{"GPU cluster (8x 4090)", app.GPUSupercluster},
-	}
-	for _, s := range pwdScenarios {
-		seconds := app.TimeToGuess(pwdEntropy, s.speed)
-		fmt.Fprintf(os.Stderr, MsgStrengthTableRow, s.label, app.FormatSeconds(seconds))
-	}
+	fmt.Fprintln(os.Stderr)
+	fmt.Fprintf(os.Stderr, MsgMasterEntropy, masterResult.Entropy)
+
+	fmt.Fprintln(os.Stderr)
+	fmt.Fprintf(os.Stderr, MsgZxcvbnCrackTime, masterResult.CrackTimeDisplay)
 
 	fmt.Fprint(os.Stderr, MsgTimeToGuessMaster)
 	masterScenarios := []struct {
@@ -247,15 +248,15 @@ func printStrengthTable(pwdEntropy, masterEntropy int) {
 	}{
 		{"Single CPU", app.MasterPasswordSingleCPU},
 		{"Single GPU", app.MasterPasswordGPUSingle},
-		{"GPU cluster (8x 4090)", app.MasterPasswordGPUCluster},
+		{"GPU cluster", app.MasterPasswordGPUCluster},
 	}
 	for _, s := range masterScenarios {
-		seconds := app.TimeToGuess(masterEntropy, s.speed)
+		seconds := app.TimeToGuess(masterResult.Entropy, s.speed)
 		fmt.Fprintf(os.Stderr, MsgStrengthTableRow, s.label, app.FormatSeconds(seconds))
 	}
 }
 
-func main() {
+func main() { //nolint:gocyclo // main has high complexity due to mode switching
 	if len(os.Args) < 2 {
 		printUsage()
 		os.Exit(0)
@@ -326,43 +327,32 @@ func main() {
 		}
 
 	case ModeBatch:
-		runBatchMode(cfg)
+		matrix, err := getMatrix(cfg.Master)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+		dirty := app.DirtySpell{Spell: cfg.Spell}
+		magic, err := dirty.Parse()
+		if err != nil {
+			fmt.Fprintf(os.Stderr, ErrInvalidSpell+"\n", err)
+			os.Exit(1)
+		}
+		password, err := magic.ExtractPassword(matrix)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, ErrExtractPassword+"\n", err)
+			os.Exit(1)
+		}
+		password = truncatePassword(password, cfg.MaxLen)
+		fmt.Print(password)
+
+	case ModeMasterPasswordStrength:
+		runMasterPasswordStrengthMode(cfg)
 	}
 }
 
-// runBatchMode generates a password from the spell and prints it to stdout.
-// If Strength is set, time-to-guess estimates are printed to stderr.
-func runBatchMode(cfg Config) {
-	matrix, err := getMatrix(cfg.Master)
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
-	dirty := app.DirtySpell{Spell: cfg.Spell}
-	magic, err := dirty.Parse()
-	if err != nil {
-		fmt.Fprintf(os.Stderr, ErrInvalidSpell+"\n", err)
-		os.Exit(1)
-	}
-	password, err := magic.ExtractPassword(matrix)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, ErrExtractPassword+"\n", err)
-		os.Exit(1)
-	}
-	password = truncatePassword(password, cfg.MaxLen)
-	fmt.Print(password)
-
-	if cfg.Strength {
-		pwdEntropy := len(password) * app.CharsetBits
-		masterEntropy := calculateBatchEntropy(cfg.MasterRaw)
-		printStrengthTable(pwdEntropy, masterEntropy)
-	}
-}
-
-// calculateBatchEntropy returns the entropy of the master password for batch mode.
-func calculateBatchEntropy(masterPasswordRaw string) int {
-	if masterPasswordRaw == "" {
-		return 0
-	}
-	return app.CalculateMasterPasswordEntropy(masterPasswordRaw)
+// runMasterPasswordStrengthMode calculates and displays the entropy of a master password from stdin.
+func runMasterPasswordStrengthMode(cfg Config) {
+	masterResult := app.CalculateMasterPasswordStrength(cfg.MasterRaw)
+	printStrengthTable(masterResult)
 }
