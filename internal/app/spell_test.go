@@ -305,7 +305,7 @@ func TestMagicSpell_MagicLetters_Query_DigitsWrap(t *testing.T) {
 
 func TestQueryLetter_Grouping(t *testing.T) {
 	// Verify alphabet-based grouping matches LetterGroup() for each letter
-	spell := MagicSpell{Spell: "ABCDEFGHIJKL"}
+	spell := MagicSpell{Spell: "abcdefghijkl"}
 	letters := spell.MagicLetters()
 
 	result := make([]QueryLetter, len(letters))
@@ -372,5 +372,64 @@ func TestMagicSpell_ExtractPassword_Spaces(t *testing.T) {
 	expected := matrix[0][0] + matrix[1][0] + matrix[2][0] + matrix[3%PasswordMatrixRows][0]
 	if password != expected {
 		t.Errorf("expected %q, got %q", expected, password)
+	}
+}
+
+func TestQueryLetter_CaseSensitiveRow(t *testing.T) {
+	// Verify uppercase letters shift row by PasswordMatrixRows/2
+	spellLower := MagicSpell{Spell: "abc"}
+	spellUpper := MagicSpell{Spell: "ABC"}
+
+	lowerLetters := spellLower.MagicLetters()
+	upperLetters := spellUpper.MagicLetters()
+
+	for i := 0; i < len(lowerLetters); i++ {
+		lowerQuery := lowerLetters[i].Query()
+		upperQuery := upperLetters[i].Query()
+
+		expectedShift := ModN(lowerLetters[i].LetterPosition+PasswordMatrixRows/2, PasswordMatrixRows)
+		if upperQuery.MatrixRow != expectedShift {
+			t.Errorf("index %d: uppercase row %d, expected %d", i, upperQuery.MatrixRow, expectedShift)
+		}
+		if lowerQuery.MatrixRow == upperQuery.MatrixRow {
+			t.Errorf("index %d: lowercase and uppercase produced same row %d", i, lowerQuery.MatrixRow)
+		}
+		if lowerQuery.LetterGroup != upperQuery.LetterGroup {
+			t.Errorf("index %d: letter group should be same for case, got %d vs %d", i, lowerQuery.LetterGroup, upperQuery.LetterGroup)
+		}
+	}
+}
+
+func TestExtractPassword_CaseSensitive(t *testing.T) {
+	// Verify that changing case of letters produces different passwords
+	matrix := newTestMatrix()
+
+	spellLower := MagicSpell{Spell: "amazon"}
+	spellUpper := MagicSpell{Spell: "AMAZON"}
+	spellMixed := MagicSpell{Spell: "AmAzOn"}
+
+	passLower, err := spellLower.ExtractPassword(matrix)
+	if err != nil {
+		t.Fatalf("unexpected error for lowercase: %v", err)
+	}
+
+	passUpper, err := spellUpper.ExtractPassword(matrix)
+	if err != nil {
+		t.Fatalf("unexpected error for uppercase: %v", err)
+	}
+
+	passMixed, err := spellMixed.ExtractPassword(matrix)
+	if err != nil {
+		t.Fatalf("unexpected error for mixed case: %v", err)
+	}
+
+	if passLower == passUpper {
+		t.Error("lowercase and uppercase spells produced identical passwords")
+	}
+	if passLower == passMixed {
+		t.Error("lowercase and mixed case spells produced identical passwords")
+	}
+	if passUpper == passMixed {
+		t.Error("uppercase and mixed case spells produced identical passwords")
 	}
 }
