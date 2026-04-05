@@ -23,7 +23,7 @@ func TestBatchMode_MaxLen(t *testing.T) {
 	}
 
 	// Full password: 4 cells × CharactersPerMatrixCell
-	expectedFull := matrix[0][0] + matrix[1][0] + matrix[2][0] + matrix[3][0]
+	expectedFull := matrix[0][0] + matrix[1][0] + matrix[2][0] + matrix[3%app.PasswordMatrixRows][0]
 	if password != expectedFull {
 		t.Fatalf("expected %q, got %q", expectedFull, password)
 	}

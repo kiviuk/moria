@@ -266,11 +266,13 @@ func TestMagicSpell_MagicLetters_Query_Wraps(t *testing.T) {
 		result[i] = l.Query()
 	}
 
-	if result[10].MatrixRow != 0 {
-		t.Errorf("expected row 0 for 'k', got %d", result[10].MatrixRow)
+	// Position 10 should wrap: 10 % PasswordMatrixRows
+	if result[10].MatrixRow != ModN(10, PasswordMatrixRows) {
+		t.Errorf("expected row %d for 'k', got %d", ModN(10, PasswordMatrixRows), result[10].MatrixRow)
 	}
-	if result[14].MatrixRow != 4 {
-		t.Errorf("expected row 4 for 'o', got %d", result[14].MatrixRow)
+	// Position 14 should wrap: 14 % PasswordMatrixRows
+	if result[14].MatrixRow != ModN(14, PasswordMatrixRows) {
+		t.Errorf("expected row %d for 'o', got %d", ModN(14, PasswordMatrixRows), result[14].MatrixRow)
 	}
 
 	if result[10].LetterGroup != LetterGroup("k") {
@@ -291,11 +293,13 @@ func TestMagicSpell_MagicLetters_Query_DigitsWrap(t *testing.T) {
 		result[i] = l.Query()
 	}
 
-	if result[10].MatrixRow != 0 {
-		t.Errorf("expected last '0' at row 0, got %d", result[10].MatrixRow)
+	// Position 10 wraps: 10 % PasswordMatrixRows
+	if result[10].MatrixRow != ModN(10, PasswordMatrixRows) {
+		t.Errorf("expected row %d for last '0', got %d", ModN(10, PasswordMatrixRows), result[10].MatrixRow)
 	}
-	if result[9].MatrixRow != 9 {
-		t.Errorf("expected first '0' at row 9, got %d", result[9].MatrixRow)
+	// Position 9 wraps: 9 % PasswordMatrixRows
+	if result[9].MatrixRow != ModN(9, PasswordMatrixRows) {
+		t.Errorf("expected row %d for first '0', got %d", ModN(9, PasswordMatrixRows), result[9].MatrixRow)
 	}
 }
 
@@ -330,7 +334,7 @@ func TestMagicSpell_ExtractPassword_Digits(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	expected := matrix[0][0] + matrix[1][0] + matrix[2][0] + matrix[3][0]
+	expected := matrix[0][0] + matrix[1][0] + matrix[2][0] + matrix[3%PasswordMatrixRows][0]
 	if password != expected {
 		t.Errorf("expected %q, got %q", expected, password)
 	}
@@ -365,7 +369,7 @@ func TestMagicSpell_ExtractPassword_Spaces(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	expected := matrix[0][0] + matrix[1][0] + matrix[2][0] + matrix[3][0]
+	expected := matrix[0][0] + matrix[1][0] + matrix[2][0] + matrix[3%PasswordMatrixRows][0]
 	if password != expected {
 		t.Errorf("expected %q, got %q", expected, password)
 	}

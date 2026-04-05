@@ -94,7 +94,7 @@ func TestMatrix_Cell(t *testing.T) {
 	}{
 		{QueryLetter{MatrixRow: 0, LetterGroup: 0}, m[0][0]},
 		{QueryLetter{MatrixRow: 0, LetterGroup: PasswordMatrixColumns - 1}, m[0][PasswordMatrixColumns-1]},
-		{QueryLetter{MatrixRow: 5, LetterGroup: 3}, m[5][3]},
+		{QueryLetter{MatrixRow: PasswordMatrixRows / 2, LetterGroup: 3 % PasswordMatrixColumns}, m[PasswordMatrixRows/2][3%PasswordMatrixColumns]},
 		{QueryLetter{MatrixRow: PasswordMatrixRows - 1, LetterGroup: PasswordMatrixColumns - 1}, m[PasswordMatrixRows-1][PasswordMatrixColumns-1]},
 	}
 	for _, tt := range tests {
@@ -250,8 +250,8 @@ func TestExtractPassword_Integration(t *testing.T) {
 		t.Fatalf("unexpected error extracting password: %v", err)
 	}
 
-	// "1111" → all digits (group 0), positions 0-3 → cells (0,0)+(1,0)+(2,0)+(3,0)
-	expected := matrix[0][0] + matrix[1][0] + matrix[2][0] + matrix[3][0]
+	// "1111" → all digits (group 0), positions 0-3 → cells (0,0)+(1,0)+(2,0)+(3%rows,0)
+	expected := matrix[0][0] + matrix[1%PasswordMatrixRows][0] + matrix[2%PasswordMatrixRows][0] + matrix[3%PasswordMatrixRows][0]
 	if password != expected {
 		t.Errorf("expected %q, got %q", expected, password)
 	}
