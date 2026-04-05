@@ -41,7 +41,27 @@ The binary is built to `bin/moria`.
 ./bin/moria --magic
 ```
 
-This outputs a 1,200-character shell-safe random string. **Save this securely** — it's your master key. Store it in KeePass, 1Password, or any password manager.
+This outputs a 1,200-character shell-safe random string. **Save this securely** — it's your master key. You have two options for using it:
+
+**Option A: Save to a file and pipe it**
+```bash
+./bin/moria --magic > master.txt
+cat master.txt | ./bin/moria "amazon"
+```
+
+**Option B: Store in a password manager**
+Save the output to KeePass, 1Password, or any password manager. When you need a service password, paste it into the interactive prompt:
+```bash
+./bin/moria "amazon"
+# You'll be prompted to paste your master password (input is masked with •••)
+```
+
+**Option C: Use an existing secret as your master key**
+You don't need to generate a new password — you can use any existing secret like an SSH private key, a GPG key, or a long passphrase. The tool will deterministically expand it to fill the matrix:
+```bash
+cat ~/.ssh/id_ed25519 | ./bin/moria "amazon"
+```
+This is convenient if you already have a secure key you trust and don't want to manage another secret.
 
 ### 2. Generate a Service Password
 
@@ -131,11 +151,22 @@ Uppercase letters shift the row by `PasswordMatrixRows/2`, making `"amazon"` and
 
 ### Key Derivation
 
-Any input (SSH key, passphrase, random string) is deterministically expanded to the matrix size using **HKDF-SHA256** with rejection sampling for zero modulo bias. This means you can use your SSH private key as a master key:
+Your master password goes through a two-stage process to become the matrix:
+
+1. **Argon2id** — Your input is first passed through Argon2id (1 iteration, 64MB memory, 2 threads), a memory-hard key derivation function. This slows down the derivation to ~500ms, making brute-force attacks computationally expensive even if your master password is weak.
+2. **HKDF-SHA256** — The 32-byte high-entropy output from Argon2id is then expanded to the full matrix size (1,200 characters) using HKDF.
+
+This means you can safely use a memorable passphrase, an SSH key, or any other input:
 
 ```bash
 cat ~/.ssh/id_ed25519 | ./bin/moria "amazon"
 ```
+
+### Rejection Sampling
+
+When generating random passwords, a common mistake is to use the modulo operator (`%`) to map random bytes to a character set. This introduces **modulo bias** — some characters become slightly more likely than others, weakening the password.
+
+Moria uses **rejection sampling** instead: if a random byte falls in the "biased" range, it's discarded and a new byte is drawn. This guarantees every character in the pool has exactly equal probability, preserving the full entropy of your passwords. Think of it like dealing cards from a shuffled deck — you skip any card that would give an unfair advantage, ensuring a perfectly fair deal every time.
 
 ## Configuration
 
