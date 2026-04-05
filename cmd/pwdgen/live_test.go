@@ -52,7 +52,7 @@ func TestLiveModel_MaxLen_AllowTyping(t *testing.T) {
 func TestLiveModel_MaxLen_Partial(t *testing.T) {
 	// Verify maxLen truncates password on exit, never exceeding maxLen
 	matrix := newTestMatrix()
-	maxLen := 5
+	maxLen := 2*app.CharactersPerMatrixCell + 1
 	m := newLiveModel(matrix, maxLen)
 
 	m = simulateKey(m, "1")
