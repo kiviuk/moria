@@ -13,7 +13,6 @@
 package main
 
 import (
-	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -58,7 +57,7 @@ func (m Mode) allowedMods() []string {
 	case ModeLive:
 		return []string{"--max-len", "--ignore-paste"}
 	case ModeBatch:
-		return []string{"--max-len"}
+		return []string{"--max-len", "--show-pwd-strength"}
 	default:
 		return nil
 	}
@@ -74,6 +73,10 @@ type Config struct {
 	MaxLen int
 	// Master is the expanded master password string used to build the matrix.
 	Master string
+	// MasterRaw is the original unexpanded master input for entropy estimation.
+	MasterRaw string
+	// ShowPwdStrength enables time-to-guess display after password output.
+	ShowPwdStrength bool
 }
 
 // contains reports whether slice contains item.
@@ -143,16 +146,19 @@ func parseArgs(args []string) (Config, map[string]bool, error) {
 		case "--max-len":
 			flags["--max-len"] = true
 			if i+1 >= len(args) {
-				return cfg, flags, errors.New(ErrMaxLenRequiresValue)
+				return cfg, flags, fmt.Errorf("%s", ErrMaxLenRequiresValue)
 			}
 			i++
 			val, err := strconv.Atoi(args[i])
 			if err != nil {
-				return cfg, flags, errors.New(ErrMaxLenNotNumber)
+				return cfg, flags, fmt.Errorf("%s", ErrMaxLenNotNumber)
 			}
 			cfg.MaxLen = val
 		case "--ignore-paste":
 			flags["--ignore-paste"] = true
+		case "--show-pwd-strength":
+			flags["--show-pwd-strength"] = true
+			cfg.ShowPwdStrength = true
 		case "--help", "-h":
 			flags["--help"] = true
 		default:
@@ -192,15 +198,16 @@ func validateConfig(cfg Config, flags map[string]bool) error {
 func printUsage() {
 	fmt.Println("moria — deterministic password generator")
 	fmt.Println()
-	fmt.Println("Usage: moria [--magic|--pretty|--live] [--max-len N] [--ignore-paste] <spell>")
+	fmt.Println("Usage: moria [--magic|--pretty|--live] [--max-len N] [--ignore-paste] [--show-pwd-strength] <spell>")
 	fmt.Println()
 	fmt.Println("Options:")
-	fmt.Println("  --magic          Generate a master password")
-	fmt.Println("  --pretty         Display the password matrix from your master password")
-	fmt.Println("  --live           Interactive mode: type your spell and see the password build in real-time")
-	fmt.Println("  --max-len        Truncate generated output to N characters (live and batch modes only)")
-	fmt.Println("  --ignore-paste   Ignore pasted input in live mode (single characters only, live mode only)")
-	fmt.Println("  -h, --help       Show this help message")
+	fmt.Println("  --magic              Generate a master password")
+	fmt.Println("  --pretty             Display the password matrix from your master password")
+	fmt.Println("  --live               Interactive mode: type your spell and see the password build in real-time")
+	fmt.Println("  --max-len            Truncate generated output to N characters (live and batch modes only)")
+	fmt.Println("  --ignore-paste       Ignore pasted input in live mode (single characters only, live mode only)")
+	fmt.Println("  --show-pwd-strength  Show time-to-guess estimates for the generated password (batch mode only)")
+	fmt.Println("  -h, --help           Show this help message")
 	fmt.Println()
 	fmt.Println("Examples:")
 	fmt.Println("  moria --magic                              # Generate a new master password")
@@ -210,6 +217,29 @@ func printUsage() {
 	fmt.Println("  cat master.txt | moria --live               # Interactive mode (paste allowed)")
 	fmt.Println("  cat master.txt | moria --live --ignore-paste # Interactive mode (paste blocked)")
 	fmt.Println("  cat master.txt | moria --max-len 16 \"amazon\"  # Limited length")
+	fmt.Println("  cat master.txt | moria --show-pwd-strength \"amazon\"  # Show time to guess")
+}
+
+// printStrengthTable outputs time-to-guess estimates to stderr for four attack scenarios.
+// effectiveEntropy is min(pwdEntropy, masterEntropy).
+func printStrengthTable(effectiveEntropy, pwdEntropy, masterEntropy int) {
+	scenarios := []struct {
+		label string
+		speed uint64
+	}{
+		{"Online (rate-limited)", app.OnlineRateLimited},
+		{"Offline (bcrypt/Argon2)", app.OfflineSlowHash},
+		{"Offline (MD5/SHA1)", app.OfflineFastHash},
+		{"GPU cluster (8x 4090)", app.GPUSupercluster},
+	}
+
+	fmt.Fprintf(os.Stderr, "\nPassword entropy: %d bits\n", pwdEntropy)
+	fmt.Fprintf(os.Stderr, "Master entropy:   %d bits\n", masterEntropy)
+	fmt.Fprintf(os.Stderr, "Effective:        %d bits\n\nTime to guess:\n", effectiveEntropy)
+	for _, s := range scenarios {
+		seconds := app.TimeToGuess(effectiveEntropy, s.speed)
+		fmt.Fprintf(os.Stderr, "  %-24s %s\n", s.label, app.FormatSeconds(seconds))
+	}
 }
 
 func main() {
@@ -240,6 +270,7 @@ func main() {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 			os.Exit(1)
 		}
+		cfg.MasterRaw = master
 		cfg.Master = app.ExpandToMatrix(master)
 	}
 
@@ -282,23 +313,39 @@ func main() {
 		}
 
 	case ModeBatch:
-		matrix, err := getMatrix(cfg.Master)
-		if err != nil {
-			fmt.Fprintln(os.Stderr, err)
-			os.Exit(1)
+		runBatchMode(cfg)
+	}
+}
+
+// runBatchMode generates a password from the spell and prints it to stdout.
+// If ShowPwdStrength is set, time-to-guess estimates are printed to stderr.
+func runBatchMode(cfg Config) {
+	matrix, err := getMatrix(cfg.Master)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+	dirty := app.DirtySpell{Spell: cfg.Spell}
+	magic, err := dirty.Parse()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, ErrInvalidSpell+"\n", err)
+		os.Exit(1)
+	}
+	password, err := magic.ExtractPassword(matrix)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, ErrExtractPassword+"\n", err)
+		os.Exit(1)
+	}
+	password = truncatePassword(password, cfg.MaxLen)
+	fmt.Print(password)
+
+	if cfg.ShowPwdStrength {
+		pwdEntropy := len(password) * app.CharsetBits
+		masterEntropy := app.EstimateMasterEntropy(cfg.MasterRaw)
+		effectiveEntropy := pwdEntropy
+		if masterEntropy < effectiveEntropy {
+			effectiveEntropy = masterEntropy
 		}
-		dirty := app.DirtySpell{Spell: cfg.Spell}
-		magic, err := dirty.Parse()
-		if err != nil {
-			fmt.Fprintf(os.Stderr, ErrInvalidSpell+"\n", err)
-			os.Exit(1)
-		}
-		password, err := magic.ExtractPassword(matrix)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, ErrExtractPassword+"\n", err)
-			os.Exit(1)
-		}
-		password = truncatePassword(password, cfg.MaxLen)
-		fmt.Print(password)
+		printStrengthTable(effectiveEntropy, pwdEntropy, masterEntropy)
 	}
 }

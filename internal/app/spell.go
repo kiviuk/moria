@@ -170,3 +170,9 @@ func (m MagicSpell) ExtractPassword(matrix Matrix) (string, error) {
 	}
 	return password.String(), nil
 }
+
+// Entropy returns the password entropy in bits.
+// Each character in the password contributes CharsetBits bits of entropy.
+func (m MagicSpell) Entropy() int {
+	return len(m.Spell) * CharactersPerMatrixCell * CharsetBits
+}

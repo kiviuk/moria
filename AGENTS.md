@@ -24,7 +24,7 @@ Use `-v` for verbose output showing each test's PASS/FAIL status.
 ```
 moria/
 ├── cmd/moria/
-│   ├── main.go                # CLI entry point (--magic, --pretty, --live, --max-len, -h/--help)
+│   ├── main.go                # CLI entry point (--magic, --pretty, --live, --max-len, --show-pwd-strength, --ignore-paste, -h/--help)
 │   ├── live.go                # Bubbletea TUI for interactive password generation
 │   ├── live_test.go           # Tests for live mode model
 │   ├── password_prompt.go     # Bubbletea password input prompt (masked with •)
@@ -34,9 +34,11 @@ moria/
 │   ├── app/
 │   │   ├── config.go               # Package-level constants
 │   │   ├── spell.go                # Core domain types (MagicLetter, QueryLetter, MagicSpell, DirtySpell)
-│   │   ├── spell_test.go           # Tests for parsing, grouping, resolution, case sensitivity
+│   │   ├── spell_test.go           # Tests for parsing, grouping, resolution, case sensitivity, entropy
 │   │   ├── password_matrix.go      # Matrix type, generation, Pretty(), Cell access, ExpandToMatrix()
-│   │   └── password_matrix_test.go # Matrix dimension, content, and integration tests
+│   │   ├── password_matrix_test.go # Matrix dimension, content, and integration tests
+│   │   ├── strength.go             # Time-to-guess calculation and human-readable formatting
+│   │   └── strength_test.go        # Tests for CrackTime, FormatSeconds, Entropy
 │   └── testutil/
 │       └── testutil.go             # Shared test data generator (no import cycles)
 ├── .golangci.yml                   # golangci-lint configuration
@@ -61,6 +63,9 @@ moria "amazon" < master.txt
 
 # With max length (live and batch modes only)
 moria --max-len 16 "amazon" < master.txt
+
+# Show time-to-guess estimates (batch mode only)
+moria --show-pwd-strength "amazon" < master.txt
 
 # Help
 moria --help

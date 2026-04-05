@@ -44,3 +44,7 @@ const MasterPasswordChars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXY
 
 // MatrixBytes is the exact number of characters needed for the matrix.
 const MatrixBytes = PasswordMatrixRows * PasswordMatrixColumns * CharactersPerMatrixCell
+
+// CharsetBits is the entropy per character in the matrix (log₂(64) = 6 bits).
+// The master password character pool contains exactly 64 characters.
+const CharsetBits = 6
