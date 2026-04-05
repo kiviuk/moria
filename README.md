@@ -4,6 +4,8 @@ A deterministic, matrix-based password generator. Generate unique, strong passwo
 
 > *"Speak, friend, and enter."* — Your spell is the password. The matrix is the mine.
 
+![Moria live mode](docs/moria-live.png)
+
 ## Core Concept
 
 `moria` uses a **password matrix** — a grid of random character fragments — combined with a **spell** (any memorable string like "amazon" or "gmail") to derive unique passwords. The same master password + spell always produces the same password.
