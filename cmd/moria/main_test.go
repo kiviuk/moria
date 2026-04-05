@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/kiviuk/pwdgen/internal/app"
+	"github.com/kiviuk/moria/internal/app"
 )
 
 func TestReadAndTrim_PlainText(t *testing.T) {

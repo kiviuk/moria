@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/kiviuk/pwdgen/internal/testutil"
+	"github.com/kiviuk/moria/internal/testutil"
 )
 
 // newTestMatrix returns a static test matrix for use in generator tests.

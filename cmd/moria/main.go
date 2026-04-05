@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/kiviuk/pwdgen/internal/app"
+	"github.com/kiviuk/moria/internal/app"
 )
 
 type Config struct {
@@ -87,6 +87,8 @@ func parseArgs(args []string) (Config, map[string]bool, error) {
 				return cfg, flags, fmt.Errorf("--max-len value must be a number")
 			}
 			cfg.MaxLen = val
+		case "--help", "-h":
+			flags["--help"] = true
 		default:
 			positional = append(positional, args[i])
 		}
@@ -109,7 +111,7 @@ func validateConfig(cfg Config, flags map[string]bool) error {
 		if !present {
 			continue
 		}
-		if flag == "--magic" || flag == "--pretty" || flag == "--live" {
+		if flag == "--magic" || flag == "--pretty" || flag == "--live" || flag == "--help" {
 			continue
 		}
 		if !contains(mode.AllowedMods, flag) {
@@ -124,21 +126,42 @@ func validateConfig(cfg Config, flags map[string]bool) error {
 	return nil
 }
 
+func printUsage() {
+	fmt.Println("moria — deterministic password generator")
+	fmt.Println()
+	fmt.Println("Usage: moria [--magic|--pretty|--live] [--max-len N] <spell>")
+	fmt.Println()
+	fmt.Println("Options:")
+	fmt.Println("  --magic    Generate a master password")
+	fmt.Println("  --pretty   Display the password matrix from your master password")
+	fmt.Println("  --live     Interactive mode: type your spell and see the password build in real-time")
+	fmt.Println("  --max-len  Truncate output to N characters (live and batch modes only)")
+	fmt.Println("  -h, --help Show this help message")
+	fmt.Println()
+	fmt.Println("Examples:")
+	fmt.Println("  moria --magic                      # Generate a new master password")
+	fmt.Println("  moria \"amazon\"                     # Generate password for Amazon")
+	fmt.Println("  cat master.txt | moria \"amazon\"     # Piped from password manager")
+	fmt.Println("  cat master.txt | moria --pretty     # Display the matrix")
+	fmt.Println("  cat master.txt | moria --live       # Interactive mode")
+	fmt.Println("  cat master.txt | moria --max-len 16 \"amazon\"  # Limited length")
+}
+
 func main() {
 	if len(os.Args) < 2 {
-		fmt.Fprintf(os.Stderr, "Usage: pwdgen [--magic|--pretty|--live] [--max-len N] <spell>\n")
-		fmt.Fprintf(os.Stderr, "  --magic    Generate a master password\n")
-		fmt.Fprintf(os.Stderr, "  --pretty   Display the password matrix from your master password\n")
-		fmt.Fprintf(os.Stderr, "  --live     Interactive mode: type your spell and see the password build in real-time\n")
-		fmt.Fprintf(os.Stderr, "  --max-len  Truncate output to N characters (live and batch modes only)\n")
-		fmt.Fprintf(os.Stderr, "  <spell>    Generate a service password from your spell\n")
-		os.Exit(1)
+		printUsage()
+		os.Exit(0)
 	}
 
 	cfg, flags, err := parseArgs(os.Args[1:])
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
+	}
+
+	if flags["--help"] {
+		printUsage()
+		os.Exit(0)
 	}
 
 	if err := validateConfig(cfg, flags); err != nil {

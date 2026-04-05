@@ -4,8 +4,8 @@ import (
 	"testing"
 
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/kiviuk/pwdgen/internal/app"
-	"github.com/kiviuk/pwdgen/internal/testutil"
+	"github.com/kiviuk/moria/internal/app"
+	"github.com/kiviuk/moria/internal/testutil"
 )
 
 func newTestMatrix() app.Matrix {

@@ -1,4 +1,4 @@
-module github.com/kiviuk/pwdgen
+module github.com/kiviuk/moria
 
 go 1.26.1
 

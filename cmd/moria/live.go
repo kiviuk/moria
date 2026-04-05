@@ -6,7 +6,7 @@ import (
 
 	"github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/kiviuk/pwdgen/internal/app"
+	"github.com/kiviuk/moria/internal/app"
 )
 
 const colWidth = app.CharactersPerMatrixCell + 1

@@ -1,13 +1,13 @@
 .PHONY: build clean test
 
 build:
-	go build -o bin/pwdgen ./cmd/pwdgen
+	go build -o bin/moria ./cmd/moria
 
 run: build
-	./bin/pwdgen
+	./bin/moria
 
 install:
-	go install ./cmd
+	go install ./cmd/moria
 
 test:
 	go test ./...

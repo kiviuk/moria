@@ -34,7 +34,7 @@ pwdgen/
 │   │   └── password_matrix_test.go # Matrix dimension, content, and integration tests
 │   └── testutil/
 │       └── testutil.go             # Shared test data generator (no import cycles)
-├── go.mod                          # Module: github.com/kiviuk/pwdgen (go 1.26.1)
+├── go.mod                          # Module: github.com/kiviuk/moria (go 1.26.1)
 └── Makefile
 ```
 

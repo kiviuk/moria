@@ -23,7 +23,7 @@ Master Password (secret) + Spell (service name) → Unique Password
 ## Installation
 
 ```bash
-git clone https://github.com/kiviuk/pwdgen.git
+git clone https://github.com/kiviuk/moria.git
 cd pwdgen
 make build
 ```
