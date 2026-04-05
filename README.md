@@ -1,10 +1,12 @@
-# pwdgen
+# moria
 
 A deterministic, matrix-based password generator. Generate unique, strong passwords for every service from a single master password and a memorable spell.
 
+> *"Speak, friend, and enter."* — Your spell is the password. The matrix is the mine.
+
 ## Core Concept
 
-`pwdgen` uses a **password matrix** — a grid of random character fragments — combined with a **spell** (any memorable string like "amazon" or "gmail") to derive unique passwords. The same master password + spell always produces the same password.
+`moria` uses a **password matrix** — a grid of random character fragments — combined with a **spell** (any memorable string like "amazon" or "gmail") to derive unique passwords. The same master password + spell always produces the same password.
 
 ```
 Master Password (secret) + Spell (service name) → Unique Password
@@ -18,24 +20,25 @@ Master Password (secret) + Spell (service name) → Unique Password
 - **Shell-safe master passwords** — generated passwords avoid shell metacharacters
 - **Interactive live mode** — type your spell and watch the password build in real-time
 - **Pretty matrix display** — visualize the password matrix for verification
+- **Masked password input** — enter your master password with hidden characters (•••)
 - **Configurable** — all matrix dimensions are compile-time constants
 
 ## Installation
 
 ```bash
 git clone https://github.com/kiviuk/moria.git
-cd pwdgen
+cd moria
 make build
 ```
 
-The binary is built to `bin/pwdgen`.
+The binary is built to `bin/moria`.
 
 ## Quick Start
 
 ### 1. Generate a Master Password
 
 ```bash
-./bin/pwdgen --magic
+./bin/moria --magic
 ```
 
 This outputs a 300-character shell-safe random string. **Save this securely** — it's your master key. Store it in KeePass, 1Password, or any password manager.
@@ -43,11 +46,11 @@ This outputs a 300-character shell-safe random string. **Save this securely** �
 ### 2. Generate a Service Password
 
 ```bash
-# Interactive (paste master password when prompted)
-./bin/pwdgen "amazon"
+# Interactive (enter master password with masked input)
+./bin/moria "amazon"
 
 # Piped (from password manager)
-cat master.txt | ./bin/pwdgen "amazon"
+cat master.txt | ./bin/moria "amazon"
 ```
 
 Output: a unique password derived from your master password + the spell "amazon".
@@ -55,7 +58,7 @@ Output: a unique password derived from your master password + the spell "amazon"
 ### 3. Display the Matrix
 
 ```bash
-cat master.txt | ./bin/pwdgen --pretty
+cat master.txt | ./bin/moria --pretty
 ```
 
 Shows the full password matrix with column headers:
@@ -71,7 +74,7 @@ Shows the full password matrix with column headers:
 ### 4. Interactive Live Mode
 
 ```bash
-cat master.txt | ./bin/pwdgen --live
+cat master.txt | ./bin/moria --live
 ```
 
 Type your spell character by character. The matrix highlights visited cells and the password builds in real-time. Press Enter to output the final password.
@@ -81,16 +84,16 @@ Type your spell character by character. The matrix highlights visited cells and 
 Some sites cap password length. Use `--max-len` to truncate:
 
 ```bash
-cat master.txt | ./bin/pwdgen --max-len 16 "amazon"
+cat master.txt | ./bin/moria --max-len 16 "amazon"
 ```
 
 ## How It Works
 
 ### The Algorithm
 
-1. **Master Password → Matrix**: Your 300-character master password is arranged into a 10×10 grid of 3-character cells
+1. **Master Password → Matrix**: Your master password is deterministically expanded into a grid of random character fragments
 2. **Spell → Path**: Each character in your spell determines a cell to read:
-   - **Row** = character position in spell, modulo 10 (uppercase letters shift by +5)
+   - **Row** = character position in spell, modulo `PasswordMatrixRows` (uppercase letters shift by `PasswordMatrixRows/2`)
    - **Column** = letter group (A-C→1, D-F→2, ..., Y-Z→9, non-letters→0)
 3. **Extract Password**: Concatenate the cell contents along the path
 
@@ -116,7 +119,7 @@ Uppercase letters shift the row by `PasswordMatrixRows/2`, making `"amazon"` and
 ## Security Model
 
 ### What's Secret
-- **Master password** — the 300-character random string. This is your only secret.
+- **Master password** — the random string (or any input like an SSH key). This is your only secret.
 
 ### What's Public
 - **Spell** — the service name (e.g., "amazon"). An attacker knowing this gets nothing without the master password.
@@ -131,7 +134,7 @@ Uppercase letters shift the row by `PasswordMatrixRows/2`, making `"amazon"` and
 Any input (SSH key, passphrase, random string) is deterministically expanded to the matrix size using **HKDF-SHA256** with rejection sampling for zero modulo bias. This means you can use your SSH private key as a master key:
 
 ```bash
-cat ~/.ssh/id_ed25519 | ./bin/pwdgen "amazon"
+cat ~/.ssh/id_ed25519 | ./bin/moria "amazon"
 ```
 
 ## Configuration
@@ -150,24 +153,26 @@ To change the matrix size, edit the constants and run `make test && make build`.
 ## CLI Reference
 
 ```
-Usage: pwdgen [--magic|--pretty|--live] [--max-len N] <spell>
+Usage: moria [--magic|--pretty|--live] [--max-len N] <spell>
 
+Options:
   --magic    Generate a master password
   --pretty   Display the password matrix from your master password
   --live     Interactive mode: type your spell and see the password build in real-time
   --max-len  Truncate output to N characters (live and batch modes only)
-  <spell>    Generate a service password from your spell
+  -h, --help Show this help message
 ```
 
 ## Project Structure
 
 ```
-pwdgen/
-├── cmd/pwdgen/
-│   ├── main.go             # CLI entry point
-│   ├── live.go             # Bubbletea TUI for interactive mode
-│   ├── live_test.go        # Tests for live mode
-│   └── main_test.go        # Tests for CLI, flag parsing, validation
+moria/
+├── cmd/moria/
+│   ├── main.go                # CLI entry point
+│   ├── live.go                # Bubbletea TUI for interactive mode
+│   ├── live_test.go           # Tests for live mode
+│   ├── main_test.go           # Tests for CLI, flag parsing, validation
+│   └── password_prompt.go     # Bubbletea password input prompt
 ├── internal/
 │   ├── app/
 │   │   ├── config.go               # Package-level constants
@@ -187,7 +192,7 @@ pwdgen/
 make test                          # Run all tests
 go clean -testcache && make test   # Clear cache and re-run
 go test ./internal/app/ -v         # Verbose output for app tests
-go test ./cmd/pwdgen/ -v           # Verbose output for cmd tests
+go test ./cmd/moria/ -v            # Verbose output for cmd tests
 go test ./... -run TestQuery       # Run single test by name
 ```
 

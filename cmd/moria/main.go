@@ -172,7 +172,27 @@ func main() {
 	mode := modes[cfg.Mode]
 
 	if mode.NeedsStdin {
-		cfg.Master = readMasterPassword()
+		stat, err := os.Stdin.Stat()
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Warning: could not stat stdin: %v\n", err)
+		}
+		isPiped := (stat.Mode() & os.ModeCharDevice) == 0
+
+		if isPiped {
+			data, err := io.ReadAll(os.Stdin)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Failed to read master password from pipe: %v\n", err)
+				os.Exit(1)
+			}
+			cfg.Master = strings.TrimSpace(string(data))
+		} else {
+			master, err := getPassword()
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+				os.Exit(1)
+			}
+			cfg.Master = master
+		}
 		cfg.Master = app.ExpandToMatrix(cfg.Master)
 	}
 
@@ -234,19 +254,4 @@ func main() {
 		}
 		fmt.Print(password)
 	}
-}
-
-func readMasterPassword() string {
-	stat, _ := os.Stdin.Stat()
-	isPipe := (stat.Mode() & os.ModeCharDevice) == 0
-
-	if !isPipe {
-		fmt.Print("Enter master password: ")
-	}
-	return readAndTrim(os.Stdin)
-}
-
-func readAndTrim(r io.Reader) string {
-	data, _ := io.ReadAll(r)
-	return strings.TrimSpace(string(data))
 }
