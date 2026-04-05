@@ -225,6 +225,61 @@ Imagine you have a 52-card deck and want to randomly pick a number from 1 to 10.
 Rejection sampling fixes this by saying: "If you draw one of those extra cards, put it back and draw again." You keep drawing until you get a card from the fair range. The result is that every number from 1 to 10 has exactly the same chance of being picked.
 In moria's case, a random byte can be 0–255 (256 values), but the character pool might be 64 characters. Since 256 doesn't always divide evenly into the pool size, some characters would be slightly more likely without rejection sampling. By discarding the "extra" bytes and drawing fresh ones, every character gets a perfectly fair shot.
 
+## Understanding Your Security
+
+The strength of your derived passwords is limited by your master password. A long spell cannot compensate for a weak master.
+
+`--strength` shows two completely separate attack vectors because they have completely different speeds and assumptions:
+
+### Example: A Passphrase Master Password
+
+```bash
+echo "i'm super hunger today" | ./bin/moria --strength "amazon"
+54Oy^L0mn2JL,S6ETv
+
+Password entropy: 108 bits
+Master entropy:   50 bits
+
+Time to guess (generated password):
+  Online (rate-limited)    372.6 billion times the age of the universe
+  Offline (bcrypt/Argon2)  37.3 billion times the age of the universe
+  Offline (MD5/SHA1)       3.7 thousand times the age of the universe
+  GPU cluster (8x 4090)    15 times the age of the universe
+
+Time to guess (master password, via Argon2id):
+  Single CPU               178 years
+  Single GPU               65 days
+  GPU cluster (8x 4090)    178 years
+```
+
+**Why does the master password show 50 bits for 22 characters?**
+
+zxcvbn detects that `"i'm super hunger today"` is four common English words. Instead of multiplying 22 × 6 bits (which assumes random gibberish like `X9q!pP2`), it calculates the actual entropy of a dictionary-word passphrase: ~50 bits. That means an attacker needs ~2⁴⁹ guesses (562 trillion) to crack it.
+
+**The magic of Argon2id:**
+
+If a hacker stole your master password hash from a normal website using MD5/SHA1, 50 bits would take them ~1.5 hours on a GPU cluster. Trivial.
+
+But moria forces the attacker through Argon2id (64MB RAM per guess), bottlenecking a GPU cluster to ~100,000 guesses/sec. 562 trillion / 100,000 = **178 years**. Argon2id turned a weak human phrase into a 178-year mathematical wall.
+
+**The generated password:**
+
+The 18-character output `54Oy^L0mn2JL,S6ETv` has 108 bits of entropy (18 × 6). Even at 25 trillion guesses/sec (GPU cluster against MD5), it takes 15 times the age of the universe.
+
+**What this tells you:**
+
+- If Amazon gets hacked: the attackers get the hash of `54Oy^L0mn2JL,S6ETv`. They will never crack it. It will outlast the universe.
+- If someone targets **you**: they know you use moria and know your spell. They'll try to guess your master password. Because it's made of dictionary words, a nation-state with a GPU cluster could crack it in 178 years.
+
+### The Rule
+
+Your effective security is the minimum of two separate calculations:
+
+1. **Generated password**: `len(password) × 6 bits`, cracked at fast-hash speeds (MD5/SHA1)
+2. **Master password**: `zxcvbn entropy`, cracked at Argon2id speeds (~100K guesses/sec on GPU)
+
+Use `--strength` to see both. If the master password is the bottleneck, pick a stronger master — not a longer spell.
+
 ## Configuration
 
 All matrix dimensions are compile-time constants in `internal/app/config.go`:
