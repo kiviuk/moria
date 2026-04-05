@@ -5,7 +5,7 @@ package app
 const PasswordMatrixRows = 20
 
 // CharactersPerMatrixCell is the number of characters stored in each matrix cell.
-const CharactersPerMatrixCell = 6
+const CharactersPerMatrixCell = 3
 
 // AlphabetSize is the total number of letters in the English alphabet.
 const AlphabetSize = 26

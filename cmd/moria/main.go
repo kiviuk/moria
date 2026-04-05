@@ -10,45 +10,43 @@ import (
 	"github.com/kiviuk/moria/internal/app"
 )
 
+type Mode int
+
+const (
+	ModeBatch Mode = iota
+	ModeMagic
+	ModePretty
+	ModeLive
+)
+
+func (m Mode) String() string {
+	return [...]string{"batch", "magic", "pretty", "live"}[m]
+}
+
+func (m Mode) needsStdin() bool {
+	return m == ModePretty || m == ModeLive || m == ModeBatch
+}
+
+func (m Mode) needsSpell() bool {
+	return m == ModeBatch
+}
+
+func (m Mode) allowedMods() []string {
+	switch m {
+	case ModeLive:
+		return []string{"--max-len", "--ignore-paste"}
+	case ModeBatch:
+		return []string{"--max-len"}
+	default:
+		return nil
+	}
+}
+
 type Config struct {
-	Mode   string
+	Mode   Mode
 	Spell  string
 	MaxLen int
 	Master string
-}
-
-type Mode struct {
-	Name        string
-	NeedsStdin  bool
-	NeedsSpell  bool
-	AllowedMods []string
-}
-
-var modes = map[string]Mode{
-	"magic": {
-		Name:        "magic",
-		NeedsStdin:  false,
-		NeedsSpell:  false,
-		AllowedMods: nil,
-	},
-	"pretty": {
-		Name:        "pretty",
-		NeedsStdin:  true,
-		NeedsSpell:  false,
-		AllowedMods: nil,
-	},
-	"live": {
-		Name:        "live",
-		NeedsStdin:  true,
-		NeedsSpell:  false,
-		AllowedMods: []string{"--max-len"},
-	},
-	"batch": {
-		Name:        "batch",
-		NeedsStdin:  true,
-		NeedsSpell:  true,
-		AllowedMods: []string{"--max-len"},
-	},
 }
 
 func contains(slice []string, item string) bool {
@@ -61,7 +59,7 @@ func contains(slice []string, item string) bool {
 }
 
 func parseArgs(args []string) (Config, map[string]bool, error) {
-	cfg := Config{Mode: "batch"}
+	cfg := Config{Mode: ModeBatch}
 	flags := make(map[string]bool)
 	var positional []string
 
@@ -69,24 +67,26 @@ func parseArgs(args []string) (Config, map[string]bool, error) {
 		switch args[i] {
 		case "--magic":
 			flags["--magic"] = true
-			cfg.Mode = "magic"
+			cfg.Mode = ModeMagic
 		case "--pretty":
 			flags["--pretty"] = true
-			cfg.Mode = "pretty"
+			cfg.Mode = ModePretty
 		case "--live":
 			flags["--live"] = true
-			cfg.Mode = "live"
+			cfg.Mode = ModeLive
 		case "--max-len":
 			flags["--max-len"] = true
 			if i+1 >= len(args) {
-				return cfg, flags, fmt.Errorf("--max-len requires a value")
+				return cfg, flags, fmt.Errorf(ErrMaxLenRequiresValue)
 			}
 			i++
 			val, err := strconv.Atoi(args[i])
 			if err != nil {
-				return cfg, flags, fmt.Errorf("--max-len value must be a number")
+				return cfg, flags, fmt.Errorf(ErrMaxLenNotNumber)
 			}
 			cfg.MaxLen = val
+		case "--ignore-paste":
+			flags["--ignore-paste"] = true
 		case "--help", "-h":
 			flags["--help"] = true
 		default:
@@ -102,11 +102,6 @@ func parseArgs(args []string) (Config, map[string]bool, error) {
 }
 
 func validateConfig(cfg Config, flags map[string]bool) error {
-	mode, ok := modes[cfg.Mode]
-	if !ok {
-		return fmt.Errorf("unknown mode: %s", cfg.Mode)
-	}
-
 	for flag, present := range flags {
 		if !present {
 			continue
@@ -114,13 +109,13 @@ func validateConfig(cfg Config, flags map[string]bool) error {
 		if flag == "--magic" || flag == "--pretty" || flag == "--live" || flag == "--help" {
 			continue
 		}
-		if !contains(mode.AllowedMods, flag) {
-			return fmt.Errorf("%s not allowed in %s mode", flag, mode.Name)
+		if !contains(cfg.Mode.allowedMods(), flag) {
+			return fmt.Errorf(ErrModNotAllowed, flag, cfg.Mode)
 		}
 	}
 
-	if mode.NeedsSpell && cfg.Spell == "" {
-		return fmt.Errorf("%s mode requires a spell", mode.Name)
+	if cfg.Mode.needsSpell() && cfg.Spell == "" {
+		return fmt.Errorf(ErrSpellRequired, cfg.Mode)
 	}
 
 	return nil
@@ -129,21 +124,23 @@ func validateConfig(cfg Config, flags map[string]bool) error {
 func printUsage() {
 	fmt.Println("moria — deterministic password generator")
 	fmt.Println()
-	fmt.Println("Usage: moria [--magic|--pretty|--live] [--max-len N] <spell>")
+	fmt.Println("Usage: moria [--magic|--pretty|--live] [--max-len N] [--ignore-paste] <spell>")
 	fmt.Println()
 	fmt.Println("Options:")
-	fmt.Println("  --magic    Generate a master password")
-	fmt.Println("  --pretty   Display the password matrix from your master password")
-	fmt.Println("  --live     Interactive mode: type your spell and see the password build in real-time")
-	fmt.Println("  --max-len  Truncate generated output to N characters (live and batch modes only)")
-	fmt.Println("  -h, --help Show this help message")
+	fmt.Println("  --magic          Generate a master password")
+	fmt.Println("  --pretty         Display the password matrix from your master password")
+	fmt.Println("  --live           Interactive mode: type your spell and see the password build in real-time")
+	fmt.Println("  --max-len        Truncate generated output to N characters (live and batch modes only)")
+	fmt.Println("  --ignore-paste   Ignore pasted input in live mode (single characters only, live mode only)")
+	fmt.Println("  -h, --help       Show this help message")
 	fmt.Println()
 	fmt.Println("Examples:")
-	fmt.Println("  moria --magic                      # Generate a new master password")
-	fmt.Println("  moria \"amazon\"                     # Generate password for Amazon")
-	fmt.Println("  cat master.txt | moria \"amazon\"     # Piped from password manager")
-	fmt.Println("  cat master.txt | moria --pretty     # Display the matrix")
-	fmt.Println("  cat master.txt | moria --live       # Interactive mode")
+	fmt.Println("  moria --magic                              # Generate a new master password")
+	fmt.Println("  moria \"amazon\"                             # Generate password for Amazon")
+	fmt.Println("  cat master.txt | moria \"amazon\"             # Piped from password manager")
+	fmt.Println("  cat master.txt | moria --pretty             # Display the matrix")
+	fmt.Println("  cat master.txt | moria --live               # Interactive mode (paste allowed)")
+	fmt.Println("  cat master.txt | moria --live --ignore-paste # Interactive mode (paste blocked)")
 	fmt.Println("  cat master.txt | moria --max-len 16 \"amazon\"  # Limited length")
 }
 
@@ -169,9 +166,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	mode := modes[cfg.Mode]
-
-	if mode.NeedsStdin {
+	if cfg.Mode.needsStdin() {
 		stat, err := os.Stdin.Stat()
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Warning: could not stat stdin: %v\n", err)
@@ -181,7 +176,7 @@ func main() {
 		if isPiped {
 			data, err := io.ReadAll(os.Stdin)
 			if err != nil {
-				fmt.Fprintf(os.Stderr, "Failed to read master password from pipe: %v\n", err)
+				fmt.Fprintf(os.Stderr, ErrFailedReadMaster+"\n", err)
 				os.Exit(1)
 			}
 			cfg.Master = strings.TrimSpace(string(data))
@@ -197,31 +192,35 @@ func main() {
 	}
 
 	switch cfg.Mode {
-	case "magic":
+	case ModeMagic:
 		master, err := app.GenerateMasterPassword(app.MatrixBytes, app.MasterPasswordChars)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Failed to generate master password: %v\n", err)
+			fmt.Fprintf(os.Stderr, ErrFailedGenerateMaster+"\n", err)
 			os.Exit(1)
 		}
 		fmt.Print(master)
 
-	case "pretty":
+	case ModePretty:
 		matrix, err := app.NewMatrix(cfg.Master)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Failed to create matrix: %v\n", err)
+			fmt.Fprintf(os.Stderr, ErrFailedCreateMatrix+"\n", err)
 			os.Exit(1)
 		}
 		fmt.Print(matrix.Pretty())
 
-	case "live":
+	case ModeLive:
 		matrix, err := app.NewMatrix(cfg.Master)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Failed to create matrix: %v\n", err)
+			fmt.Fprintf(os.Stderr, ErrFailedCreateMatrix+"\n", err)
 			os.Exit(1)
 		}
-		finalModel, err := LiveMode(matrix, cfg.MaxLen)
+		pasteMode := PasteAllowed
+		if flags["--ignore-paste"] {
+			pasteMode = PasteIgnored
+		}
+		finalModel, err := LiveMode(matrix, cfg.MaxLen, pasteMode)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Live mode error: %v\n", err)
+			fmt.Fprintf(os.Stderr, ErrLiveMode+"\n", err)
 			os.Exit(1)
 		}
 		password := finalModel.password
@@ -232,21 +231,21 @@ func main() {
 			fmt.Print(password)
 		}
 
-	case "batch":
+	case ModeBatch:
 		matrix, err := app.NewMatrix(cfg.Master)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Failed to create matrix: %v\n", err)
+			fmt.Fprintf(os.Stderr, ErrFailedCreateMatrix+"\n", err)
 			os.Exit(1)
 		}
 		dirty := app.DirtySpell{Spell: cfg.Spell}
 		magic, err := dirty.Parse()
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Invalid spell: %v\n", err)
+			fmt.Fprintf(os.Stderr, ErrInvalidSpell+"\n", err)
 			os.Exit(1)
 		}
 		password, err := magic.ExtractPassword(matrix)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Failed to extract password: %v\n", err)
+			fmt.Fprintf(os.Stderr, ErrExtractPassword+"\n", err)
 			os.Exit(1)
 		}
 		if cfg.MaxLen > 0 && len(password) > cfg.MaxLen {

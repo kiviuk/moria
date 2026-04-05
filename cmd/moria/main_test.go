@@ -151,7 +151,7 @@ func TestParseArgs_MaxLen(t *testing.T) {
 
 func TestValidateConfig_SpellRequired(t *testing.T) {
 	// Verify batch mode requires a spell
-	cfg := Config{Mode: "batch", Spell: ""}
+	cfg := Config{Mode: ModeBatch, Spell: ""}
 	flags := map[string]bool{}
 
 	err := validateConfig(cfg, flags)
@@ -161,16 +161,20 @@ func TestValidateConfig_SpellRequired(t *testing.T) {
 }
 
 func TestValidateConfig_AllowedMods(t *testing.T) {
-	// Verify --max-len is allowed in batch and live modes
+	// Verify --max-len and --ignore-paste are allowed only in live/batch modes
 	tests := []struct {
 		cfg         Config
 		flags       map[string]bool
 		expectedErr bool
 	}{
-		{Config{Mode: "batch", Spell: "test", MaxLen: 16}, map[string]bool{"--max-len": true}, false},
-		{Config{Mode: "live", Spell: "", MaxLen: 16}, map[string]bool{"--max-len": true, "--live": true}, false},
-		{Config{Mode: "magic", Spell: "", MaxLen: 16}, map[string]bool{"--max-len": true, "--magic": true}, true},
-		{Config{Mode: "pretty", Spell: "", MaxLen: 16}, map[string]bool{"--max-len": true, "--pretty": true}, true},
+		{Config{Mode: ModeBatch, Spell: "test", MaxLen: 16}, map[string]bool{"--max-len": true}, false},
+		{Config{Mode: ModeLive, Spell: "", MaxLen: 16}, map[string]bool{"--max-len": true, "--live": true}, false},
+		{Config{Mode: ModeMagic, Spell: "", MaxLen: 16}, map[string]bool{"--max-len": true, "--magic": true}, true},
+		{Config{Mode: ModePretty, Spell: "", MaxLen: 16}, map[string]bool{"--max-len": true, "--pretty": true}, true},
+		{Config{Mode: ModeLive, Spell: ""}, map[string]bool{"--live": true, "--ignore-paste": true}, false},
+		{Config{Mode: ModeBatch, Spell: "test"}, map[string]bool{"--ignore-paste": true}, true},
+		{Config{Mode: ModeMagic}, map[string]bool{"--ignore-paste": true, "--magic": true}, true},
+		{Config{Mode: ModePretty}, map[string]bool{"--ignore-paste": true, "--pretty": true}, true},
 	}
 
 	for _, tt := range tests {
@@ -182,6 +186,39 @@ func TestValidateConfig_AllowedMods(t *testing.T) {
 		} else {
 			if err != nil {
 				t.Errorf("cfg %+v: unexpected error: %v", tt.cfg, err)
+			}
+		}
+	}
+}
+
+func TestParseArgs_IgnorePaste(t *testing.T) {
+	// Verify --ignore-paste flag is parsed correctly
+	tests := []struct {
+		args          []string
+		expectedFlags map[string]bool
+		expectedErr   bool
+	}{
+		{[]string{"--live", "--ignore-paste"}, map[string]bool{"--live": true, "--ignore-paste": true}, false},
+		{[]string{"--ignore-paste", "--live"}, map[string]bool{"--live": true, "--ignore-paste": true}, false},
+		{[]string{"--live"}, map[string]bool{"--live": true}, false},
+		{[]string{"--ignore-paste"}, map[string]bool{"--ignore-paste": true}, false},
+	}
+
+	for _, tt := range tests {
+		_, flags, err := parseArgs(tt.args)
+		if tt.expectedErr {
+			if err == nil {
+				t.Errorf("args %v: expected error, got nil", tt.args)
+			}
+			continue
+		}
+		if err != nil {
+			t.Errorf("args %v: unexpected error: %v", tt.args, err)
+			continue
+		}
+		for flag, expected := range tt.expectedFlags {
+			if flags[flag] != expected {
+				t.Errorf("args %v: flag %s expected %v, got %v", tt.args, flag, expected, flags[flag])
 			}
 		}
 	}

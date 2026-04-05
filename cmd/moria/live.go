@@ -11,6 +11,20 @@ import (
 
 const colWidth = app.CharactersPerMatrixCell + 1
 
+type PasteMode int
+
+const (
+	PasteAllowed PasteMode = iota
+	PasteIgnored
+)
+
+type LiveState int
+
+const (
+	StateNormal LiveState = iota
+	StateMaxLenReached
+)
+
 var (
 	cellStyle      = lipgloss.NewStyle().Width(colWidth).Align(lipgloss.Left)
 	highlightStyle = lipgloss.NewStyle().Width(colWidth).Align(lipgloss.Left).Foreground(lipgloss.Color("10"))
@@ -28,14 +42,18 @@ type liveModel struct {
 	queryLetters []app.QueryLetter
 	password     string
 	maxLen       int
+	pasteMode    PasteMode
+	state        LiveState
 	err          string
 }
 
-func newLiveModel(matrix app.Matrix, maxLen int) liveModel {
+func newLiveModel(matrix app.Matrix, maxLen int, pasteMode PasteMode) liveModel {
 	return liveModel{
 		matrix:       matrix,
 		queryLetters: make([]app.QueryLetter, 0),
 		maxLen:       maxLen,
+		pasteMode:    pasteMode,
+		state:        StateNormal,
 	}
 }
 
@@ -56,23 +74,35 @@ func (m liveModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.spell = m.spell[:len(m.spell)-1]
 				m.queryLetters = m.queryLetters[:len(m.queryLetters)-1]
 				m.password = m.password[:len(m.password)-app.CharactersPerMatrixCell]
+				m.state = StateNormal
 				m.err = ""
 			}
-		default:
-			s := msg.String()
-			if len(s) == 1 {
-				dirty := app.DirtySpell{Spell: s}
+		case tea.KeyUp, tea.KeyDown, tea.KeyLeft, tea.KeyRight,
+			tea.KeyHome, tea.KeyEnd, tea.KeyPgUp, tea.KeyPgDown,
+			tea.KeyInsert, tea.KeyDelete:
+			return m, nil
+		case tea.KeyRunes:
+			if m.pasteMode == PasteIgnored && len(msg.Runes) > 1 {
+				m.err = MsgPasteIgnored
+				return m, nil
+			}
+			for _, ch := range msg.Runes {
+				if ch < 32 || ch == 127 {
+					continue
+				}
+				charStr := string(ch)
+				dirty := app.DirtySpell{Spell: charStr}
 				_, parseErr := dirty.Parse()
 				if parseErr != nil {
-					m.err = fmt.Sprintf("invalid char: %q", s)
+					m.err = fmt.Sprintf(MsgInvalidChar, charStr)
 					return m, nil
 				}
 				if m.maxLen > 0 && len(m.password) >= m.maxLen {
-					m.err = "max length reached"
+					m.state = StateMaxLenReached
 					return m, nil
 				}
-				m.spell += s
-				letter := app.MagicLetter{Letter: s, LetterPosition: len(m.spell) - 1}
+				m.spell += charStr
+				letter := app.MagicLetter{Letter: charStr, LetterPosition: len(m.spell) - 1}
 				query := letter.Query()
 				m.queryLetters = append(m.queryLetters, query)
 				cell, cellErr := m.matrix.Cell(query)
@@ -81,6 +111,7 @@ func (m liveModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					return m, nil
 				}
 				m.password += cell
+				m.state = StateNormal
 				m.err = ""
 			}
 		}
@@ -137,8 +168,8 @@ func (m liveModel) View() string {
 
 	if m.maxLen > 0 {
 		sb.WriteString(fmt.Sprintf("  Password: %s (%d/%d)\n", passStyle.Render(m.password), len(m.password), m.maxLen))
-		if len(m.password) >= m.maxLen {
-			sb.WriteString(fmt.Sprintf("  %s\n", errorStyle.Render("[MAX LENGTH REACHED]")))
+		if m.state == StateMaxLenReached {
+			sb.WriteString(fmt.Sprintf("  %s\n", errorStyle.Render(fmt.Sprintf(MsgMaxPasswordReached, m.maxLen))))
 		}
 	} else {
 		sb.WriteString(fmt.Sprintf("  Password: %s\n", passStyle.Render(m.password)))
@@ -149,14 +180,14 @@ func (m liveModel) View() string {
 	}
 
 	sb.WriteByte('\n')
-	sb.WriteString(hintStyle.Render("  [Backspace] delete  [Enter] finish  [Ctrl+C] quit"))
+	sb.WriteString(hintStyle.Render("  [Backspace] delete  [Enter] finish  [Ctrl+C]|[ESC] quit"))
 	sb.WriteByte('\n')
 
 	return sb.String()
 }
 
-func LiveMode(matrix app.Matrix, maxLen int) (liveModel, error) {
-	m := newLiveModel(matrix, maxLen)
+func LiveMode(matrix app.Matrix, maxLen int, pasteMode PasteMode) (liveModel, error) {
+	m := newLiveModel(matrix, maxLen, pasteMode)
 	p := tea.NewProgram(m, tea.WithAltScreen())
 
 	final, err := p.Run()
@@ -166,7 +197,7 @@ func LiveMode(matrix app.Matrix, maxLen int) (liveModel, error) {
 
 	lm, ok := final.(liveModel)
 	if !ok {
-		return liveModel{}, fmt.Errorf("unexpected model type returned by bubbletea")
+		return liveModel{}, fmt.Errorf(ErrUnexpectedModel)
 	}
 
 	return lm, nil
