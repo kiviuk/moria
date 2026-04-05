@@ -2,7 +2,7 @@ package app
 
 // PasswordMatrixRows is the number of rows in the password fragment matrix.
 // Also used as the modulus for wrapping character positions.
-const PasswordMatrixRows = 10
+const PasswordMatrixRows = 20
 
 // CharactersPerMatrixCell is the number of characters stored in each matrix cell.
 const CharactersPerMatrixCell = 6
