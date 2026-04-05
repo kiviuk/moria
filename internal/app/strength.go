@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"math"
 
-	"github.com/nbutton23/zxcvbn-go"
+	"github.com/ccojocar/zxcvbn-go"
 )
 
 // Attack scenario speeds in guesses per second.
@@ -169,10 +169,10 @@ func FormatSeconds(seconds float64) string {
 	return fmt.Sprintf("%.1f billion times the age of the universe", universeAges/1_000_000_000)
 }
 
-// EstimateMasterEntropy uses zxcvbn to evaluate human-chosen passwords.
+// CalculateMasterPasswordEntropy uses zxcvbn to evaluate human-chosen master passwords.
 // zxcvbn detects dictionary words, patterns, common substitutions, and keyboard walks,
 // providing a realistic entropy estimate rather than naive length × charset math.
-func EstimateMasterEntropy(input string) int {
+func CalculateMasterPasswordEntropy(input string) int {
 	if input == "" {
 		return 0
 	}

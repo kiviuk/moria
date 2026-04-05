@@ -57,7 +57,7 @@ func (m Mode) allowedMods() []string {
 	case ModeLive:
 		return []string{"--max-len", "--ignore-paste"}
 	case ModeBatch:
-		return []string{"--max-len", "--strength"}
+		return []string{"--max-len", "--super-strength"}
 	default:
 		return nil
 	}
@@ -156,8 +156,8 @@ func parseArgs(args []string) (Config, map[string]bool, error) {
 			cfg.MaxLen = val
 		case "--ignore-paste":
 			flags["--ignore-paste"] = true
-		case "--strength":
-			flags["--strength"] = true
+		case "--super-strength":
+			flags["--super-strength"] = true
 			cfg.Strength = true
 		case "--help", "-h":
 			flags["--help"] = true
@@ -354,7 +354,15 @@ func runBatchMode(cfg Config) {
 
 	if cfg.Strength {
 		pwdEntropy := len(password) * app.CharsetBits
-		masterEntropy := app.EstimateMasterEntropy(cfg.MasterRaw)
+		masterEntropy := calculateBatchEntropy(cfg.MasterRaw)
 		printStrengthTable(pwdEntropy, masterEntropy)
 	}
+}
+
+// calculateBatchEntropy returns the entropy of the master password for batch mode.
+func calculateBatchEntropy(masterPasswordRaw string) int {
+	if masterPasswordRaw == "" {
+		return 0
+	}
+	return app.CalculateMasterPasswordEntropy(masterPasswordRaw)
 }

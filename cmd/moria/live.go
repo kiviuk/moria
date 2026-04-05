@@ -22,6 +22,9 @@ const (
 	colorGray        = lipgloss.Color("241")
 )
 
+// MasterPasswordEntropy represents the estimated entropy of the master password in bits.
+type MasterPasswordEntropy int
+
 // PasteMode controls whether pasted (multi-character) input is accepted in live mode.
 type PasteMode int
 
@@ -62,27 +65,38 @@ var (
 
 // liveModel holds the state for the interactive live mode TUI.
 type liveModel struct {
-	matrix       app.Matrix
-	masterRaw    string
-	spell        string
-	queryLetters []app.QueryLetter
-	password     string
-	maxLen       int
-	pasteMode    PasteMode
-	state        LiveState
-	err          string
+	matrix                app.Matrix
+	masterPasswordRaw     string
+	masterPasswordEntropy MasterPasswordEntropy
+	spell                 string
+	queryLetters          []app.QueryLetter
+	password              string
+	maxLen                int
+	pasteMode             PasteMode
+	state                 LiveState
+	err                   string
 }
 
 // newLiveModel creates a liveModel initialized with the given matrix and settings.
-func newLiveModel(matrix app.Matrix, masterRaw string, maxLen int, pasteMode PasteMode) liveModel {
+func newLiveModel(matrix app.Matrix, masterPasswordRaw string, maxLen int, pasteMode PasteMode) liveModel {
+	entropy := calculateLiveEntropy(masterPasswordRaw)
 	return liveModel{
-		matrix:       matrix,
-		masterRaw:    masterRaw,
-		queryLetters: make([]app.QueryLetter, 0),
-		maxLen:       maxLen,
-		pasteMode:    pasteMode,
-		state:        StateNormal,
+		matrix:                matrix,
+		masterPasswordRaw:     masterPasswordRaw,
+		masterPasswordEntropy: entropy,
+		queryLetters:          make([]app.QueryLetter, 0),
+		maxLen:                maxLen,
+		pasteMode:             pasteMode,
+		state:                 StateNormal,
 	}
+}
+
+// calculateLiveEntropy returns the entropy of the master password for live mode.
+func calculateLiveEntropy(masterPasswordRaw string) MasterPasswordEntropy {
+	if masterPasswordRaw == "" {
+		return 0
+	}
+	return MasterPasswordEntropy(app.CalculateMasterPasswordEntropy(masterPasswordRaw))
 }
 
 // Init is the Bubbletea model initialization. Returns nil for no initial command.
@@ -207,7 +221,7 @@ func (m liveModel) View() string {
 	}
 
 	pwdEntropy := len(m.password) * app.CharsetBits
-	masterEntropy := app.EstimateMasterEntropy(m.masterRaw)
+	masterEntropy := int(m.masterPasswordEntropy)
 	effective := pwdEntropy
 	if masterEntropy < effective {
 		effective = masterEntropy
@@ -280,8 +294,8 @@ func strengthBar(effective, pwd, master int) string {
 
 // LiveMode starts the interactive live mode TUI and returns the final model state.
 // It runs the Bubbletea program with an alternate screen buffer.
-func LiveMode(matrix app.Matrix, maxLen int, pasteMode PasteMode, masterRaw string) (liveModel, error) {
-	m := newLiveModel(matrix, masterRaw, maxLen, pasteMode)
+func LiveMode(matrix app.Matrix, maxLen int, pasteMode PasteMode, masterPasswordRaw string) (liveModel, error) {
+	m := newLiveModel(matrix, masterPasswordRaw, maxLen, pasteMode)
 	p := tea.NewProgram(m, tea.WithAltScreen())
 
 	final, err := p.Run()

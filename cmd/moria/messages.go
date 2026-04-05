@@ -87,7 +87,7 @@ const (
 	// MsgUsageTitle is the title line of the help output.
 	MsgUsageTitle = "moria — deterministic password generator"
 	// MsgUsageHeader is the usage format line.
-	MsgUsageHeader = "Usage: moria [--magic|--pretty|--live] [--max-len N] [--ignore-paste] [--strength] <spell>"
+	MsgUsageHeader = "Usage: moria [--magic|--pretty|--live] [--max-len N] [--ignore-paste] [--super-strength] <spell>"
 	// MsgUsageOptions is the options header.
 	MsgUsageOptions = "Options:"
 	// MsgOptMagic is the description for --magic.
@@ -100,8 +100,8 @@ const (
 	MsgOptMaxLen = "  --max-len            Truncate generated output to N characters (live and batch modes only)"
 	// MsgOptIgnorePaste is the description for --ignore-paste.
 	MsgOptIgnorePaste = "  --ignore-paste       Ignore pasted input in live mode (single characters only, live mode only)"
-	// MsgOptStrength is the description for --strength.
-	MsgOptStrength = "  --strength           Show time-to-guess estimates for the generated password (batch mode only)"
+	// MsgOptStrength is the description for --super-strength.
+	MsgOptStrength = "  --super-strength     Show time-to-guess estimates (SLOW: ~20s, batch mode only)"
 	// MsgOptHelp is the description for --help.
 	MsgOptHelp = "  -h, --help           Show this help message"
 	// MsgUsageExamples is the examples header.
@@ -120,8 +120,8 @@ const (
 	MsgExLiveIgnorePaste = "  cat master.txt | moria --live --ignore-paste # Interactive mode (paste blocked)"
 	// MsgExMaxLen is the example for --max-len.
 	MsgExMaxLen = "  cat master.txt | moria --max-len 16 \"amazon\"  # Limited length"
-	// MsgExStrength is the example for --strength.
-	MsgExStrength = "  cat master.txt | moria --strength \"amazon\"  # Show time to guess"
+	// MsgExStrength is the example for --super-strength.
+	MsgExStrength = "  cat master.txt | moria --super-strength \"amazon\"  # SLOW: ~20s"
 )
 
 // Strength display messages for time formatting.
