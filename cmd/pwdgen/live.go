@@ -155,17 +155,19 @@ func (m liveModel) View() string {
 	return sb.String()
 }
 
-func LiveMode(matrix app.Matrix, maxLen int) (string, error) {
+func LiveMode(matrix app.Matrix, maxLen int) (liveModel, error) {
 	m := newLiveModel(matrix, maxLen)
 	p := tea.NewProgram(m, tea.WithAltScreen())
-	finalModel, err := p.Run()
+
+	final, err := p.Run()
 	if err != nil {
-		return "", err
+		return liveModel{}, err
 	}
-	lm := finalModel.(liveModel)
-	password := lm.password
-	if maxLen > 0 && len(password) > maxLen {
-		password = password[:maxLen]
+
+	lm, ok := final.(liveModel)
+	if !ok {
+		return liveModel{}, fmt.Errorf("unexpected model type returned by bubbletea")
 	}
-	return password, nil
+
+	return lm, nil
 }

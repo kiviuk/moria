@@ -1,8 +1,8 @@
 package main
 
 import (
-	"bufio"
 	"fmt"
+	"io"
 	"os"
 	"strconv"
 	"strings"
@@ -127,7 +127,7 @@ func validateConfig(cfg Config, flags map[string]bool) error {
 func main() {
 	if len(os.Args) < 2 {
 		fmt.Fprintf(os.Stderr, "Usage: pwdgen [--magic|--pretty|--live] [--max-len N] <spell>\n")
-		fmt.Fprintf(os.Stderr, "  --magic    Generate a 300-character master password\n")
+		fmt.Fprintf(os.Stderr, "  --magic    Generate a master password\n")
 		fmt.Fprintf(os.Stderr, "  --pretty   Display the password matrix from your master password\n")
 		fmt.Fprintf(os.Stderr, "  --live     Interactive mode: type your spell and see the password build in real-time\n")
 		fmt.Fprintf(os.Stderr, "  --max-len  Truncate output to N characters (live and batch modes only)\n")
@@ -150,16 +150,12 @@ func main() {
 
 	if mode.NeedsStdin {
 		cfg.Master = readMasterPassword()
-		expectedLen := app.PasswordMatrixRows * app.PasswordMatrixColumns * app.CharactersPerMatrixCell
-		if len(cfg.Master) != expectedLen {
-			fmt.Fprintf(os.Stderr, "Master password must be %d characters (got %d)\n", expectedLen, len(cfg.Master))
-			os.Exit(1)
-		}
+		cfg.Master = app.ExpandToMatrix(cfg.Master)
 	}
 
 	switch cfg.Mode {
 	case "magic":
-		master, err := app.GenerateRandomString(app.PasswordMatrixRows*app.PasswordMatrixColumns*app.CharactersPerMatrixCell, app.MasterPasswordChars)
+		master, err := app.GenerateMasterPassword(app.MatrixBytes, app.MasterPasswordChars)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Failed to generate master password: %v\n", err)
 			os.Exit(1)
@@ -180,10 +176,14 @@ func main() {
 			fmt.Fprintf(os.Stderr, "Failed to create matrix: %v\n", err)
 			os.Exit(1)
 		}
-		password, err := LiveMode(matrix, cfg.MaxLen)
+		finalModel, err := LiveMode(matrix, cfg.MaxLen)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Live mode error: %v\n", err)
 			os.Exit(1)
+		}
+		password := finalModel.password
+		if cfg.MaxLen > 0 && len(password) > cfg.MaxLen {
+			password = password[:cfg.MaxLen]
 		}
 		if password != "" {
 			fmt.Print(password)
@@ -217,13 +217,13 @@ func readMasterPassword() string {
 	stat, _ := os.Stdin.Stat()
 	isPipe := (stat.Mode() & os.ModeCharDevice) == 0
 
-	var master string
 	if !isPipe {
 		fmt.Print("Enter master password: ")
 	}
-	scanner := bufio.NewScanner(os.Stdin)
-	if scanner.Scan() {
-		master = strings.TrimSpace(scanner.Text())
-	}
-	return master
+	return readAndTrim(os.Stdin)
+}
+
+func readAndTrim(r io.Reader) string {
+	data, _ := io.ReadAll(r)
+	return strings.TrimSpace(string(data))
 }

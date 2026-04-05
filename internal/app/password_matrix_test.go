@@ -18,10 +18,67 @@ func newTestMatrix() Matrix {
 	return m
 }
 
-func TestGenerateRandomString_Length(t *testing.T) {
+func TestExpandToMatrix_Deterministic(t *testing.T) {
+	// Verify same input always produces same output
+	out1 := ExpandToMatrix("test-secret")
+	out2 := ExpandToMatrix("test-secret")
+	if out1 != out2 {
+		t.Errorf("ExpandToMatrix not deterministic: got different outputs for same input")
+	}
+}
+
+func TestExpandToMatrix_Length(t *testing.T) {
+	// Verify output is always exactly MatrixBytes characters
+	inputs := []string{"", "short", "medium-length-input", strings.Repeat("x", 1000)}
+	for _, input := range inputs {
+		out := ExpandToMatrix(input)
+		if len(out) != MatrixBytes {
+			t.Errorf("ExpandToMatrix(%q) length = %d, expected %d", input, len(out), MatrixBytes)
+		}
+	}
+}
+
+func TestExpandToMatrix_Charset(t *testing.T) {
+	// Verify all output characters are from MasterPasswordChars
+	out := ExpandToMatrix("any-input-string")
+	for i, r := range out {
+		if !strings.ContainsRune(MasterPasswordChars, r) {
+			t.Errorf("ExpandToMatrix: char %q at %d not in allowed pool", r, i)
+		}
+	}
+}
+
+func TestExpandToMatrix_AlwaysDerives(t *testing.T) {
+	// Verify even exact-length input is transformed, not returned as-is
+	input := strings.Repeat("a", MatrixBytes)
+	out := ExpandToMatrix(input)
+	if out == input {
+		t.Error("ExpandToMatrix returned input unchanged — should always derive")
+	}
+}
+
+func TestExpandToMatrix_DifferentInputs(t *testing.T) {
+	// Verify different inputs produce different outputs
+	out1 := ExpandToMatrix("secret-a")
+	out2 := ExpandToMatrix("secret-b")
+	if out1 == out2 {
+		t.Error("ExpandToMatrix produced same output for different inputs")
+	}
+}
+
+func TestExpandToMatrix_TrailingNewline(t *testing.T) {
+	// Verify trailing newline changes output (simulates interactive vs piped input)
+	out1 := ExpandToMatrix("secret")
+	out2 := ExpandToMatrix("secret\n")
+	if out1 == out2 {
+		t.Error("ExpandToMatrix should produce different output for input with trailing newline")
+	}
+}
+
+func TestGenerateMasterPassword_Length(t *testing.T) {
 	// Verify generated string matches requested length
 	expectedLen := PasswordMatrixRows * PasswordMatrixColumns * CharactersPerMatrixCell
-	s, err := GenerateRandomString(expectedLen, MasterPasswordChars)
+	s, err := GenerateMasterPassword(expectedLen, MasterPasswordChars)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -30,9 +87,9 @@ func TestGenerateRandomString_Length(t *testing.T) {
 	}
 }
 
-func TestGenerateRandomString_Charset(t *testing.T) {
+func TestGenerateMasterPassword_Charset(t *testing.T) {
 	// Verify all characters in generated string are from the allowed pool
-	s, err := GenerateRandomString(1000, MasterPasswordChars)
+	s, err := GenerateMasterPassword(1000, MasterPasswordChars)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -43,14 +100,14 @@ func TestGenerateRandomString_Charset(t *testing.T) {
 	}
 }
 
-func TestGenerateRandomString_NonDeterministic(t *testing.T) {
+func TestGenerateMasterPassword_NonDeterministic(t *testing.T) {
 	// Verify two consecutive calls produce different strings
 	expectedLen := PasswordMatrixRows * PasswordMatrixColumns * CharactersPerMatrixCell
-	s1, err := GenerateRandomString(expectedLen, MasterPasswordChars)
+	s1, err := GenerateMasterPassword(expectedLen, MasterPasswordChars)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	s2, err := GenerateRandomString(expectedLen, MasterPasswordChars)
+	s2, err := GenerateMasterPassword(expectedLen, MasterPasswordChars)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}

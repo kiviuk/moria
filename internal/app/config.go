@@ -32,3 +32,6 @@ const AllowedSpace = " "
 // MasterPasswordChars contains shell-safe characters for master password generation.
 // Excludes shell metacharacters: {} [] ~ " ' space $ ! # & * ? ( ) | < > ; \ `
 const MasterPasswordChars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789@-_=+:%.^/,"
+
+// MatrixBytes is the exact number of characters needed for the matrix.
+const MatrixBytes = PasswordMatrixRows * PasswordMatrixColumns * CharactersPerMatrixCell

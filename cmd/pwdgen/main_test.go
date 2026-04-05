@@ -7,6 +7,64 @@ import (
 	"github.com/kiviuk/pwdgen/internal/app"
 )
 
+func TestReadAndTrim_PlainText(t *testing.T) {
+	// Verify plain text is returned unchanged
+	got := readAndTrim(strings.NewReader("my-secret"))
+	if got != "my-secret" {
+		t.Errorf("expected %q, got %q", "my-secret", got)
+	}
+}
+
+func TestReadAndTrim_TrailingNewline(t *testing.T) {
+	// Verify trailing newline from interactive Enter is stripped
+	got := readAndTrim(strings.NewReader("my-secret\n"))
+	if got != "my-secret" {
+		t.Errorf("expected %q, got %q", "my-secret", got)
+	}
+}
+
+func TestReadAndTrim_CRLF(t *testing.T) {
+	// Verify Windows-style line endings are stripped
+	got := readAndTrim(strings.NewReader("my-secret\r\n"))
+	if got != "my-secret" {
+		t.Errorf("expected %q, got %q", "my-secret", got)
+	}
+}
+
+func TestReadAndTrim_LeadingTrailingSpaces(t *testing.T) {
+	// Verify leading and trailing whitespace is stripped
+	got := readAndTrim(strings.NewReader("  my-secret  "))
+	if got != "my-secret" {
+		t.Errorf("expected %q, got %q", "my-secret", got)
+	}
+}
+
+func TestReadAndTrim_MultiLine(t *testing.T) {
+	// Verify multi-line input (SSH key) preserves internal content
+	input := "-----BEGIN KEY-----\nabc123\n-----END KEY-----\n"
+	got := readAndTrim(strings.NewReader(input))
+	expected := "-----BEGIN KEY-----\nabc123\n-----END KEY-----"
+	if got != expected {
+		t.Errorf("expected %q, got %q", expected, got)
+	}
+}
+
+func TestReadAndTrim_Empty(t *testing.T) {
+	// Verify empty input returns empty string
+	got := readAndTrim(strings.NewReader(""))
+	if got != "" {
+		t.Errorf("expected empty string, got %q", got)
+	}
+}
+
+func TestReadAndTrim_OnlyWhitespace(t *testing.T) {
+	// Verify whitespace-only input returns empty string
+	got := readAndTrim(strings.NewReader("   \n\t  "))
+	if got != "" {
+		t.Errorf("expected empty string, got %q", got)
+	}
+}
+
 func TestBatchMode_MaxLen(t *testing.T) {
 	// Verify batch mode truncates password to maxLen
 	matrix := newTestMatrix()

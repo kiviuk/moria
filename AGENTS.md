@@ -81,7 +81,7 @@ pwdgen --max-len 16 "amazon" < master.txt
 ### Naming Conventions
 - **Exported types:** `PascalCase` — `MagicLetter`, `QueryLetter`, `MagicSpell`, `DirtySpell`, `Matrix`, `ParseError`, `Errors`
 - **Exported constants:** `PascalCase` — `PasswordMatrixRows`, `CharactersPerMatrixCell`, `AlphabetSize`, `MaxLetterGroups`, `PasswordMatrixColumns`, `MasterPasswordChars`
-- **Exported functions:** `PascalCase` — `LetterGroup()`, `ModN()`, `GenerateRandomString()`, `NewMatrix()`, `ColHeader()`
+- **Exported functions:** `PascalCase` — `LetterGroup()`, `ModN()`, `GenerateMasterPassword()`, `NewMatrix()`, `ColHeader()`
 - **Unexported:** `camelCase` — `cell()`, `newTestMatrix()`, `readMasterPassword()`
 - **Test functions:** `Test<TypeName>_<Method>_<Scenario>` — e.g., `TestDirtySpell_Parse_Valid`
 - **Receiver names:** Short, single-letter abbreviations — `d` for `DirtySpell`, `m` for `MagicSpell`/`MagicLetter`, `e` for `Errors`
@@ -129,7 +129,7 @@ pwdgen --max-len 16 "amazon" < master.txt
 - **Deterministic:** Same master password + same spell = same password every time
 - **No trailing newline** in password output — safe for piping to `pbcopy`
 - **Shell-safe master password:** Uses `MasterPasswordChars` (excludes `{}`, `[]`, `~`, `"`, `'`, space, `$`, `!`, `#`, `&`, `*`, `?`, `()`, `|`, `<>`, `;`, `\`, `` ` ``)
-- **SRP:** `GenerateRandomString(length, pool)` accepts character pool as parameter — no hardcoded pools
+- **SRP:** `GenerateMasterPassword(length, pool)` accepts character pool as parameter — no hardcoded pools
 - **Defensive access:** `Matrix.Cell(t QueryLetter)` validates column bounds; row is guaranteed valid by `QueryLetter` type
 
 ### Flexibility

@@ -1,7 +1,9 @@
 package app
 
 import (
+	"crypto/hkdf"
 	"crypto/rand"
+	"crypto/sha256"
 	"fmt"
 	"strings"
 )
@@ -48,18 +50,53 @@ func (m Matrix) Cell(t QueryLetter) (string, error) {
 	return m.cell(t.MatrixRow, t.LetterGroup)
 }
 
-// GenerateRandomString produces a cryptographically secure random string of the given length.
-// Characters are drawn from the provided pool.
-func GenerateRandomString(length int, pool string) (string, error) {
-	b := make([]byte, length)
-	_, err := rand.Read(b)
+// GenerateMasterPassword produces a cryptographically secure master password of the given length.
+// Characters are drawn from the provided pool using rejection sampling for zero bias.
+func GenerateMasterPassword(length int, pool string) (string, error) {
+	raw := make([]byte, length*2)
+	_, err := rand.Read(raw)
 	if err != nil {
 		return "", err
 	}
-	for i := range b {
-		b[i] = pool[int(b[i])%len(pool)]
+	return mapToCharset(raw, pool, length), nil
+}
+
+// mapToCharset maps random bytes to a character pool using rejection sampling.
+// Guarantees zero modulo bias regardless of pool size.
+func mapToCharset(raw []byte, pool string, length int) string {
+	poolBytes := []byte(pool)
+	poolLen := len(poolBytes)
+	threshold := 256 - (256 % poolLen)
+
+	result := make([]byte, length)
+	j := 0
+	for i := 0; i < length; i++ {
+		for {
+			b := int(raw[j])
+			j++
+			if b < threshold {
+				result[i] = poolBytes[b%poolLen]
+				break
+			}
+			if j >= len(raw) {
+				more := make([]byte, length*2)
+				rand.Read(more)
+				raw = append(raw, more...)
+			}
+		}
 	}
-	return string(b), nil
+	return string(result)
+}
+
+// ExpandToMatrix deterministically expands any input string to exactly MatrixBytes characters.
+// Always derives output via HKDF-SHA256 — no identity shortcut for exact-length inputs.
+// Uses rejection sampling for unbiased character mapping.
+func ExpandToMatrix(input string) string {
+	raw, err := hkdf.Key(sha256.New, []byte(input), nil, "pwdgen-matrix-v1", MatrixBytes*2)
+	if err != nil {
+		panic(err)
+	}
+	return mapToCharset(raw, MasterPasswordChars, MatrixBytes)
 }
 
 // ColHeader returns the display name for a matrix column.
