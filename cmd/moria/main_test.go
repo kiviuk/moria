@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/kiviuk/moria/internal/app"
+	"github.com/kiviuk/moria/internal/testutil"
 )
 
 func TestPipeInput_PlainText(t *testing.T) {
@@ -241,5 +242,62 @@ func TestBatchMode_OutputNoNewline(t *testing.T) {
 
 	if strings.HasSuffix(password, "\n") {
 		t.Error("password should not have trailing newline")
+	}
+}
+
+func TestTruncatePassword_Truncates(t *testing.T) {
+	password := "abcdefghij"
+	result := truncatePassword(password, 5)
+	if result != "abcde" {
+		t.Errorf("expected %q, got %q", "abcde", result)
+	}
+}
+
+func TestTruncatePassword_NoTruncateWhenShorter(t *testing.T) {
+	password := "abc"
+	result := truncatePassword(password, 5)
+	if result != "abc" {
+		t.Errorf("expected %q, got %q", "abc", result)
+	}
+}
+
+func TestTruncatePassword_NoTruncateWhenEqual(t *testing.T) {
+	password := "abcde"
+	result := truncatePassword(password, 5)
+	if result != "abcde" {
+		t.Errorf("expected %q, got %q", "abcde", result)
+	}
+}
+
+func TestTruncatePassword_ZeroMaxLen(t *testing.T) {
+	password := "abcdef"
+	result := truncatePassword(password, 0)
+	if result != "abcdef" {
+		t.Errorf("expected %q, got %q", "abcdef", result)
+	}
+}
+
+func TestGetMatrix_ValidInput(t *testing.T) {
+	matrixStr := testutil.NewTestMatrixData(app.PasswordMatrixRows, app.PasswordMatrixColumns, app.CharactersPerMatrixCell)
+	matrix, err := getMatrix(matrixStr)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if matrix == (app.Matrix{}) {
+		t.Error("matrix should not be zero value")
+	}
+}
+
+func TestGetMatrix_InvalidInput(t *testing.T) {
+	_, err := getMatrix("too-short")
+	if err == nil {
+		t.Error("expected error for invalid input")
+	}
+}
+
+func TestGetMatrix_WrongLength(t *testing.T) {
+	_, err := getMatrix("a")
+	if err == nil {
+		t.Error("expected error for wrong length input")
 	}
 }

@@ -58,13 +58,45 @@ func contains(slice []string, item string) bool {
 	return false
 }
 
+func getMatrix(master string) (app.Matrix, error) {
+	matrix, err := app.NewMatrix(master)
+	if err != nil {
+		return app.Matrix{}, fmt.Errorf(ErrFailedCreateMatrix, err)
+	}
+	return matrix, nil
+}
+
+func truncatePassword(password string, maxLen int) string {
+	if maxLen > 0 && len(password) > maxLen {
+		return password[:maxLen]
+	}
+	return password
+}
+
+func readStdin() (string, error) {
+	stat, err := os.Stdin.Stat()
+	if err != nil {
+		return "", fmt.Errorf("could not stat stdin: %w", err)
+	}
+	isPiped := (stat.Mode() & os.ModeCharDevice) == 0
+
+	if isPiped {
+		data, err := io.ReadAll(os.Stdin)
+		if err != nil {
+			return "", fmt.Errorf(ErrFailedReadMaster, err)
+		}
+		return strings.TrimSpace(string(data)), nil
+	}
+	return getPassword()
+}
+
 func parseArgs(args []string) (Config, map[string]bool, error) {
 	cfg := Config{Mode: ModeBatch}
 	flags := make(map[string]bool)
 	var positional []string
 
-	for i := 0; i < len(args); i++ {
-		switch args[i] {
+	for i, arg := range args {
+		switch arg {
 		case "--magic":
 			flags["--magic"] = true
 			cfg.Mode = ModeMagic
@@ -90,7 +122,7 @@ func parseArgs(args []string) (Config, map[string]bool, error) {
 		case "--help", "-h":
 			flags["--help"] = true
 		default:
-			positional = append(positional, args[i])
+			positional = append(positional, arg)
 		}
 	}
 
@@ -167,28 +199,12 @@ func main() {
 	}
 
 	if cfg.Mode.needsStdin() {
-		stat, err := os.Stdin.Stat()
+		master, err := readStdin()
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Warning: could not stat stdin: %v\n", err)
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(1)
 		}
-		isPiped := (stat.Mode() & os.ModeCharDevice) == 0
-
-		if isPiped {
-			data, err := io.ReadAll(os.Stdin)
-			if err != nil {
-				fmt.Fprintf(os.Stderr, ErrFailedReadMaster+"\n", err)
-				os.Exit(1)
-			}
-			cfg.Master = strings.TrimSpace(string(data))
-		} else {
-			master, err := getPassword()
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-				os.Exit(1)
-			}
-			cfg.Master = master
-		}
-		cfg.Master = app.ExpandToMatrix(cfg.Master)
+		cfg.Master = app.ExpandToMatrix(master)
 	}
 
 	switch cfg.Mode {
@@ -201,17 +217,17 @@ func main() {
 		fmt.Print(master)
 
 	case ModePretty:
-		matrix, err := app.NewMatrix(cfg.Master)
+		matrix, err := getMatrix(cfg.Master)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, ErrFailedCreateMatrix+"\n", err)
+			fmt.Fprintln(os.Stderr, err)
 			os.Exit(1)
 		}
 		fmt.Print(matrix.Pretty())
 
 	case ModeLive:
-		matrix, err := app.NewMatrix(cfg.Master)
+		matrix, err := getMatrix(cfg.Master)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, ErrFailedCreateMatrix+"\n", err)
+			fmt.Fprintln(os.Stderr, err)
 			os.Exit(1)
 		}
 		pasteMode := PasteAllowed
@@ -224,17 +240,15 @@ func main() {
 			os.Exit(1)
 		}
 		password := finalModel.password
-		if cfg.MaxLen > 0 && len(password) > cfg.MaxLen {
-			password = password[:cfg.MaxLen]
-		}
+		password = truncatePassword(password, cfg.MaxLen)
 		if password != "" {
 			fmt.Print(password)
 		}
 
 	case ModeBatch:
-		matrix, err := app.NewMatrix(cfg.Master)
+		matrix, err := getMatrix(cfg.Master)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, ErrFailedCreateMatrix+"\n", err)
+			fmt.Fprintln(os.Stderr, err)
 			os.Exit(1)
 		}
 		dirty := app.DirtySpell{Spell: cfg.Spell}
@@ -248,9 +262,7 @@ func main() {
 			fmt.Fprintf(os.Stderr, ErrExtractPassword+"\n", err)
 			os.Exit(1)
 		}
-		if cfg.MaxLen > 0 && len(password) > cfg.MaxLen {
-			password = password[:cfg.MaxLen]
-		}
+		password = truncatePassword(password, cfg.MaxLen)
 		fmt.Print(password)
 	}
 }

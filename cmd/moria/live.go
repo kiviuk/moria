@@ -124,14 +124,14 @@ func (m liveModel) View() string {
 
 	// Header row
 	sb.WriteString(strings.Repeat(" ", colWidth))
-	for col := 0; col < app.PasswordMatrixColumns; col++ {
+	for col := range app.PasswordMatrixColumns {
 		sb.WriteString(headerStyle.Render(app.ColHeader(col)))
 	}
 	sb.WriteByte('\n')
 
 	// Separator
 	sb.WriteString(strings.Repeat(" ", colWidth))
-	for col := 0; col < app.PasswordMatrixColumns; col++ {
+	for range app.PasswordMatrixColumns {
 		sb.WriteString(strings.Repeat("─", colWidth-1) + " ")
 	}
 	sb.WriteByte('\n')
@@ -142,9 +142,9 @@ func (m liveModel) View() string {
 		visited[key] = true
 	}
 
-	for row := 0; row < app.PasswordMatrixRows; row++ {
-		sb.WriteString(rowNumStyle.Render(fmt.Sprintf("%d", row)))
-		for col := 0; col < app.PasswordMatrixColumns; col++ {
+	for row := range app.PasswordMatrixRows {
+		fmt.Fprintf(&sb, "%s", rowNumStyle.Render(fmt.Sprintf("%d", row)))
+		for col := range app.PasswordMatrixColumns {
 			cell := m.matrix[row][col]
 			key := fmt.Sprintf("%d-%d", row, col)
 			if visited[key] {
@@ -164,19 +164,19 @@ func (m liveModel) View() string {
 	} else {
 		cursor = " "
 	}
-	sb.WriteString(fmt.Sprintf("  Spell:    %s%s\n", spellStyle.Render(m.spell), cursor))
+	fmt.Fprintf(&sb, "  Spell:    %s%s\n", spellStyle.Render(m.spell), cursor)
 
 	if m.maxLen > 0 {
-		sb.WriteString(fmt.Sprintf("  Password: %s (%d/%d)\n", passStyle.Render(m.password), len(m.password), m.maxLen))
+		fmt.Fprintf(&sb, "  Password: %s (%d/%d)\n", passStyle.Render(m.password), len(m.password), m.maxLen)
 		if m.state == StateMaxLenReached {
-			sb.WriteString(fmt.Sprintf("  %s\n", errorStyle.Render(fmt.Sprintf(MsgMaxPasswordReached, m.maxLen))))
+			fmt.Fprintf(&sb, "  %s\n", errorStyle.Render(fmt.Sprintf(MsgMaxPasswordReached, m.maxLen)))
 		}
 	} else {
-		sb.WriteString(fmt.Sprintf("  Password: %s\n", passStyle.Render(m.password)))
+		fmt.Fprintf(&sb, "  Password: %s\n", passStyle.Render(m.password))
 	}
 
 	if m.err != "" {
-		sb.WriteString(fmt.Sprintf("  %s\n", errorStyle.Render(m.err)))
+		fmt.Fprintf(&sb, "  %s\n", errorStyle.Render(m.err))
 	}
 
 	sb.WriteByte('\n')

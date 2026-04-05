@@ -70,10 +70,7 @@ func TestLiveModel_MaxLen_Partial(t *testing.T) {
 	if maxLen > 0 && len(password) > maxLen {
 		password = password[:maxLen]
 	}
-	expectedLen := len(m.password)
-	if expectedLen > maxLen {
-		expectedLen = maxLen
-	}
+	expectedLen := min(len(m.password), maxLen)
 	if len(password) != expectedLen {
 		t.Errorf("truncated password: expected %d chars, got %d", expectedLen, len(password))
 	}
@@ -87,7 +84,7 @@ func TestLiveModel_MaxLen_NoLimit(t *testing.T) {
 	matrix := newTestMatrix()
 	m := newLiveModel(matrix, 0, PasteAllowed)
 
-	for i := 0; i < 10; i++ {
+	for range 10 {
 		m = simulateKey(m, "a")
 	}
 	if len(m.password) != 10*app.CharactersPerMatrixCell {

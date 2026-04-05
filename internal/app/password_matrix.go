@@ -138,7 +138,7 @@ func (m Matrix) Pretty() string {
 	// Header row
 	sb.WriteString(strings.Repeat(" ", colWidth))
 	for col := 0; col < PasswordMatrixColumns; col++ {
-		sb.WriteString(fmt.Sprintf("%-*s", colWidth, ColHeader(col)))
+		fmt.Fprintf(&sb, "%-*s", colWidth, ColHeader(col))
 	}
 	sb.WriteByte('\n')
 
@@ -151,9 +151,9 @@ func (m Matrix) Pretty() string {
 
 	// Data rows
 	for row := 0; row < PasswordMatrixRows; row++ {
-		sb.WriteString(fmt.Sprintf("%-*d", colWidth, row))
+		fmt.Fprintf(&sb, "%-*d", colWidth, row)
 		for col := 0; col < PasswordMatrixColumns; col++ {
-			sb.WriteString(fmt.Sprintf("%-*s", colWidth, m[row][col]))
+			fmt.Fprintf(&sb, "%-*s", colWidth, m[row][col])
 		}
 		sb.WriteByte('\n')
 	}
