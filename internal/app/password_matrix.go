@@ -110,7 +110,8 @@ func mapToCharset(source io.Reader, pool string, length int) string {
 // followed by HKDF for expansion and rejection sampling for unbiased character mapping.
 func ExpandToMatrix(input string) string {
 	salt := []byte("moria-salt-v1")
-	key := argon2.IDKey([]byte(input), salt, 1, 64*1024, 4, 32)
+	cpus := uint8(4)
+	key := argon2.IDKey([]byte(input), salt, 1, 64*1024, cpus, 32)
 
 	hkdfReader := hkdf.New(sha256.New, key, []byte("moria-salt-v1"), []byte("moria-matrix-expansion"))
 
