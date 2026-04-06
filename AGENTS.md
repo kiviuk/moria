@@ -153,7 +153,7 @@ moria -h
 - **Case-insensitive grouping:** `a` and `A` both map to group 1
 - **Deterministic:** Same master password + same spell = same password every time
 - **No trailing newline** in password output — safe for piping to `pbcopy`
-- **Shell-safe master password:** Uses `MasterPasswordChars` (excludes `{}`, `[]`, `~`, `"`, `'`, space, `$`, `!`, `#`, `&`, `*`, `?`, `()`, `|`, `<>`, `;`, `\`, `` ` ``)
+- **Bash-friendly master password:** Uses `MasterPasswordChars` (excludes `{}`, `[]`, `~`, `"`, `'`, space, `$`, `!`, `#`, `&`, `*`, `?`, `()`, `|`, `<>`, `;`, `\`, `` ` ``)
 - **SRP:** `GenerateMasterPassword(length, pool)` accepts character pool as parameter — no hardcoded pools
 - **Defensive access:** `Matrix.Cell(t QueryLetter)` validates column bounds; row is guaranteed valid by `QueryLetter` type
 - **Rejection sampling:** `mapToCharset()` ensures zero modulo bias when mapping random bytes to character pool

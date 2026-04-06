@@ -164,7 +164,7 @@ All matrix dimensions are compile-time constants in `internal/app/config.go`:
 | `PasswordMatrixRows` | 20 | Number of rows (position modulus) |
 | `CharactersPerMatrixCell` | 3 | Characters per cell (password length multiplier) |
 | `AlphabetSize` | 26 | Letters in the alphabet |
-| `MasterPasswordChars` | 73 chars | Shell-safe character pool for `--magic` |
+| `MasterPasswordChars` | 73 chars | Bash-friendly characters for `--magic` |
 
 To change the matrix size, edit the constants and run `make test && make build`. All tests pass with any value.
 

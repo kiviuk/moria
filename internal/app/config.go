@@ -26,19 +26,10 @@ const MaxLetterGroups = (AlphabetSize + CharactersPerMatrixCell - 1) / Character
 // Equals MaxLetterGroups + 1, where column 0 holds non-letter characters.
 const PasswordMatrixColumns = MaxLetterGroups + 1
 
-// AllowedLetters is the regex character range for alphabetic characters.
-const AllowedLetters = "a-zA-Z"
-
-// AllowedNumbers is the regex character range for numeric characters.
-const AllowedNumbers = "0-9"
-
 // AllowedSpecialChars is the set of permitted special characters.
 const AllowedSpecialChars = `!@#$%^&*()-_=+[]{}|;:,.<>?/~` + "`\"'"
 
-// AllowedSpace represents the only permitted whitespace character.
-const AllowedSpace = " "
-
-// MasterPasswordChars contains shell-safe characters for master password generation.
+// MasterPasswordChars contains bash-safe characters for master password generation.
 // Excludes shell metacharacters: {} [] ~ " ' space $ ! # & * ? ( ) | < > ; \ `
 const MasterPasswordChars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789@-_=+:%.^/,"
 
