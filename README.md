@@ -30,40 +30,38 @@ The binary is built to `bin/moria`.
 
 ## Quick Start
 
-### 1. Usage
+### 1. Generate a Password
 
-```bash
-./bin/moria --magic
-```
-
-This outputs a cryptographically secure random string. **Save this securely** — it's your master key. You have these options for using it:
-
-**Option A: Save to a file and pipe it**
-```bash
-./bin/moria --magic > the-key.txt
-cat the-key.txt | ./bin/moria "phrase-i-can-remember"
-```
-
-**Option B: Store in a password manager**
-Save the output to KeePass, 1Password, or any password manager. When you need a service password, paste it into the interactive prompt:
-```bash
-./bin/moria "phrase-i-can-remember"
-# You'll be prompted to paste your master password (input is masked with •••)
-```
-
-**Option C: Use an existing secret as your master key**
-You don't need to generate a new password — you can use any existing secret like an SSH private key, a GPG key, or a long passphrase. The tool will deterministically expand it to fill the matrix:
+**Option A: Use your existing SSH key (recommended)**
+If you already have an SSH private key, use it directly — no new secret to manage:
 ```bash
 cat ~/.ssh/id_ed25519 | ./bin/moria "phrase-i-can-remember"
 ```
-This is convenient if you already have a secure key you trust and don't want to manage another secret.
+Output: a unique password derived from your SSH key + the spell.
 
-Output: a unique password derived from your master password + the spell "phrase-i-can-remember".
+**Option B: Generate a new master password with `--magic`**
+If you don't have an SSH key, generate a cryptographically secure master password:
+```bash
+./bin/moria --magic
+```
+This outputs a 600-character random string. **Save this securely.**
+
+You can then pipe it or store it in a password manager:
+```bash
+# Pipe from file
+cat the-key.txt | ./bin/moria "phrase-i-can-remember"
+
+# Interactive prompt (password manager)
+./bin/moria "phrase-i-can-remember"
+# You'll be prompted to paste your master password (input is masked with •••)
+```
 
 ### 2. Display the Matrix
 
 ```bash
 cat the-key.txt | ./bin/moria --pretty
+# Or without piping — you'll be prompted to paste your master password
+./bin/moria --pretty
 ```
 
 Shows the full password matrix with column headers:
@@ -92,7 +90,7 @@ Some sites cap password length. Use `--max-len` to truncate:
 cat the-key.txt | ./bin/moria --max-len 16 "phrase-i-can-remember"
 ```
 
-### 5. Show Password Strength
+### 5. Check Password Strength
 
 Analyze the strength of any password using [zxcvbn](https://github.com/ccojocar/zxcvbn-go) pattern detection. The password goes to `stdout`, the analysis goes to `stderr`:
 
