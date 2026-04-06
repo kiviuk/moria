@@ -34,18 +34,18 @@ const (
 	ModePretty
 	// ModeLive runs an interactive TUI for building passwords character by character.
 	ModeLive
-	// ModeMasterPasswordStrength analyzes the entropy of a master password from stdin.
-	ModeMasterPasswordStrength
+	// ModePasswordStrength analyzes the strength of a password from stdin.
+	ModePasswordStrength
 )
 
 // String returns the human-readable name of the mode.
 func (m Mode) String() string {
-	return [...]string{"batch", "magic", "pretty", "live", "master-password-strength"}[m]
+	return [...]string{"batch", "magic", "pretty", "live", "password-strength"}[m]
 }
 
 // needsStdin reports whether this mode requires reading a master password from stdin.
 func (m Mode) needsStdin() bool {
-	return m == ModePretty || m == ModeLive || m == ModeBatch || m == ModeMasterPasswordStrength
+	return m == ModePretty || m == ModeLive || m == ModeBatch || m == ModePasswordStrength
 }
 
 // needsSpell reports whether this mode requires a spell argument.
@@ -60,7 +60,7 @@ func (m Mode) allowedMods() []string {
 		return []string{"--max-len", "--ignore-paste"}
 	case ModeBatch:
 		return []string{"--max-len"}
-	case ModeMasterPasswordStrength:
+	case ModePasswordStrength:
 		return []string{}
 	default:
 		return nil
@@ -161,9 +161,9 @@ func parseArgs(args []string) (Config, map[string]bool, error) {
 			cfg.MaxLen = val
 		case "--ignore-paste":
 			flags["--ignore-paste"] = true
-		case "--master-password-strength":
-			flags["--master-password-strength"] = true
-			cfg.Mode = ModeMasterPasswordStrength
+		case "--password-strength":
+			flags["--password-strength"] = true
+			cfg.Mode = ModePasswordStrength
 		case "--help", "-h":
 			flags["--help"] = true
 		default:
@@ -184,7 +184,7 @@ func validateConfig(cfg Config, flags map[string]bool) error {
 		if !present {
 			continue
 		}
-		if flag == "--magic" || flag == "--pretty" || flag == "--live" || flag == "--help" || flag == "--master-password-strength" {
+		if flag == "--magic" || flag == "--pretty" || flag == "--live" || flag == "--help" || flag == "--password-strength" {
 			continue
 		}
 		if !contains(cfg.Mode.allowedMods(), flag) {
@@ -192,8 +192,8 @@ func validateConfig(cfg Config, flags map[string]bool) error {
 		}
 	}
 
-	if cfg.Mode == ModeMasterPasswordStrength && cfg.Spell != "" {
-		return fmt.Errorf("%s", ErrMasterPasswordStrengthNoSpell)
+	if cfg.Mode == ModePasswordStrength && cfg.Spell != "" {
+		return fmt.Errorf("%s", ErrPasswordStrengthNoSpell)
 	}
 
 	if cfg.Mode.needsSpell() && cfg.Spell == "" {
@@ -215,7 +215,7 @@ func printUsage() {
 	fmt.Println(MsgOptLive)
 	fmt.Println(MsgOptMaxLen)
 	fmt.Println(MsgOptIgnorePaste)
-	fmt.Println(MsgOptMasterPasswordStrength)
+	fmt.Println(MsgOptPasswordStrength)
 	fmt.Println(MsgOptHelp)
 	fmt.Println()
 	fmt.Println(MsgUsageExamples)
@@ -226,7 +226,7 @@ func printUsage() {
 	fmt.Println(MsgExLive)
 	fmt.Println(MsgExLiveIgnorePaste)
 	fmt.Println(MsgExMaxLen)
-	fmt.Println(MsgExMasterPasswordStrength)
+	fmt.Println(MsgExPasswordStrength)
 }
 
 // printStrengthTable outputs time-to-guess estimates to stderr.
@@ -346,13 +346,13 @@ func main() { //nolint:gocyclo // main has high complexity due to mode switching
 		password = truncatePassword(password, cfg.MaxLen)
 		fmt.Print(password)
 
-	case ModeMasterPasswordStrength:
-		runMasterPasswordStrengthMode(cfg)
+	case ModePasswordStrength:
+		runPasswordStrengthMode(cfg)
 	}
 }
 
-// runMasterPasswordStrengthMode calculates and displays the entropy of a master password from stdin.
-func runMasterPasswordStrengthMode(cfg Config) {
+// runPasswordStrengthMode calculates and displays the strength of a password from stdin.
+func runPasswordStrengthMode(cfg Config) {
 	masterResult := app.CalculateMasterPasswordStrength(cfg.MasterRaw)
 	printStrengthTable(masterResult)
 }

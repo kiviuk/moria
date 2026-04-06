@@ -8,7 +8,7 @@ A deterministic, matrix-based password generator. Generate unique, strong passwo
 
 ## Core Concept
 
-`moria` uses a **password matrix** — a grid of random character fragments — combined with a **spell** (any memorable string like "amazon" or "gmail") to derive unique passwords. The same master password + spell always produces the same password.
+`moria` uses a **password matrix** — a grid of random character fragments — combined with a **spell** (any memorable) to derive unique passwords. The same master password + spell always produces the same password.
 
 ```
 Master Password (secret) + Spell (service name) → Unique Password
@@ -26,50 +26,40 @@ The binary is built to `bin/moria`.
 
 ## Quick Start
 
-### 1. Generate a Master Password
+### 1. Usage
 
 ```bash
 ./bin/moria --magic
 ```
 
-This outputs a 600-character cryptographically secure random string. **Save this securely** — it's your master key. You have two options for using it:
+This outputs a cryptographically secure random string. **Save this securely** — it's your master key. You have two options for using it:
 
 **Option A: Save to a file and pipe it**
 ```bash
-./bin/moria --magic > master.txt
-cat master.txt | ./bin/moria "amazon"
+./bin/moria --magic > the-key.txt
+cat the-key.txt | ./bin/moria "pwd-i-can-remember"
 ```
 
 **Option B: Store in a password manager**
 Save the output to KeePass, 1Password, or any password manager. When you need a service password, paste it into the interactive prompt:
 ```bash
-./bin/moria "amazon"
+./bin/moria "pwd-i-can-remember"
 # You'll be prompted to paste your master password (input is masked with •••)
 ```
 
 **Option C: Use an existing secret as your master key**
 You don't need to generate a new password — you can use any existing secret like an SSH private key, a GPG key, or a long passphrase. The tool will deterministically expand it to fill the matrix:
 ```bash
-cat ~/.ssh/id_ed25519 | ./bin/moria "amazon"
+cat ~/.ssh/id_ed25519 | ./bin/moria "pwd-i-can-remember"
 ```
 This is convenient if you already have a secure key you trust and don't want to manage another secret.
 
-### 2. Generate a Service Password
+Output: a unique password derived from your master password + the spell "pwd-i-can-remember".
+
+### 2. Display the Matrix
 
 ```bash
-# Interactive (enter master password with masked input)
-./bin/moria "amazon"
-
-# Piped (from password manager)
-cat master.txt | ./bin/moria "amazon"
-```
-
-Output: a unique password derived from your master password + the spell "amazon".
-
-### 3. Display the Matrix
-
-```bash
-cat master.txt | ./bin/moria --pretty
+cat the-key.txt | ./bin/moria --pretty
 ```
 
 Shows the full password matrix with column headers:
@@ -82,71 +72,40 @@ Shows the full password matrix with column headers:
 ...
 ```
 
-### 4. Interactive Live Mode
+### 3. Interactive Live Mode
 
 ```bash
-cat master.txt | ./bin/moria --live
+cat the-key.txt | ./bin/moria --live
 ```
 
 Type your spell character by character. The matrix highlights visited cells and the password builds in real-time. Press Enter to output the final password.
 
-### 5. Limit Password Length
+### 4. Limit Password Length
 
 Some sites cap password length. Use `--max-len` to truncate:
 
 ```bash
-cat master.txt | ./bin/moria --max-len 16 "amazon"
+cat the-key.txt | ./bin/moria --max-len 16 "pwd-i-can-remember"
 ```
 
-### 6. Show Password Strength
+### 5. Show Password Strength
 
-Display time-to-guess estimates across four attack scenarios. The password goes to stdout, the strength table goes to stderr — piping stays clean:
+Analyze the strength of any password using [zxcvbn](https://github.com/ccojocar/zxcvbn-go) pattern detection. The password goes to `stdout`, the analysis goes to `stderr`:
 
 ```bash
-cat master.txt | ./bin/moria --strength "amazon"
+echo "i'm super hunger today" | ./bin/moria --password-strength
 ```
 
 Output:
 ```
-xK9!mPaB2@cD4eF6
+Master password entropy: 50 bits
 
-Password entropy: 108 bits
-Master entropy:   370 bits
-
-Time to guess (generated password):
-  Online (rate-limited)    372.6 billion times the age of the universe
-  Offline (bcrypt/Argon2)  37.3 billion times the age of the universe
-  Offline (MD5/SHA1)       37.3 thousand times the age of the universe
-  GPU cluster (8x 4090)    15 times the age of the universe
+zxcvbn crack time estimate (generic): centuries
 
 Time to guess (master password, via Argon2id):
-  Single CPU               effectively uncrackable
-  Single GPU               effectively uncrackable
-  GPU cluster (8x 4090)    effectively uncrackable
-```
-
-Short spell example:
-```bash
-cat master.txt | ./bin/moria --strength "ab"
-```
-
-Output:
-```
-AG_Vp9
-
-Password entropy: 36 bits
-Master entropy:   370 bits
-
-Time to guess (generated password):
-  Online (rate-limited)    2 years
-  Offline (bcrypt/Argon2)  79 days
-  Offline (MD5/SHA1)       instant
-  GPU cluster (8x 4090)    instant
-
-Time to guess (master password, via Argon2id):
-  Single CPU               effectively uncrackable
-  Single GPU               effectively uncrackable
-  GPU cluster (8x 4090)    effectively uncrackable
+  Single CPU               1.8 million years
+  Single GPU               1.8 thousand years
+  GPU cluster              178 years
 ```
 
 ## How It Works
@@ -161,47 +120,64 @@ Time to guess (master password, via Argon2id):
 
 ### Example
 
-Spell: `"amazon"` (6 characters)
+Spell: `"pwd-i-can-remember"` (18 characters, including hyphens)
 
 | Char | Position | Row | Group | Column | Cell |
 |------|----------|-----|-------|--------|------|
-| a | 0 | 0 | 1 | 1 | (0,1) |
-| m | 1 | 1 | 5 | 5 | (1,5) |
-| a | 2 | 2 | 1 | 1 | (2,1) |
-| z | 3 | 3 | 9 | 9 | (3,9) |
-| o | 4 | 4 | 5 | 5 | (4,5) |
-| n | 5 | 5 | 5 | 5 | (5,5) |
+| p | 0 | 0 | 6 (PQR) | 6 | (0,6) |
+| w | 1 | 1 | 8 (VWX) | 8 | (1,8) |
+| d | 2 | 2 | 2 (DEF) | 2 | (2,2) |
+| - | 3 | 3 | 0 (Non) | 0 | (3,0) |
+| i | 4 | 4 | 3 (GHI) | 3 | (4,3) |
+| - | 5 | 5 | 0 (Non) | 0 | (5,0) |
+| c | 6 | 6 | 1 (ABC) | 1 | (6,1) |
+| a | 7 | 7 | 1 (ABC) | 1 | (7,1) |
+| n | 8 | 8 | 5 (MNO) | 5 | (8,5) |
+| - | 9 | 9 | 0 (Non) | 0 | (9,0) |
+| r | 10 | 10 | 6 (PQR) | 6 | (10,6) |
+| e | 11 | 11 | 2 (DEF) | 2 | (11,2) |
+| m | 12 | 12 | 5 (MNO) | 5 | (12,5) |
+| e | 13 | 13 | 2 (DEF) | 2 | (13,2) |
+| m | 14 | 14 | 5 (MNO) | 5 | (14,5) |
+| b | 15 | 15 | 1 (ABC) | 1 | (15,1) |
+| e | 16 | 16 | 2 (DEF) | 2 | (16,2) |
+| r | 17 | 17 | 6 (PQR) | 6 | (17,6) |
 
-Output: 6 cells × 3 chars = 18-character password.
+Output: 18 cells × 3 chars = 54-character password.
 
 ### Case Sensitivity
 
-Uppercase letters shift the row by `PasswordMatrixRows/2`, making `"amazon"` and `"AMAZON"` produce completely different passwords. This adds entropy without requiring a longer spell.
+Uppercase letters shift the row by `PasswordMatrixRows/2`, making `"PWD-i-can-remember"` and `"pwd-i-can-remember"` produce completely different passwords. This adds entropy without requiring a longer spell.
 
 ## Security Model
 
 ### What's Secret
-- **Master password** — the random string (or any input like an SSH key). This is your only secret.
+- **Master password** — the random string (or any input like an SSH key). This is your master secret (the ring to rule them all).
+- **Spell** - a private rememberable password. One for every login.
 
 ### What's Public
-- **Spell** — the service name (e.g., "amazon"). An attacker knowing this gets nothing without the master password.
+- **The generated password** from the `spell` e.g., "pwd-i-can-remember". An attacker knowing this gets nothing without the master password.
 
 ### Entropy
-- **Matrix**: 600 chars × ~6 bits/char = ~3,600 bits of entropy
-- **Password**: For a 6-letter spell, 18 chars × ~6 bits = ~108 bits
+- **Matrix**: 600 chars × ~6.19 bits/char ≈ ~3,700 bits of entropy
+- **Password**: For a 6-letter spell, 18 chars × ~6.19 bits ≈ ~111 bits
 - **Brute force**: Computationally infeasible
 
 ### Key Derivation
 
 Your master password goes through a two-stage process to become the matrix:
 
-1. **Argon2id** — Your input is first passed through Argon2id (1 iteration, 64MB memory, 2 threads), a memory-hard key derivation function. This slows down the derivation to ~500ms, making brute-force attacks computationally expensive even if your master password is weak.
-2. **HKDF-SHA256** — The 32-byte high-entropy output from Argon2id is then expanded to the full matrix size (600 characters) using HKDF.
+1. **[Argon2id](https://datatracker.ietf.org/doc/html/rfc9106)** — Your input is first passed through Argon2id (1 iteration, 64MB memory, 2 threads), a memory-hard key derivation function. This slows down the derivation to ~500ms, making brute-force attacks computationally expensive even if your master password is weak.
+2. **[HKDF-SHA256](https://tools.ietf.org/html/rfc5869)** — The 32-byte high-entropy output from Argon2id is then expanded to the full matrix size (600 characters) using HKDF.
 
-This means you can safely use a memorable passphrase, an SSH key, or any other input:
+This means you can use any input as long as it has sufficient entropy:
+
+- **SSH/GPG keys**: High entropy (generated with crypto/rand) — ideal
+- **Strong passphrases**: Sufficient if long enough (see `--password-strength`)
+- **Weak passphrases**: Risky — Argon2id slows attacks but doesn't replace missing entropy
 
 ```bash
-cat ~/.ssh/id_ed25519 | ./bin/moria "amazon"
+cat ~/.ssh/id_ed25519 | ./bin/moria "pwd-i-can-remember"
 ```
 
 ### Rejection Sampling
@@ -212,33 +188,18 @@ Moria uses **rejection sampling** instead: if a random byte falls in the "biased
 
 Imagine you have a 52-card deck and want to randomly pick a number from 1 to 10. If you just divide the card value by 10 and take the remainder, the numbers 1 and 2 would come up more often than the rest — because 52 doesn't divide evenly by 10, leaving 2 "extra" cards that loop back to the beginning.
 Rejection sampling fixes this by saying: "If you draw one of those extra cards, put it back and draw again." You keep drawing until you get a card from the fair range. The result is that every number from 1 to 10 has exactly the same chance of being picked.
-In moria's case, a random byte can be 0–255 (256 values), but the character pool might be 64 characters. Since 256 doesn't always divide evenly into the pool size, some characters would be slightly more likely without rejection sampling. By discarding the "extra" bytes and drawing fresh ones, every character gets a perfectly fair shot.
+In moria's case, a random byte can be 0–255 (256 values), but the character pool has 73 characters. Since 256 doesn't always divide evenly into the pool size, some characters would be slightly more likely without rejection sampling. By discarding the "extra" bytes and drawing fresh ones, every character gets a perfectly fair shot.
 
 ## Understanding Your Security
 
 The strength of your derived passwords is limited by your master password. A long spell cannot compensate for a weak master.
 
-`--strength` shows two completely separate attack vectors because they have completely different speeds and assumptions:
+`--password-strength` analyzes your master password strength using `zxcvbn` pattern detection:
 
 ### Example: A Passphrase Master Password
 
 ```bash
-echo "i'm super hunger today" | ./bin/moria --strength "amazon"
-54Oy^L0mn2JL,S6ETv
-
-Password entropy: 108 bits
-Master entropy:   50 bits
-
-Time to guess (generated password):
-  Online (rate-limited)    372.6 billion times the age of the universe
-  Offline (bcrypt/Argon2)  37.3 billion times the age of the universe
-  Offline (MD5/SHA1)       3.7 thousand times the age of the universe
-  GPU cluster (8x 4090)    15 times the age of the universe
-
-Time to guess (master password, via Argon2id):
-  Single CPU               178 years
-  Single GPU               65 days
-  GPU cluster (8x 4090)    178 years
+echo "i'm super hunger today" | ./bin/moria --password-strength
 ```
 
 **Why does the master password show 50 bits for 22 characters?**
@@ -251,23 +212,14 @@ If a hacker stole your master password hash from a normal website using MD5/SHA1
 
 But moria forces the attacker through Argon2id (64MB RAM per guess), bottlenecking a GPU cluster to ~100,000 guesses/sec. 562 trillion / 100,000 = **178 years**. Argon2id turned a weak human phrase into a 178-year mathematical wall.
 
-**The generated password:**
-
-The 18-character output `54Oy^L0mn2JL,S6ETv` has 108 bits of entropy (18 × 6). Even at 25 trillion guesses/sec (GPU cluster against MD5), it takes 15 times the age of the universe.
-
 **What this tells you:**
 
-- If Amazon gets hacked: the attackers get the hash of `54Oy^L0mn2JL,S6ETv`. They will never crack it. It will outlast the universe.
-- If someone targets **you**: they know you use moria and know your spell. They'll try to guess your master password. Because it's made of dictionary words, a nation-state with a GPU cluster could crack it in 178 years.
+- If a website gets hacked: the attackers get the hash of your generated password. With ~111 bits of entropy, it will never be cracked.
+- If someone targets **you**: they know you use moria and know your spell. They'll try to guess your master password. Because it's made of dictionary words, a GPU cluster could crack it in 178 years.
 
 ### The Rule
 
-Your effective security is the minimum of two separate calculations:
-
-1. **Generated password**: `len(password) × 6 bits`, cracked at fast-hash speeds (MD5/SHA1)
-2. **Master password**: `zxcvbn entropy`, cracked at Argon2id speeds (~100K guesses/sec on GPU)
-
-Use `--strength` to see both. If the master password is the bottleneck, pick a stronger master — not a longer spell.
+Your effective security is limited by your master password strength. If `--password-strength` shows "instant" or "minutes", pick a stronger master — not a longer spell.
 
 ## Configuration
 
@@ -278,23 +230,23 @@ All matrix dimensions are compile-time constants in `internal/app/config.go`:
 | `PasswordMatrixRows` | 20 | Number of rows (position modulus) |
 | `CharactersPerMatrixCell` | 3 | Characters per cell (password length multiplier) |
 | `AlphabetSize` | 26 | Letters in the alphabet |
-| `MasterPasswordChars` | 64 chars | Shell-safe character pool for `--magic` |
+| `MasterPasswordChars` | 73 chars | Shell-safe character pool for `--magic` |
 
 To change the matrix size, edit the constants and run `make test && make build`. All tests pass with any value.
 
 ## CLI Reference
 
 ```
-Usage: moria [--magic|--pretty|--live] [--max-len N] [--ignore-paste] [--strength] <spell>
+Usage: moria [--magic|--pretty|--live|--password-strength] [--max-len N] [--ignore-paste] [spell]
 
 Options:
-  --magic              Generate a master password
-  --pretty             Display the password matrix from your master password
-  --live               Interactive mode: type your spell and see the password build in real-time
-  --max-len            Truncate output to N characters (live and batch modes only)
-  --ignore-paste       Ignore pasted input in live mode (single characters only, live mode only)
-  --strength           Show time-to-guess estimates for the generated password (batch mode only)
-  -h, --help           Show this help message
+  --magic                Generate a master password
+  --pretty               Display the password matrix from your master password
+  --live                 Interactive mode: type your spell and see the password build in real-time
+  --password-strength    Analyze password strength from stdin (standalone, no spell)
+  --max-len              Truncate output to N characters (live and batch modes only)
+  --ignore-paste         Ignore pasted input in live mode (live mode only)
+  -h, --help             Show this help message
 ```
 
 ## Project Structure

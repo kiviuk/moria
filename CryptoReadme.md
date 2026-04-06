@@ -137,20 +137,20 @@ Maps random bytes to the character pool without modulo bias. Every character has
 
 For a 6-letter spell:
 - 6 cells × 3 chars/cell = 18 characters
-- Each character from 70-char pool = ~6.1 bits
-- Total: **~108 bits** (computationally infeasible to brute-force)
+- Each character from 73-char pool = ~6.19 bits
+- Total: **~111 bits** (computationally infeasible to brute-force)
 
 ### Master Password
 
-Use `--master-password-strength` to check your master password:
+Use `--password-strength` to check your master password:
 
 ```bash
-$ echo "i'm super hunger today" | moria --master-password-strength
+$ echo "i'm super hunger today" | moria --password-strength
 Master password entropy: 50 bits
 zxcvbn crack time estimate (generic): centuries
 Time to guess (master password, via Argon2id):
-  Single CPU               178 years
-  Single GPU               65 days
+  Single CPU               1.8 million years
+  Single GPU               1.8 thousand years
   GPU cluster              178 years
 ```
 
@@ -162,8 +162,8 @@ When you run `moria --magic`, the tool bypasses human psychology entirely. It go
 
 ```bash
 $ moria --magic > master.txt
-$ cat master.txt | moria --master-password-strength
-Master password entropy: 3316 bits
+$ cat master.txt | moria --password-strength
+Master password entropy: 3346 bits
 zxcvbn crack time estimate (generic): effectively uncrackable
 Time to guess (master password, via Argon2id):
   Single CPU               effectively uncrackable
@@ -171,20 +171,20 @@ Time to guess (master password, via Argon2id):
   GPU cluster              effectively uncrackable
 ```
 
-**Why did it score 3316 bits?**
+**Why did it score 3346 bits?**
 
-When zxcvbn analyzed it, it scanned for dictionary words, patterns, and keyboard walks. It found nothing. Because it was pure, unadulterated random noise, zxcvbn reverted to pure Shannon Information Theory math:
+When zxcvbn analyzed it, it scanned for dictionary words, patterns, and keyboard walks. It found nothing. Because it was pure, unadulterated random noise, zxcvbn calculated the entropy based on its character frequency analysis:
 
 ```
-600 characters × ~5.5 bits of surprise per character = 3316 bits
+600 characters of random noise ≈ 3346 bits
 ```
 
-**To put 3316 bits into perspective:**
+**To put 3346 bits into perspective:**
 
 | Scale | Bits | Comparison |
 |-------|------|------------|
 | Atoms in the observable universe | ~256 | `2^256` |
-| Your `--magic` master password | **3316** | `2^3316` |
+| Your `--magic` master password | **3346** | `2^3346` |
 
 If every single atom in the universe was a GPU supercomputer, and they had all been guessing your master password since the Big Bang, they wouldn't have even scratched the surface.
 
@@ -200,55 +200,7 @@ This is exactly why moria was designed to accept piped inputs:
 cat master.txt | moria "amazon"
 ```
 
-By using `--magic`, you are abandoning the "brain-only" approach. You save that massive 3316-bit string into a text file, put it on an encrypted USB drive (or inside a local password manager), and use it as a **keyfile**.
-
-**You traded human convenience (memorization) for absolute, flawless mathematical invincibility.**
-
-### The Nuclear Option: `--magic`
-
-When you run `moria --magic`, the tool bypasses human psychology entirely. It goes straight to `crypto/rand` (true machine randomness) and generates a password that is exactly 600 characters long — the exact size needed to fill your 20×10×3 matrix.
-
-```bash
-$ moria --magic > master.txt
-$ cat master.txt | moria --master-password-strength
-Master password entropy: 3316 bits
-zxcvbn crack time estimate (generic): effectively uncrackable
-Time to guess (master password, via Argon2id):
-  Single CPU               effectively uncrackable
-  Single GPU               effectively uncrackable
-  GPU cluster              effectively uncrackable
-```
-
-**Why did it score 3316 bits?**
-
-When zxcvbn analyzed it, it scanned for dictionary words, patterns, and keyboard walks. It found nothing. Because it was pure, unadulterated random noise, zxcvbn reverted to pure Shannon Information Theory math:
-
-```
-600 characters × ~5.5 bits of surprise per character = 3316 bits
-```
-
-**To put 3316 bits into perspective:**
-
-| Scale | Bits | Comparison |
-|-------|------|------------|
-| Atoms in the observable universe | ~256 | `2^256` |
-| Your `--magic` master password | **3316** | `2^3316` |
-
-If every single atom in the universe was a GPU supercomputer, and they had all been guessing your master password since the Big Bang, they wouldn't have even scratched the surface.
-
-**The Catch (And Why `--magic` Exists)**
-
-You now have a master password that defeats the NSA, time itself, and the heat death of the universe.
-
-The only problem? You cannot memorize a 600-character string of gibberish.
-
-This is exactly why moria was designed to accept piped inputs:
-
-```bash
-cat master.txt | moria "amazon"
-```
-
-By using `--magic`, you are abandoning the "brain-only" approach. You save that massive 3316-bit string into a text file, put it on an encrypted USB drive (or inside a local password manager), and use it as a **keyfile**.
+By using `--magic`, you are abandoning the "brain-only" approach. You save that massive 3346-bit string into a text file, put it on an encrypted USB drive (or inside a local password manager), and use it as a **keyfile**.
 
 **You traded human convenience (memorization) for absolute, flawless mathematical invincibility.**
 
@@ -258,7 +210,7 @@ By using `--magic`, you are abandoning the "brain-only" approach. You save that 
 
 2. **A long spell cannot compensate for a weak master.** `"amazon"` vs `"amazonprime"` doesn't matter if your master is `"password123"`.
 
-3. **Use `--master-password-strength` to validate.** If it shows "instant" or "minutes", pick a stronger master — not a longer spell.
+3. **Use `--password-strength` to validate.** If it shows "instant" or "minutes", pick a stronger master — not a longer spell.
 
 4. **Same master + same spell = same password.** This is deterministic by design. If you forget your master password, there is no recovery.
 
@@ -288,7 +240,7 @@ By using `--magic`, you are abandoning the "brain-only" approach. You save that 
 ## Recommendations
 
 1. **Generate a random master password** with `moria --magic` and store it securely
-2. **Check its strength** with `moria --master-password-strength`
+2. **Check its strength** with `moria --password-strength`
 3. **Use memorable but strong passphrases** if you must type it manually (e.g., 5-6 random words)
 4. **Never use dictionary phrases** that zxcvbn can detect
 5. **Back up your master password** — there is no recovery if lost
