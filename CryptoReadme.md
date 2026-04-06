@@ -12,7 +12,7 @@ When you use moria, four things exist in the world:
 |-------|---------|-------------|
 | **Spell** | `amazon` | You (but attacker may guess it) |
 | **Amazon's Database Hash** | `$2b$12$xQ...` | Attacker (stolen in breach) |
-| **Generated Password** | `54Oy^L0mn2JL,S6ETv` | You (what you type to log in) |
+| **Generated Password** | `54Oy^L0mn2JL,S6ETv` | You (what you type to log in — derived by moria from master + spell) |
 | **Master Password** | `i'm super hunger today` | You (your only secret) |
 
 The attacker's goal: recover your **Master Password**. Why? Because it unlocks every account you've ever generated — Amazon, Gmail, PayPal, your bank, your crypto wallet.
