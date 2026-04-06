@@ -72,10 +72,10 @@ func ExpandToMatrix(input string) string {
 	// Argon2id parameters: time=1, memory=64MB, threads=2, keyLength=32
 	// Provides ~500ms derivation time, making brute-force attacks infeasible.
 	salt := []byte("moria-salt-v1")
-	key := argon2.IDKey([]byte(input), salt, 1, 64*1024, 2, 32)
+	key := argon2.IDKey([]byte(input), salt, 1, 64*1024, 4, 32)
 
 	// Expand the 32-byte high-entropy key to MatrixBytes using HKDF.
-	// Safe here because Argon2id output is already high-entropy.
+	// Safe here because Argon2id output is already high-entropy, solond the master key word is high-entropy.
 	raw, err := hkdf.Key(sha256.New, key, nil, "moria-matrix-expansion", MatrixBytes*2)
 	if err != nil {
 		panic(err)
@@ -86,11 +86,22 @@ func ExpandToMatrix(input string) string {
 
 func mapToCharset(raw []byte, pool string, length int) string {
 	poolBytes := []byte(pool)
+	
+	// Rejection Sampling Basics
+	// The function maps random bytes to a character pool without modulo bias:
+	// threshold := 256 - (256 % poolLen)
+	// - If poolLen = 64, then threshold = 256 (no bytes are biased)
+	// - If poolLen = 70, then threshold = 256 - 46 = 210 (bytes 210-255 are "biased" and discarded)
 	poolLen := len(poolBytes)
 	threshold := 256 - (256 % poolLen)
 
 	result := make([]byte, length)
 	j := 0
+	// The Problem:
+	// For each character in the result:
+	// 1. Take a byte from raw at index j
+	// 2. If b < threshold: use it (no bias)
+	// 3. If b >= threshold: discard and try another byte
 	for i := 0; i < length; i++ {
 		for {
 			b := int(raw[j])
@@ -99,7 +110,16 @@ func mapToCharset(raw []byte, pool string, length int) string {
 				result[i] = poolBytes[b%poolLen]
 				break
 			}
+			// Issue: If many bytes are discarded (biased),
+			// we might run out of input bytes before filling the result.
 			if j >= len(raw) {
+				// When we run out of input bytes (j >= len(raw)):
+				// 1. Generate length*2 more random bytes
+				// 2. Append them to raw
+				// 3. Continue the loop with more data
+				// The length*2 is an arbitrary buffer - generate enough\
+				// extra to likely complete the remaining characters 
+				// (accounting for some being discarded as biased).
 				more := make([]byte, length*2)
 				if _, err := rand.Read(more); err != nil {
 					panic(err)
