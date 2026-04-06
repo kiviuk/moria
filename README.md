@@ -101,16 +101,11 @@ cat the-key.txt | ./bin/moria --max-len 16 "phrase-i-can-remember"
 
 ### 5. Check Password Strength
 
-Analyze the strength of any password using [zxcvbn](https://github.com/ccojocar/zxcvbn-go) pattern detection. The password goes to `stdout`, the analysis goes to `stderr`:
+Analyze the strength of any password using [zxcvbn](https://github.com/ccojocar/zxcvbn-go) pattern detection:
 
 ```bash
 echo "i'm super hunger today" | ./bin/moria --password-strength
 ```
-
-The time-to-guess estimates use [Argon2id](https://datatracker.ietf.org/doc/html/rfc9106) attack speeds:
-- **Single CPU**: ~10K guesses/sec (typical desktop processor)
-- **Single GPU**: ~10M guesses/sec (mid-range GPU)
-- **GPU cluster**: ~100K guesses/sec (limited by Argon2id's 64MB memory requirement)
 
 Output:
 ```
@@ -123,6 +118,17 @@ Time to guess (master password, via Argon2id):
   Single GPU               1.8 thousand years
   GPU cluster              178 years
 ```
+
+**How this works:**
+
+1. **zxcvbn** analyzes the *string you typed* using dictionary and pattern detection. It found 4 common English words → ~50 bits of entropy.
+
+2. **moria's time estimates** apply brute-force computation times. The formula: `(2^entropy) / guesses_per_second`. We assume the attacker knows your spell and uses Argon2id (which limits GPU speed to ~100K guesses/sec due to its 64MB memory requirement).
+
+Attack speed estimates:
+- **Single CPU**: ~10K guesses/sec (typical desktop processor)
+- **Single GPU**: ~10M guesses/sec (mid-range GPU)
+- **GPU cluster**: ~100K guesses/sec (limited by [Argon2id's](https://datatracker.ietf.org/doc/html/rfc9106) 64MB memory requirement)
 
 ## How It Works
 
