@@ -37,7 +37,7 @@ If you already have an SSH private key, use it directly — no new secret to man
 ```bash
 cat ~/.ssh/id_ed25519 | ./bin/moria "phrase-i-can-remember"
 ```
-Output: a unique password derived from your SSH key + the spell.
+Output: `xK9!nQ7#5$wYBcD4` (unique password derived from your SSH key + the spell)
 
 **Option B: Generate a new master password with `--magic`**
 If you don't have an SSH key, generate a cryptographically secure master password:
@@ -50,13 +50,29 @@ You can then pipe it or store it in a password manager:
 ```bash
 # Pipe from file
 cat the-key.txt | ./bin/moria "phrase-i-can-remember"
+# → xK9!nQ7#5$wYBcD4
 
 # Interactive prompt (password manager)
 ./bin/moria "phrase-i-can-remember"
-# You'll be prompted to paste your master password (input is masked with •••)
+# → you'll be prompted to paste your master password (input is masked with •••)
 ```
 
-### 2. Display the Matrix
+### 2. Interactive Live Mode
+
+```bash
+cat the-key.txt | ./bin/moria --live
+# Or without piping — you'll be prompted to paste your master password
+./bin/moria --live
+```
+
+Type your spell character by character. The matrix highlights visited cells and the password builds in real-time. Press Enter to output the final password.
+
+```
+Spell:    phrase-i-can-remember
+Password: xK9!nQ7#5$wYBcD4 (18/18)
+```
+
+### 3. Display the Matrix
 
 ```bash
 cat the-key.txt | ./bin/moria --pretty
@@ -74,20 +90,13 @@ Shows the full password matrix with column headers:
 ...
 ```
 
-### 3. Interactive Live Mode
-
-```bash
-cat the-key.txt | ./bin/moria --live
-```
-
-Type your spell character by character. The matrix highlights visited cells and the password builds in real-time. Press Enter to output the final password.
-
 ### 4. Limit Password Length
 
 Some sites cap password length. Use `--max-len` to truncate:
 
 ```bash
 cat the-key.txt | ./bin/moria --max-len 16 "phrase-i-can-remember"
+# → xK9!nQ7#5$wYBcD4
 ```
 
 ### 5. Check Password Strength
