@@ -156,6 +156,10 @@ zxcvbn detects that `"i'm super hunger today"` is four common English words. Ins
 
 The **178 years** estimate comes from: `(2^49 guesses) ÷ (100K guesses/sec)`. The ~49 bits reflects the effective entropy after accounting for dictionary patterns.
 
+zxcvbn sees 4 common words, but doesn't know they form a recognizable phrase. Attackers can't guess "i'm super hungry today" because it's not in any wordlist. **Pattern detection only catches what attackers have precomputed**.
+
+**Practical takeaway:** Combine common words in unique, memorable ways. Even simple phrases are safer than you think because attackers can't precompute every possible combination.
+
 ## Configuration
 
 All matrix dimensions are compile-time constants in `internal/app/config.go`:
