@@ -59,6 +59,23 @@ func (e Errors) Error() string {
 	return "invalid chars: " + strings.Join(parts, ", ")
 }
 
+// IsAllowedSpellChar returns true if the rune is valid for spell input.
+// This includes lowercase/uppercase letters, digits, space, and special characters.
+func IsAllowedSpellChar(r rune) bool {
+	switch {
+	case r >= 'a' && r <= 'z':
+		return true
+	case r >= 'A' && r <= 'Z':
+		return true
+	case r >= '0' && r <= '9':
+		return true
+	case strings.ContainsRune(AllowedSpecialChars, r):
+		return true
+	default:
+		return false
+	}
+}
+
 // Parse validates the spell string, rejecting any characters outside the allowed
 // set (letters, digits, space, and permitted special characters). All errors are
 // accumulated and returned together rather than failing on the first invalid character.
@@ -74,20 +91,7 @@ func (d DirtySpell) Parse() (MagicSpell, error) {
 		if s == "" {
 			continue
 		}
-		matched := false
-		switch {
-		case r >= 'a' && r <= 'z':
-			matched = true
-		case r >= 'A' && r <= 'Z':
-			matched = true
-		case r >= '0' && r <= '9':
-			matched = true
-		case r == ' ':
-			matched = true
-		case strings.ContainsRune(AllowedSpecialChars, r):
-			matched = true
-		}
-		if !matched {
+		if !IsAllowedSpellChar(r) {
 			errs = append(errs, ParseError{Char: s, Position: i})
 		}
 	}

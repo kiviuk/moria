@@ -26,16 +26,16 @@ const MaxLetterGroups = (AlphabetSize + CharactersPerMatrixCell - 1) / Character
 // Equals MaxLetterGroups + 1, where column 0 holds non-letter characters.
 const PasswordMatrixColumns = MaxLetterGroups + 1
 
-// AllowedSpecialChars is the set of permitted special characters.
-const AllowedSpecialChars = `!@#$%^&*()-_=+[]{}|;:,.<>?/~` + "`\"'"
+// AllowedSpecialChars is the set of permitted special characters including space.
+const AllowedSpecialChars = `!@#$%^&*()-_=+[]{}|;:,.<>?/~` + " " + "`" + "'" + "\""
 
-// MasterPasswordChars contains bash-safe characters for master password generation.
+// MasterPasswordChars contains bash-compatible characters for master password generation.
 // Excludes shell metacharacters: {} [] ~ " ' space $ ! # & * ? ( ) | < > ; \ `
 const MasterPasswordChars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789@-_=+:%.^/,"
 
 // MatrixBytes is the exact number of characters needed for the matrix.
 const MatrixBytes = PasswordMatrixRows * PasswordMatrixColumns * CharactersPerMatrixCell
 
-// CharsetBits is the entropy per character in the matrix (log₂(64) = 6 bits).
-// The master password character pool contains exactly 64 characters.
+// CharsetBits is the entropy per character in the matrix (log₂(73) ≈ 6.19 bits).
+// The master password character pool contains exactly 73 characters.
 const CharsetBits = 6

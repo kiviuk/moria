@@ -433,3 +433,32 @@ func TestExtractPassword_CaseSensitive(t *testing.T) {
 		t.Error("uppercase and mixed case spells produced identical passwords")
 	}
 }
+
+func TestIsAllowedSpellChar(t *testing.T) {
+	tests := []struct {
+		char     rune
+		expected bool
+		desc     string
+	}{
+		{'a', true, "lowercase letter"},
+		{'z', true, "lowercase letter"},
+		{'A', true, "uppercase letter"},
+		{'Z', true, "uppercase letter"},
+		{'0', true, "digit"},
+		{'9', true, "digit"},
+		{' ', true, "space"},
+		{'!', true, "special char"},
+		{'-', true, "special char"},
+		{'@', true, "special char"},
+		{'\x00', false, "control char NUL"},
+		{'\x1f', false, "control char"},
+		{127, false, "DEL"},
+	}
+
+	for _, tt := range tests {
+		got := IsAllowedSpellChar(tt.char)
+		if got != tt.expected {
+			t.Errorf("IsAllowedSpellChar(%q) = %v, want %v (%s)", tt.char, got, tt.expected, tt.desc)
+		}
+	}
+}

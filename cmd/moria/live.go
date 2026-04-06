@@ -111,17 +111,15 @@ func (m liveModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if ch < 32 || ch == 127 {
 					continue
 				}
-				charStr := string(ch)
-				dirty := app.DirtySpell{Spell: charStr}
-				_, parseErr := dirty.Parse()
-				if parseErr != nil {
-					m.err = fmt.Sprintf(MsgInvalidChar, charStr)
+				if !app.IsAllowedSpellChar(ch) {
+					m.err = fmt.Sprintf(MsgInvalidChar, string(ch))
 					return m, nil
 				}
 				if m.maxLen > 0 && len(m.password) >= m.maxLen {
 					m.state = StateMaxLenReached
 					return m, nil
 				}
+				charStr := string(ch)
 				m.spell += charStr
 				letter := app.MagicLetter{Letter: charStr, LetterPosition: len(m.spell) - 1}
 				query := letter.Query()
