@@ -1,13 +1,14 @@
 package app
 
 import (
-	"crypto/hkdf"
 	"crypto/rand"
 	"crypto/sha256"
 	"fmt"
+	"io"
 	"strings"
 
 	"golang.org/x/crypto/argon2"
+	"golang.org/x/crypto/hkdf"
 )
 
 // Matrix is a grid of password fragments used to generate passwords from a spell.
@@ -55,80 +56,65 @@ func (m Matrix) Cell(t QueryLetter) (string, error) {
 // GenerateMasterPassword produces a cryptographically secure master password of the given length.
 // Characters are drawn from the provided pool using rejection sampling for zero bias.
 func GenerateMasterPassword(length int, pool string) (string, error) {
-	raw := make([]byte, length*2)
-	_, err := rand.Read(raw)
-	if err != nil {
-		return "", err
-	}
-	return mapToCharset(raw, pool, length), nil
+	return mapToCharset(rand.Reader, pool, length), nil
 }
 
-// mapToCharset maps random bytes to a character pool using rejection sampling.
-// Guarantees zero modulo bias regardless of pool size.
-// ExpandToMatrix deterministically expands any input string to exactly MatrixBytes characters.
-// Uses Argon2id for memory-hard key derivation to resist brute-force attacks on weak passwords,
-// followed by HKDF for expansion and rejection sampling for unbiased character mapping.
-func ExpandToMatrix(input string) string {
-	// Argon2id parameters: time=1, memory=64MB, threads=2, keyLength=32
-	// Provides ~500ms derivation time, making brute-force attacks infeasible.
-	salt := []byte("moria-salt-v1")
-	key := argon2.IDKey([]byte(input), salt, 1, 64*1024, 4, 32)
-
-	// Expand the 32-byte high-entropy key to MatrixBytes using HKDF.
-	// Safe here because Argon2id output is already high-entropy, solond the master key word is high-entropy.
-	raw, err := hkdf.Key(sha256.New, key, nil, "moria-matrix-expansion", MatrixBytes*2)
-	if err != nil {
-		panic(err)
-	}
-
-	return mapToCharset(raw, MasterPasswordChars, MatrixBytes)
-}
-
-func mapToCharset(raw []byte, pool string, length int) string {
+// mapToCharset maps bytes from an io.Reader to a character pool using rejection sampling.
+// Guarantees zero modulo bias regardless of pool size by discarding bytes that would create bias.
+// The io.Reader can be deterministic (hkdf.New for ExpandToMatrix) or random (rand.Reader for GenerateMasterPassword).
+// This design preserves determinism: the same io.Reader will always produce the same output.
+func mapToCharset(source io.Reader, pool string, length int) string {
 	poolBytes := []byte(pool)
-	
-	// Rejection Sampling Basics
-	// The function maps random bytes to a character pool without modulo bias:
-	// threshold := 256 - (256 % poolLen)
-	// - If poolLen = 64, then threshold = 256 (no bytes are biased)
-	// - If poolLen = 70, then threshold = 256 - 46 = 210 (bytes 210-255 are "biased" and discarded)
 	poolLen := len(poolBytes)
+	// threshold defines the maximum byte value that can be used without introducing modulo bias.
+	// For a pool of size N, we can only use bytes 0 to (256 - (256 % N)) - 1.
+	// Bytes >= threshold are discarded to ensure uniform distribution.
 	threshold := 256 - (256 % poolLen)
 
 	result := make([]byte, length)
-	j := 0
-	// The Problem:
-	// For each character in the result:
-	// 1. Take a byte from raw at index j
-	// 2. If b < threshold: use it (no bias)
-	// 3. If b >= threshold: discard and try another byte
+	buf := make([]byte, length*4)
+	bytesRead := 0
+	j := len(buf)
+
 	for i := 0; i < length; i++ {
 		for {
-			b := int(raw[j])
+			// If buffer is exhausted, stream more bytes from the source
+			if j >= bytesRead {
+				n, err := source.Read(buf)
+				if err != nil && err != io.EOF {
+					panic(fmt.Sprintf("entropy source failed: %v", err))
+				}
+				bytesRead = n
+				j = 0
+				if bytesRead == 0 {
+					panic("entropy source returned no data")
+				}
+			}
+
+			b := int(buf[j])
 			j++
+
+			// Accept byte only if it falls within the unbiased range
 			if b < threshold {
 				result[i] = poolBytes[b%poolLen]
 				break
 			}
-			// Issue: If many bytes are discarded (biased),
-			// we might run out of input bytes before filling the result.
-			if j >= len(raw) {
-				// When we run out of input bytes (j >= len(raw)):
-				// 1. Generate length*2 more random bytes
-				// 2. Append them to raw
-				// 3. Continue the loop with more data
-				// The length*2 is an arbitrary buffer - generate enough\
-				// extra to likely complete the remaining characters 
-				// (accounting for some being discarded as biased).
-				more := make([]byte, length*2)
-				if _, err := rand.Read(more); err != nil {
-					panic(err)
-				}
-				raw = append(raw, more...)
-			}
+			// Otherwise, discard and try next byte (rejection sampling)
 		}
 	}
 	return string(result)
+}
+
+// ExpandToMatrix deterministically expands any input string to exactly MatrixBytes characters.
+// Uses Argon2id for memory-hard key derivation to resist brute-force attacks on weak passwords,
+// followed by HKDF for expansion and rejection sampling for unbiased character mapping.
+func ExpandToMatrix(input string) string {
+	salt := []byte("moria-salt-v1")
+	key := argon2.IDKey([]byte(input), salt, 1, 64*1024, 4, 32)
+
+	hkdfReader := hkdf.New(sha256.New, key, []byte("moria-salt-v1"), []byte("moria-matrix-expansion"))
+
+	return mapToCharset(hkdfReader, MasterPasswordChars, MatrixBytes)
 }
 
 // ColHeader returns the display name for a matrix column.
