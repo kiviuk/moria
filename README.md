@@ -14,17 +14,6 @@ A deterministic, matrix-based password generator. Generate unique, strong passwo
 Master Password (secret) + Spell (service name) → Unique Password
 ```
 
-## Features
-
-- **Deterministic** — same inputs always produce the same output
-- **Case-sensitive spells** — "amazon" and "AMAZON" produce different passwords
-- **No password storage** — passwords are derived on-demand, never stored
-- **Shell-safe master passwords** — generated passwords avoid shell metacharacters
-- **Interactive live mode** — type your spell and watch the password build in real-time
-- **Pretty matrix display** — visualize the password matrix for verification
-- **Masked password input** — enter your master password with hidden characters (•••)
-- **Configurable** — all matrix dimensions are compile-time constants
-
 ## Installation
 
 ```bash
@@ -43,7 +32,7 @@ The binary is built to `bin/moria`.
 ./bin/moria --magic
 ```
 
-This outputs a 600-character shell-safe random string. **Save this securely** — it's your master key. You have two options for using it:
+This outputs a 600-character cryptographically secure random string. **Save this securely** — it's your master key. You have two options for using it:
 
 **Option A: Save to a file and pipe it**
 ```bash
