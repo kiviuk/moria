@@ -1,6 +1,6 @@
 # moria
 
-A deterministic, matrix-based password generator. Generate unique, strong passwords for every service from a single master password and a memorable spell.
+A deterministic, matrix-based password generator. Generate unique, strong passwords for every service/login/vault from a single master password and a memorable spell.
 
 > *"Speak, friend, and enter."* — Your spell is the password. The matrix is the mine.
 
@@ -8,11 +8,15 @@ A deterministic, matrix-based password generator. Generate unique, strong passwo
 
 ## Core Concept
 
-`moria` uses a **password matrix** — a grid of random character fragments — combined with a **spell** (any memorable) to derive unique passwords. The same master password + spell always produces the same password.
+`moria` uses a **password matrix** — a grid of random character fragments — combined with a **spell** (any memorable key phrase) to derive unique passwords. The same master password + spell always produces the same password.
 
 ```
-Master Password (secret) + Spell (service name) → Unique Password
+Master Password (secret) + Spell (pass-phrase) → Unique Password
 ```
+
+**Primary use case for developers:** If you already have an SSH private key (e.g., for GitHub, servers, or CI/CD), you can reuse it as your master password. Generate passwords tied to that same ecosystem — no new secret to manage.
+
+Example: Your `id_ed25519` key grants access to GitHub. Use the same key to generate your GitHub password, personal access tokens, or other GitHub-related credentials.
 
 ## Installation
 
@@ -32,29 +36,29 @@ The binary is built to `bin/moria`.
 ./bin/moria --magic
 ```
 
-This outputs a cryptographically secure random string. **Save this securely** — it's your master key. You have two options for using it:
+This outputs a cryptographically secure random string. **Save this securely** — it's your master key. You have these options for using it:
 
 **Option A: Save to a file and pipe it**
 ```bash
 ./bin/moria --magic > the-key.txt
-cat the-key.txt | ./bin/moria "pwd-i-can-remember"
+cat the-key.txt | ./bin/moria "phrase-i-can-remember"
 ```
 
 **Option B: Store in a password manager**
 Save the output to KeePass, 1Password, or any password manager. When you need a service password, paste it into the interactive prompt:
 ```bash
-./bin/moria "pwd-i-can-remember"
+./bin/moria "phrase-i-can-remember"
 # You'll be prompted to paste your master password (input is masked with •••)
 ```
 
 **Option C: Use an existing secret as your master key**
 You don't need to generate a new password — you can use any existing secret like an SSH private key, a GPG key, or a long passphrase. The tool will deterministically expand it to fill the matrix:
 ```bash
-cat ~/.ssh/id_ed25519 | ./bin/moria "pwd-i-can-remember"
+cat ~/.ssh/id_ed25519 | ./bin/moria "phrase-i-can-remember"
 ```
 This is convenient if you already have a secure key you trust and don't want to manage another secret.
 
-Output: a unique password derived from your master password + the spell "pwd-i-can-remember".
+Output: a unique password derived from your master password + the spell "phrase-i-can-remember".
 
 ### 2. Display the Matrix
 
@@ -65,9 +69,9 @@ cat the-key.txt | ./bin/moria --pretty
 Shows the full password matrix with column headers:
 
 ```
-       Non      ABC      DEF      GHI      JKL      MNO      PQR      STU      VWX      YZ
-       ──────   ──────   ──────   ──────   ──────   ──────   ──────   ──────   ──────   ──────
-0      xK9!mP   2@nQ7#   rT5$wY   8aBcD4   eF6gH7   jK1lM2   nO3pQ4   rS5tU6   vW7xY8   zA9bC0
+       Non    ABC    DEF    GHI    JKL    MNO    PQR    STU    VWX    YZ
+       ────   ────   ────   ────   ────   ────   ────   ────   ────   ────
+0      xK9!   nQ7#   5$wY   BcD4   6gH7   1lM2   3pQ4   5tU6   7xY8   9bC0
 1      ...
 ...
 ```
@@ -85,7 +89,7 @@ Type your spell character by character. The matrix highlights visited cells and 
 Some sites cap password length. Use `--max-len` to truncate:
 
 ```bash
-cat the-key.txt | ./bin/moria --max-len 16 "pwd-i-can-remember"
+cat the-key.txt | ./bin/moria --max-len 16 "phrase-i-can-remember"
 ```
 
 ### 5. Show Password Strength
@@ -120,7 +124,7 @@ Time to guess (master password, via Argon2id):
 
 ### Example
 
-Spell: `"pwd-i-can-remember"` (18 characters, including hyphens)
+Spell: `"phrase-i-can-remember"` (18 characters, including hyphens)
 
 | Char | Position | Row | Group | Column | Cell |
 |------|----------|-----|-------|--------|------|
@@ -147,7 +151,7 @@ Output: 18 cells × 3 chars = 54-character password.
 
 ### Case Sensitivity
 
-Uppercase letters shift the row by `PasswordMatrixRows/2`, making `"PWD-i-can-remember"` and `"pwd-i-can-remember"` produce completely different passwords. This adds entropy without requiring a longer spell.
+Uppercase letters shift the row by `PasswordMatrixRows/2`, making `"PHrase-I-can-remember"` and `"phrase-i-can-remember"` produce completely different passwords. This adds entropy without requiring a longer spell.
 
 ## Security Model
 
@@ -156,7 +160,7 @@ Uppercase letters shift the row by `PasswordMatrixRows/2`, making `"PWD-i-can-re
 - **Spell** - a private rememberable password. One for every login.
 
 ### What's Public
-- **The generated password** from the `spell` e.g., "pwd-i-can-remember". An attacker knowing this gets nothing without the master password.
+- **The generated password** from the `spell` e.g., "phrase-i-can-remember". An attacker knowing this gets nothing without the master password.
 
 ### Entropy
 - **Matrix**: 600 chars × ~6.19 bits/char ≈ ~3,700 bits of entropy
@@ -177,7 +181,7 @@ This means you can use any input as long as it has sufficient entropy:
 - **Weak passphrases**: Risky — Argon2id slows attacks but doesn't replace missing entropy
 
 ```bash
-cat ~/.ssh/id_ed25519 | ./bin/moria "pwd-i-can-remember"
+cat ~/.ssh/id_ed25519 | ./bin/moria "phrase-i-can-remember"
 ```
 
 ### Rejection Sampling
@@ -244,7 +248,7 @@ Options:
   --pretty               Display the password matrix from your master password
   --live                 Interactive mode: type your spell and see the password build in real-time
   --password-strength    Analyze password strength from stdin (standalone, no spell)
-  --max-len              Truncate output to N characters (live and batch modes only)
+  --max-len N            Truncate output to N > 0 characters (live and batch modes only)
   --ignore-paste         Ignore pasted input in live mode (live mode only)
   -h, --help             Show this help message
 ```
