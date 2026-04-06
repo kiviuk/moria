@@ -65,6 +65,25 @@ func GenerateMasterPassword(length int, pool string) (string, error) {
 
 // mapToCharset maps random bytes to a character pool using rejection sampling.
 // Guarantees zero modulo bias regardless of pool size.
+// ExpandToMatrix deterministically expands any input string to exactly MatrixBytes characters.
+// Uses Argon2id for memory-hard key derivation to resist brute-force attacks on weak passwords,
+// followed by HKDF for expansion and rejection sampling for unbiased character mapping.
+func ExpandToMatrix(input string) string {
+	// Argon2id parameters: time=1, memory=64MB, threads=2, keyLength=32
+	// Provides ~500ms derivation time, making brute-force attacks infeasible.
+	salt := []byte("moria-salt-v1")
+	key := argon2.IDKey([]byte(input), salt, 1, 64*1024, 2, 32)
+
+	// Expand the 32-byte high-entropy key to MatrixBytes using HKDF.
+	// Safe here because Argon2id output is already high-entropy.
+	raw, err := hkdf.Key(sha256.New, key, nil, "moria-matrix-expansion", MatrixBytes*2)
+	if err != nil {
+		panic(err)
+	}
+
+	return mapToCharset(raw, MasterPasswordChars, MatrixBytes)
+}
+
 func mapToCharset(raw []byte, pool string, length int) string {
 	poolBytes := []byte(pool)
 	poolLen := len(poolBytes)
@@ -90,25 +109,6 @@ func mapToCharset(raw []byte, pool string, length int) string {
 		}
 	}
 	return string(result)
-}
-
-// ExpandToMatrix deterministically expands any input string to exactly MatrixBytes characters.
-// Uses Argon2id for memory-hard key derivation to resist brute-force attacks on weak passwords,
-// followed by HKDF for expansion and rejection sampling for unbiased character mapping.
-func ExpandToMatrix(input string) string {
-	// Argon2id parameters: time=1, memory=64MB, threads=2, keyLength=32
-	// Provides ~500ms derivation time, making brute-force attacks infeasible.
-	salt := []byte("moria-salt-v1")
-	key := argon2.IDKey([]byte(input), salt, 1, 64*1024, 2, 32)
-
-	// Expand the 32-byte high-entropy key to MatrixBytes using HKDF.
-	// Safe here because Argon2id output is already high-entropy.
-	raw, err := hkdf.Key(sha256.New, key, nil, "moria-matrix-expansion", MatrixBytes*2)
-	if err != nil {
-		panic(err)
-	}
-
-	return mapToCharset(raw, MasterPasswordChars, MatrixBytes)
 }
 
 // ColHeader returns the display name for a matrix column.
