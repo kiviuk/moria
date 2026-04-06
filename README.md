@@ -152,9 +152,21 @@ The strength of your derived passwords is limited by your master password. A lon
 echo "i'm super hunger today" | ./bin/moria --password-strength
 ```
 
-zxcvbn detects that `"i'm super hunger today"` is four common English words. Instead of multiplying 22 × 6 bits (which assumes random gibberish), it calculates the actual entropy of a dictionary-word passphrase.
+Output:
+```
+Master password entropy: 50 bits
 
-The **178 years** estimate comes from: `(2^49 guesses) ÷ (100K guesses/sec)`. The ~49 bits reflects the effective entropy after accounting for dictionary patterns.
+zxcvbn crack time estimate (generic): centuries
+
+Time to guess (master password, via Argon2id):
+  Single CPU               1.8 million years
+  Single GPU               1.8 thousand years
+  GPU cluster              178 years
+```
+
+[zxcvbn](https://github.com/ccojocar/zxcvbn-go) detects that `"i'm super hunger today"` is four common English words. Instead of multiplying 22 × 6 bits (which assumes random gibberish), it calculates the actual entropy of a dictionary-word passphrase.
+
+The **178 years** estimate comes from: `(2^50 guesses) ÷ (100K guesses/sec)`. The 50 bits reflects the effective entropy after accounting for dictionary patterns.
 
 zxcvbn sees 4 common words, but doesn't know they form a recognizable phrase. Attackers can't guess "i'm super hungry today" because it's not in any wordlist. **Pattern detection only catches what attackers have precomputed**.
 
