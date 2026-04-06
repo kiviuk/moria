@@ -132,12 +132,13 @@ Attack speed estimates:
 
 ## Security Model
 
-### What's Secret
-- **Master password** — the random string (or any input like an SSH key). This is your master secret (the ring to rule them all).
-- **Spell** - a private rememberable password. One for every login.
+Your master password and spell are secret. The generated password is what you use to log in.
 
-### What's Public
-- **The generated password** from the `spell` e.g., "phrase-i-can-remember". An attacker knowing this gets nothing without the master password.
+| Component | Secret? | Notes |
+|-----------|---------|-------|
+| **Master password** | Yes | Your only secret. Compromise = total loss. |
+| **Spell** | Yes | Your memorable phrase per service. Keep private. |
+| **Generated password** | Until leaked | What you type to log in. Safe if master is secure. |
 
 ## Understanding Your Security
 
