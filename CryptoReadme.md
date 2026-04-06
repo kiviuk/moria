@@ -4,6 +4,53 @@
 
 moria derives unique passwords from a single master secret and a memorable "spell" (typically a service name). The same inputs always produce the same output. This document explains the cryptographic design, attack vectors, and why your master password is the linchpin of your entire digital life.
 
+## How It Works
+
+### The Algorithm
+
+1. **Master Password → Matrix**: Your master password is deterministically expanded into a grid of random character fragments
+2. **Spell → Path**: Each character in your spell determines a cell to read:
+   - **Row** = character position in spell, modulo `PasswordMatrixRows` (uppercase letters shift by `PasswordMatrixRows/2`)
+   - **Column** = letter group (A-C→1, D-F→2, ..., Y-Z→9, non-letters→0)
+3. **Extract Password**: Concatenate the cell contents along the path
+
+### Example
+
+Spell: `"phrase-i-can-remember"` (18 characters, including hyphens)
+
+| Char | Position | Row | Group | Column | Cell |
+|------|----------|-----|-------|--------|------|
+| p | 0 | 0 | 6 (PQR) | 6 | (0,6) |
+| w | 1 | 1 | 8 (VWX) | 8 | (1,8) |
+| d | 2 | 2 | 2 (DEF) | 2 | (2,2) |
+| - | 3 | 3 | 0 (Non) | 0 | (3,0) |
+| i | 4 | 4 | 3 (GHI) | 3 | (4,3) |
+| - | 5 | 5 | 0 (Non) | 0 | (5,0) |
+| c | 6 | 6 | 1 (ABC) | 1 | (6,1) |
+| a | 7 | 7 | 1 (ABC) | 1 | (7,1) |
+| n | 8 | 8 | 5 (MNO) | 5 | (8,5) |
+| - | 9 | 9 | 0 (Non) | 0 | (9,0) |
+| r | 10 | 10 | 6 (PQR) | 6 | (10,6) |
+| e | 11 | 11 | 2 (DEF) | 2 | (11,2) |
+| m | 12 | 12 | 5 (MNO) | 5 | (12,5) |
+| e | 13 | 13 | 2 (DEF) | 2 | (13,2) |
+| m | 14 | 14 | 5 (MNO) | 5 | (14,5) |
+| b | 15 | 15 | 1 (ABC) | 1 | (15,1) |
+| e | 16 | 16 | 2 (DEF) | 2 | (16,2) |
+| r | 17 | 17 | 6 (PQR) | 6 | (17,6) |
+
+Output: 18 cells × 3 chars = 54-character password.
+
+### Case Sensitivity
+
+Uppercase letters shift the row by `PasswordMatrixRows/2`, making `"PHrase-I-can-remember"` and `"phrase-i-can-remember"` produce completely different passwords. This adds entropy without requiring a longer spell.
+
+### Entropy
+
+- **Matrix**: 600 chars × ~6.19 bits/char ≈ ~3,700 bits of entropy
+- **Password**: For an 18-character spell, 54 chars × ~6.19 bits ≈ ~334 bits
+- **Brute force**: Computationally infeasible
+
 ## The Four Pieces of the Puzzle
 
 When you use moria, four things exist in the world:
@@ -119,7 +166,21 @@ matrix := mapToCharset(hkdfReader, MasterPasswordChars, MatrixBytes)
 
 Expands the 32-byte key to 600 characters using HKDF (RFC 5869). The output is deterministic — same key always produces the same matrix.
 
+**This means you can use any input as long as it has sufficient entropy:**
+- **SSH/GPG keys**: High entropy (generated with crypto/rand) — ideal
+- **Strong passphrases**: Sufficient if long enough (see `--password-strength`)
+- **Weak passphrases**: Risky — Argon2id slows attacks but doesn't replace missing entropy
+
 ### Stage 3: Rejection Sampling
+
+When generating random passwords, a common mistake is to use the modulo operator (`%`) to map random bytes to a character set. This introduces **modulo bias** — some characters become slightly more likely than others, weakening the password.
+
+Moria uses **rejection sampling** instead: if a random byte falls in the "biased" range, it's discarded and a new byte is drawn. This guarantees every character in the pool has exactly equal probability, preserving the full entropy of your passwords.
+
+Imagine you have a 52-card deck and want to randomly pick a number from 1 to 10. If you just divide the card value by 10 and take the remainder, the numbers 1 and 2 would come up more often than the rest — because 52 doesn't divide evenly by 10, leaving 2 "extra" cards that loop back to the beginning.
+Rejection sampling fixes this by saying: "If you draw one of those extra cards, put it back and draw again." You keep drawing until you get a card from the fair range. The result is that every number from 1 to 10 has exactly the same chance of being picked.
+
+In moria's case, a random byte can be 0–255 (256 values), but the character pool has 73 characters. Since 256 doesn't always divide evenly into the pool size, some characters would be slightly more likely without rejection sampling. By discarding the "extra" bytes and drawing fresh ones, every character gets a perfectly fair shot.
 
 ```go
 threshold := 256 - (256 % poolLen)
@@ -128,8 +189,6 @@ if b < threshold {
 }
 // else: discard and try next byte
 ```
-
-Maps random bytes to the character pool without modulo bias. Every character has exactly equal probability.
 
 ## Entropy Analysis
 

@@ -130,47 +130,6 @@ Attack speed estimates:
 - **Single GPU**: ~10M guesses/sec (mid-range GPU)
 - **GPU cluster**: ~100K guesses/sec (limited by [Argon2id's](https://datatracker.ietf.org/doc/html/rfc9106) 64MB memory requirement)
 
-## How It Works
-
-### The Algorithm
-
-1. **Master Password → Matrix**: Your master password is deterministically expanded into a grid of random character fragments
-2. **Spell → Path**: Each character in your spell determines a cell to read:
-   - **Row** = character position in spell, modulo `PasswordMatrixRows` (uppercase letters shift by `PasswordMatrixRows/2`)
-   - **Column** = letter group (A-C→1, D-F→2, ..., Y-Z→9, non-letters→0)
-3. **Extract Password**: Concatenate the cell contents along the path
-
-### Example
-
-Spell: `"phrase-i-can-remember"` (18 characters, including hyphens)
-
-| Char | Position | Row | Group | Column | Cell |
-|------|----------|-----|-------|--------|------|
-| p | 0 | 0 | 6 (PQR) | 6 | (0,6) |
-| w | 1 | 1 | 8 (VWX) | 8 | (1,8) |
-| d | 2 | 2 | 2 (DEF) | 2 | (2,2) |
-| - | 3 | 3 | 0 (Non) | 0 | (3,0) |
-| i | 4 | 4 | 3 (GHI) | 3 | (4,3) |
-| - | 5 | 5 | 0 (Non) | 0 | (5,0) |
-| c | 6 | 6 | 1 (ABC) | 1 | (6,1) |
-| a | 7 | 7 | 1 (ABC) | 1 | (7,1) |
-| n | 8 | 8 | 5 (MNO) | 5 | (8,5) |
-| - | 9 | 9 | 0 (Non) | 0 | (9,0) |
-| r | 10 | 10 | 6 (PQR) | 6 | (10,6) |
-| e | 11 | 11 | 2 (DEF) | 2 | (11,2) |
-| m | 12 | 12 | 5 (MNO) | 5 | (12,5) |
-| e | 13 | 13 | 2 (DEF) | 2 | (13,2) |
-| m | 14 | 14 | 5 (MNO) | 5 | (14,5) |
-| b | 15 | 15 | 1 (ABC) | 1 | (15,1) |
-| e | 16 | 16 | 2 (DEF) | 2 | (16,2) |
-| r | 17 | 17 | 6 (PQR) | 6 | (17,6) |
-
-Output: 18 cells × 3 chars = 54-character password.
-
-### Case Sensitivity
-
-Uppercase letters shift the row by `PasswordMatrixRows/2`, making `"PHrase-I-can-remember"` and `"phrase-i-can-remember"` produce completely different passwords. This adds entropy without requiring a longer spell.
-
 ## Security Model
 
 ### What's Secret
@@ -179,38 +138,6 @@ Uppercase letters shift the row by `PasswordMatrixRows/2`, making `"PHrase-I-can
 
 ### What's Public
 - **The generated password** from the `spell` e.g., "phrase-i-can-remember". An attacker knowing this gets nothing without the master password.
-
-### Entropy
-- **Matrix**: 600 chars × ~6.19 bits/char ≈ ~3,700 bits of entropy
-- **Password**: For a 6-letter spell, 18 chars × ~6.19 bits ≈ ~111 bits
-- **Brute force**: Computationally infeasible
-
-### Key Derivation
-
-Your master password goes through a two-stage process to become the matrix:
-
-1. **[Argon2id](https://datatracker.ietf.org/doc/html/rfc9106)** — Your input is first passed through Argon2id (1 iteration, 64MB memory, 2 threads), a memory-hard key derivation function. This slows down the derivation to ~500ms, making brute-force attacks computationally expensive even if your master password is weak.
-2. **[HKDF-SHA256](https://tools.ietf.org/html/rfc5869)** — The 32-byte high-entropy output from Argon2id is then expanded to the full matrix size (600 characters) using HKDF.
-
-This means you can use any input as long as it has sufficient entropy:
-
-- **SSH/GPG keys**: High entropy (generated with crypto/rand) — ideal
-- **Strong passphrases**: Sufficient if long enough (see `--password-strength`)
-- **Weak passphrases**: Risky — Argon2id slows attacks but doesn't replace missing entropy
-
-```bash
-cat ~/.ssh/id_ed25519 | ./bin/moria "phrase-i-can-remember"
-```
-
-### Rejection Sampling
-
-When generating random passwords, a common mistake is to use the modulo operator (`%`) to map random bytes to a character set. This introduces **modulo bias** — some characters become slightly more likely than others, weakening the password.
-
-Moria uses **rejection sampling** instead: if a random byte falls in the "biased" range, it's discarded and a new byte is drawn. This guarantees every character in the pool has exactly equal probability, preserving the full entropy of your passwords.
-
-Imagine you have a 52-card deck and want to randomly pick a number from 1 to 10. If you just divide the card value by 10 and take the remainder, the numbers 1 and 2 would come up more often than the rest — because 52 doesn't divide evenly by 10, leaving 2 "extra" cards that loop back to the beginning.
-Rejection sampling fixes this by saying: "If you draw one of those extra cards, put it back and draw again." You keep drawing until you get a card from the fair range. The result is that every number from 1 to 10 has exactly the same chance of being picked.
-In moria's case, a random byte can be 0–255 (256 values), but the character pool has 73 characters. Since 256 doesn't always divide evenly into the pool size, some characters would be slightly more likely without rejection sampling. By discarding the "extra" bytes and drawing fresh ones, every character gets a perfectly fair shot.
 
 ## Understanding Your Security
 
