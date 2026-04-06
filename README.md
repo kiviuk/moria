@@ -152,24 +152,9 @@ The strength of your derived passwords is limited by your master password. A lon
 echo "i'm super hunger today" | ./bin/moria --password-strength
 ```
 
-**Why does the master password show 50 bits for 22 characters?**
+zxcvbn detects that `"i'm super hunger today"` is four common English words. Instead of multiplying 22 × 6 bits (which assumes random gibberish), it calculates the actual entropy of a dictionary-word passphrase.
 
-zxcvbn detects that `"i'm super hunger today"` is four common English words. Instead of multiplying 22 × 6 bits (which assumes random gibberish like `X9q!pP2`), it calculates the actual entropy of a dictionary-word passphrase: ~50 bits. That means an attacker needs ~2⁴⁹ guesses (562 trillion) to crack it.
-
-**The magic of Argon2id:**
-
-If a hacker stole your master password hash from a normal website using MD5/SHA1, 50 bits would take them ~1.5 hours on a GPU cluster. Trivial.
-
-But moria forces the attacker through Argon2id (64MB RAM per guess), bottlenecking a GPU cluster to ~100,000 guesses/sec. 562 trillion / 100,000 = **178 years**. Argon2id turned a weak human phrase into a 178-year mathematical wall.
-
-**What this tells you:**
-
-- If a website gets hacked: the attackers get the hash of your generated password. With ~111 bits of entropy, it will never be cracked.
-- If someone targets **you**: they know you use moria and know your spell. They'll try to guess your master password. Because it's made of dictionary words, a GPU cluster could crack it in 178 years.
-
-### The Rule
-
-Your effective security is limited by your master password strength. If `--password-strength` shows "instant" or "minutes", pick a stronger master — not a longer spell.
+The **178 years** estimate comes from: `(2^49 guesses) ÷ (100K guesses/sec)`. The ~49 bits reflects the effective entropy after accounting for dictionary patterns.
 
 ## Configuration
 
