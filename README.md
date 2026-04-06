@@ -109,26 +109,12 @@ echo "i'm super hunger today" | ./bin/moria --password-strength
 
 Output:
 ```
-Master password entropy: 50 bits
+zxcvbn master password entropy: 50 bits
 
 zxcvbn crack time estimate (generic): centuries
 
-Time to guess (master password, via Argon2id):
-  Single CPU               1.8 million years
-  Single GPU               1.8 thousand years
-  GPU cluster              178 years
+Assuming attacker 100k guesses/sec and 50 bits (from zxcvbn), worst case: 357 years
 ```
-
-**How this works:**
-
-1. **zxcvbn** analyzes the *string you typed* using dictionary and pattern detection. It found 4 common English words → ~50 bits of entropy.
-
-2. **moria's time estimates** apply brute-force computation times. The formula: `(2^entropy) / guesses_per_second`. We assume the attacker knows your spell and uses Argon2id (which limits GPU speed to ~100K guesses/sec due to its 64MB memory requirement).
-
-Attack speed estimates:
-- **Single CPU**: ~10K guesses/sec (typical desktop processor)
-- **Single GPU**: ~10M guesses/sec (mid-range GPU)
-- **GPU cluster**: ~100K guesses/sec (limited by [Argon2id's](https://datatracker.ietf.org/doc/html/rfc9106) 64MB memory requirement)
 
 ## Security Model
 
@@ -154,21 +140,18 @@ echo "i'm super hunger today" | ./bin/moria --password-strength
 
 Output:
 ```
-Master password entropy: 50 bits
+zxcvbn master password entropy: 50 bits
 
 zxcvbn crack time estimate (generic): centuries
 
-Time to guess (master password, via Argon2id):
-  Single CPU               1.8 million years
-  Single GPU               1.8 thousand years
-  GPU cluster              178 years
+Assuming attacker 100k guesses/sec and 50 bits (from zxcvbn), worst case: 357 years
 ```
 
 [zxcvbn](https://github.com/ccojocar/zxcvbn-go) detects that `"i'm super hunger today"` is four common English words. Instead of multiplying 22 × 6 bits (which assumes random gibberish), it calculates the actual entropy of a dictionary-word passphrase.
 
-The **178 years** estimate comes from: `(2^50 guesses) ÷ (100K guesses/sec)`. The 50 bits reflects the effective entropy after accounting for dictionary patterns.
+The **357 years** estimate is calculated as: `(2^50 guesses) ÷ (100k guesses/sec)`. The 50 bits reflects the effective entropy after accounting for dictionary patterns.
 
-zxcvbn sees 4 common words, but doesn't know they form a recognizable phrase. Attackers can't guess "i'm super hungry today" because it's not in any wordlist. **Pattern detection only catches what attackers have precomputed**.
+All four words ("i'm", "super", "hungry", "today") are common, but zxcvbn can't detect *semantic combinations*. It sees 4 dictionary words, not a common phrase. The password "i'm super hungry today" is memorable and guessable to humans — but it's not in any attacker's wordlist. **Pattern detection is limited to what attackers precompute**.
 
 **Practical takeaway:** Combine common words in unique, memorable ways. Even simple phrases are safer than you think because attackers can't precompute every possible combination.
 

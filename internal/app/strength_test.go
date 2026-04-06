@@ -6,15 +6,15 @@ import (
 )
 
 func TestCrackTime_Basic(t *testing.T) {
-	// Verify time-to-guess calculation for known entropy and speed
+	// Verify time-to-guess calculation for known entropy and speed (worst case = full keyspace)
 	tests := []struct {
 		entropyBits     int
 		guessesPerSec   uint64
 		expectedSeconds float64
 	}{
-		{36, 1_000, math.Exp2(35) / 1_000},
-		{36, 10_000, math.Exp2(35) / 10_000},
-		{108, 100_000_000_000, math.Exp2(107) / 100_000_000_000},
+		{36, 1_000, math.Exp2(36) / 1_000},
+		{36, 10_000, math.Exp2(36) / 10_000},
+		{108, 100_000_000_000, math.Exp2(108) / 100_000_000_000},
 	}
 
 	for _, tt := range tests {

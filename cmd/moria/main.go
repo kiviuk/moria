@@ -229,7 +229,7 @@ func printUsage() {
 	fmt.Println(MsgExPasswordStrength)
 }
 
-// printStrengthTable outputs time-to-guess estimates to stderr.
+// printStrengthTable outputs worst-case time-to-guess estimate to stderr.
 func printStrengthTable(masterResult app.MasterPasswordResult) {
 	if masterResult.Entropy == 0 {
 		return
@@ -241,19 +241,20 @@ func printStrengthTable(masterResult app.MasterPasswordResult) {
 	fmt.Fprintln(os.Stderr)
 	fmt.Fprintf(os.Stderr, MsgZxcvbnCrackTime, masterResult.CrackTimeDisplay)
 
-	fmt.Fprint(os.Stderr, MsgTimeToGuessMaster)
-	masterScenarios := []struct {
-		label string
-		speed uint64
-	}{
-		{"Single CPU", app.MasterPasswordSingleCPU},
-		{"Single GPU", app.MasterPasswordGPUSingle},
-		{"GPU cluster", app.MasterPasswordGPUCluster},
+	seconds := app.TimeToGuess(masterResult.Entropy, app.MasterPasswordGPUCluster)
+	guessSpeed := formatGuessesPerSec(app.MasterPasswordGPUCluster)
+	fmt.Fprintf(os.Stderr, MsgTimeToGuessWorstCase, guessSpeed, masterResult.Entropy, app.FormatSeconds(seconds))
+}
+
+// formatGuessesPerSec formats guesses per second as a human-readable string.
+func formatGuessesPerSec(n uint64) string {
+	if n >= 1_000_000 {
+		return fmt.Sprintf("%dM", n/1_000_000)
 	}
-	for _, s := range masterScenarios {
-		seconds := app.TimeToGuess(masterResult.Entropy, s.speed)
-		fmt.Fprintf(os.Stderr, MsgStrengthTableRow, s.label, app.FormatSeconds(seconds))
+	if n >= 1_000 {
+		return fmt.Sprintf("%dK", n/1_000)
 	}
+	return fmt.Sprintf("%d", n)
 }
 
 func main() { //nolint:gocyclo // main has high complexity due to mode switching

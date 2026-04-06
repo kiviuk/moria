@@ -40,7 +40,7 @@ func TimeToGuess(entropyBits int, guessesPerSec uint64) float64 {
 	if entropyBits <= 0 {
 		return 0
 	}
-	log2Combinations := float64(entropyBits) - 1
+	log2Combinations := float64(entropyBits)
 	log2Speed := math.Log2(float64(guessesPerSec))
 	log2Seconds := log2Combinations - log2Speed
 	if log2Seconds > 1023 {

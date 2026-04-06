@@ -45,13 +45,11 @@ const (
 // Strength display messages for master password strength mode.
 const (
 	// MsgMasterEntropy is the label for master password entropy.
-	MsgMasterEntropy = "Master password entropy: %d bits\n"
+	MsgMasterEntropy = "zxcvbn master password entropy: %d bits\n"
 	// MsgZxcvbnCrackTime is the header for zxcvbn's generic crack time estimate.
 	MsgZxcvbnCrackTime = "zxcvbn crack time estimate (generic): %s\n"
-	// MsgTimeToGuessMaster is the header for master password crack times.
-	MsgTimeToGuessMaster = "\nTime to guess (master password, via Argon2id):\n"
-	// MsgStrengthTableRow is the format for each row in the strength table.
-	MsgStrengthTableRow = "  %-24s %s\n"
+	// MsgTimeToGuessWorstCase is the worst case time estimate using GPU cluster speed.
+	MsgTimeToGuessWorstCase = "\nAssuming attacker %s guesses/sec and %d bits (from zxcvbn), worst case: %s\n"
 )
 
 // Live mode UI strings.
