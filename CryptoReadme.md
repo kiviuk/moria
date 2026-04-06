@@ -156,6 +156,102 @@ Time to guess (master password, via Argon2id):
 
 **zxcvbn** detects dictionary words, patterns, and common substitutions — giving a realistic entropy estimate rather than naive `length × charset` math.
 
+### The Nuclear Option: `--magic`
+
+When you run `moria --magic`, the tool bypasses human psychology entirely. It goes straight to `crypto/rand` (true machine randomness) and generates a password that is exactly 600 characters long — the exact size needed to fill your 20×10×3 matrix.
+
+```bash
+$ moria --magic > master.txt
+$ cat master.txt | moria --master-password-strength
+Master password entropy: 3316 bits
+zxcvbn crack time estimate (generic): effectively uncrackable
+Time to guess (master password, via Argon2id):
+  Single CPU               effectively uncrackable
+  Single GPU               effectively uncrackable
+  GPU cluster              effectively uncrackable
+```
+
+**Why did it score 3316 bits?**
+
+When zxcvbn analyzed it, it scanned for dictionary words, patterns, and keyboard walks. It found nothing. Because it was pure, unadulterated random noise, zxcvbn reverted to pure Shannon Information Theory math:
+
+```
+600 characters × ~5.5 bits of surprise per character = 3316 bits
+```
+
+**To put 3316 bits into perspective:**
+
+| Scale | Bits | Comparison |
+|-------|------|------------|
+| Atoms in the observable universe | ~256 | `2^256` |
+| Your `--magic` master password | **3316** | `2^3316` |
+
+If every single atom in the universe was a GPU supercomputer, and they had all been guessing your master password since the Big Bang, they wouldn't have even scratched the surface.
+
+**The Catch (And Why `--magic` Exists)**
+
+You now have a master password that defeats the NSA, time itself, and the heat death of the universe.
+
+The only problem? You cannot memorize a 600-character string of gibberish.
+
+This is exactly why moria was designed to accept piped inputs:
+
+```bash
+cat master.txt | moria "amazon"
+```
+
+By using `--magic`, you are abandoning the "brain-only" approach. You save that massive 3316-bit string into a text file, put it on an encrypted USB drive (or inside a local password manager), and use it as a **keyfile**.
+
+**You traded human convenience (memorization) for absolute, flawless mathematical invincibility.**
+
+### The Nuclear Option: `--magic`
+
+When you run `moria --magic`, the tool bypasses human psychology entirely. It goes straight to `crypto/rand` (true machine randomness) and generates a password that is exactly 600 characters long — the exact size needed to fill your 20×10×3 matrix.
+
+```bash
+$ moria --magic > master.txt
+$ cat master.txt | moria --master-password-strength
+Master password entropy: 3316 bits
+zxcvbn crack time estimate (generic): effectively uncrackable
+Time to guess (master password, via Argon2id):
+  Single CPU               effectively uncrackable
+  Single GPU               effectively uncrackable
+  GPU cluster              effectively uncrackable
+```
+
+**Why did it score 3316 bits?**
+
+When zxcvbn analyzed it, it scanned for dictionary words, patterns, and keyboard walks. It found nothing. Because it was pure, unadulterated random noise, zxcvbn reverted to pure Shannon Information Theory math:
+
+```
+600 characters × ~5.5 bits of surprise per character = 3316 bits
+```
+
+**To put 3316 bits into perspective:**
+
+| Scale | Bits | Comparison |
+|-------|------|------------|
+| Atoms in the observable universe | ~256 | `2^256` |
+| Your `--magic` master password | **3316** | `2^3316` |
+
+If every single atom in the universe was a GPU supercomputer, and they had all been guessing your master password since the Big Bang, they wouldn't have even scratched the surface.
+
+**The Catch (And Why `--magic` Exists)**
+
+You now have a master password that defeats the NSA, time itself, and the heat death of the universe.
+
+The only problem? You cannot memorize a 600-character string of gibberish.
+
+This is exactly why moria was designed to accept piped inputs:
+
+```bash
+cat master.txt | moria "amazon"
+```
+
+By using `--magic`, you are abandoning the "brain-only" approach. You save that massive 3316-bit string into a text file, put it on an encrypted USB drive (or inside a local password manager), and use it as a **keyfile**.
+
+**You traded human convenience (memorization) for absolute, flawless mathematical invincibility.**
+
 ## Security Rules
 
 1. **Your master password is your only secret.** Protect it like your life depends on it — because your digital life does.
