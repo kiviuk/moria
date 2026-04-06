@@ -10,7 +10,7 @@ When you use moria, four things exist in the world:
 
 | Piece | Example | Who Knows It |
 |-------|---------|-------------|
-| **Spell** | `amazon` | Public (it's the website name) |
+| **Spell** | `amazon` | You (but attacker may guess it) |
 | **Amazon's Database Hash** | `$2b$12$xQ...` | Attacker (stolen in breach) |
 | **Generated Password** | `54Oy^L0mn2JL,S6ETv` | You (what you type to log in) |
 | **Master Password** | `i'm super hunger today` | You (your only secret) |
@@ -35,7 +35,7 @@ The front door is bolted shut.
 
 The attacker does reconnaissance. They discover you use moria. Now they know:
 
-1. The spell for Amazon is almost certainly `"amazon"` (public knowledge)
+1. The spell for Amazon is likely `"amazon"` or a variant (guessable from context)
 2. Humans pick weak master passwords
 
 The attacker writes a custom script:
@@ -269,7 +269,7 @@ By using `--magic`, you are abandoning the "brain-only" approach. You save that 
 | Component | Visibility | Reason |
 |-----------|-----------|--------|
 | Master password | **Secret** | Your only secret. Compromise = total loss. |
-| Spell | Public | Service name (e.g., "amazon"). Known to attacker. |
+| Spell | Hidden (but guessable) | Service name or variant. Attacker may guess it from context. |
 | Matrix | Secret (derived) | Only reproducible with master password. |
 | Generated password | Secret (until leaked) | What you type to log in. |
 | Algorithm | Public | moria is open-source. Security through math, not obscurity. |
