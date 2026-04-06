@@ -36,8 +36,8 @@ The binary is built to `bin/moria`.
 If you already have an SSH private key, use it directly — no new secret to manage:
 ```bash
 cat ~/.ssh/id_ed25519 | ./bin/moria "phrase-i-can-remember"
+# → xK9!nQ7#5$wYBcD4
 ```
-Output: `xK9!nQ7#5$wYBcD4` (unique password derived from your SSH key + the spell)
 
 **Option B: Generate a new master password with `--magic`**
 If you don't have an SSH key, generate a cryptographically secure master password:
@@ -106,6 +106,11 @@ Analyze the strength of any password using [zxcvbn](https://github.com/ccojocar/
 ```bash
 echo "i'm super hunger today" | ./bin/moria --password-strength
 ```
+
+The time-to-guess estimates use [Argon2id](https://datatracker.ietf.org/doc/html/rfc9106) attack speeds:
+- **Single CPU**: ~10K guesses/sec (typical desktop processor)
+- **Single GPU**: ~10M guesses/sec (mid-range GPU)
+- **GPU cluster**: ~100K guesses/sec (limited by Argon2id's 64MB memory requirement)
 
 Output:
 ```
