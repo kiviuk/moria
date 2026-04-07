@@ -205,6 +205,83 @@ func TestValidateConfig_AllowedMods(t *testing.T) {
 	}
 }
 
+func TestValidateConfig_ConflictingModes(t *testing.T) {
+	// Verify each mode accepts its own flag and rejects all other mode flags
+	tests := []struct {
+		cfg         Config
+		flags       map[string]bool
+		expectedErr bool
+	}{
+		// Valid: mode accepts its own flag
+		{Config{Mode: ModeMagic}, flagsSet("--magic"), expectsOK},
+		{Config{Mode: ModePretty}, flagsSet("--pretty"), expectsOK},
+		{Config{Mode: ModeLive}, flagsSet("--live"), expectsOK},
+		{Config{Mode: ModePasswordStrength}, flagsSet("--password-strength"), expectsOK},
+
+		// Conflict: ModeMagic rejects other mode flags
+		{Config{Mode: ModeMagic}, flagsSet("--pretty"), expectsError},
+		{Config{Mode: ModeMagic}, flagsSet("--live"), expectsError},
+		{Config{Mode: ModeMagic}, flagsSet("--password-strength"), expectsError},
+
+		// Conflict: ModePretty rejects other mode flags
+		{Config{Mode: ModePretty}, flagsSet("--magic"), expectsError},
+		{Config{Mode: ModePretty}, flagsSet("--live"), expectsError},
+		{Config{Mode: ModePretty}, flagsSet("--password-strength"), expectsError},
+
+		// Conflict: ModeLive rejects other mode flags
+		{Config{Mode: ModeLive}, flagsSet("--magic"), expectsError},
+		{Config{Mode: ModeLive}, flagsSet("--pretty"), expectsError},
+		{Config{Mode: ModeLive}, flagsSet("--password-strength"), expectsError},
+
+		// Conflict: ModePasswordStrength rejects other mode flags
+		{Config{Mode: ModePasswordStrength}, flagsSet("--magic"), expectsError},
+		{Config{Mode: ModePasswordStrength}, flagsSet("--pretty"), expectsError},
+		{Config{Mode: ModePasswordStrength}, flagsSet("--live"), expectsError},
+	}
+
+	for _, tt := range tests {
+		err := validateConfig(tt.cfg, tt.flags)
+		if tt.expectedErr {
+			if err == nil {
+				t.Errorf("cfg %+v flags %v: expected error, got nil", tt.cfg, tt.flags)
+			}
+		} else {
+			if err != nil {
+				t.Errorf("cfg %+v flags %v: unexpected error: %v", tt.cfg, tt.flags, err)
+			}
+		}
+	}
+}
+
+func TestParseArgs_FirstModeWins(t *testing.T) {
+	// Verify the first mode flag is treated as primary, subsequent ones are tracked but ignored
+	tests := []struct {
+		args         []string
+		expectedMode Mode
+	}{
+		{[]string{"--magic", "--pretty"}, ModeMagic},
+		{[]string{"--pretty", "--magic"}, ModePretty},
+		{[]string{"--live", "--pretty"}, ModeLive},
+		{[]string{"--pretty", "--live"}, ModePretty},
+		{[]string{"--magic", "--live"}, ModeMagic},
+		{[]string{"--live", "--magic"}, ModeLive},
+		{[]string{"--password-strength", "--magic"}, ModePasswordStrength},
+		{[]string{"--magic", "--password-strength"}, ModeMagic},
+		{[]string{"--pretty", "--live", "--magic"}, ModePretty},
+	}
+
+	for _, tt := range tests {
+		cfg, _, err := parseArgs(tt.args)
+		if err != nil {
+			t.Errorf("args %v: unexpected error: %v", tt.args, err)
+			continue
+		}
+		if cfg.Mode != tt.expectedMode {
+			t.Errorf("args %v: expected mode %s, got %s", tt.args, tt.expectedMode, cfg.Mode)
+		}
+	}
+}
+
 func TestParseArgs_IgnorePaste(t *testing.T) {
 	// Verify --ignore-paste flag is parsed correctly
 	tests := []struct {

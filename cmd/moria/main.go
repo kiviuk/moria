@@ -57,11 +57,15 @@ func (m Mode) needsSpell() bool {
 func (m Mode) allowedMods() []string {
 	switch m {
 	case ModeLive:
-		return []string{"--max-len", "--ignore-paste"}
+		return []string{"--live", "--max-len", "--ignore-paste"}
 	case ModeBatch:
 		return []string{"--max-len"}
+	case ModeMagic:
+		return []string{"--magic"}
+	case ModePretty:
+		return []string{"--pretty"}
 	case ModePasswordStrength:
-		return []string{}
+		return []string{"--password-strength"}
 	default:
 		return nil
 	}
@@ -133,18 +137,28 @@ func parseArgs(args []string) (Config, map[string]bool, error) {
 	cfg := Config{Mode: ModeBatch}
 	flags := make(map[string]bool)
 	var positional []string
+	modeSet := false
 
 	for i, arg := range args {
 		switch arg {
 		case "--magic":
 			flags["--magic"] = true
-			cfg.Mode = ModeMagic
+			if !modeSet {
+				cfg.Mode = ModeMagic
+				modeSet = true
+			}
 		case "--pretty":
 			flags["--pretty"] = true
-			cfg.Mode = ModePretty
+			if !modeSet {
+				cfg.Mode = ModePretty
+				modeSet = true
+			}
 		case "--live":
 			flags["--live"] = true
-			cfg.Mode = ModeLive
+			if !modeSet {
+				cfg.Mode = ModeLive
+				modeSet = true
+			}
 		case "--max-len":
 			flags["--max-len"] = true
 			if i+1 >= len(args) {
@@ -163,7 +177,10 @@ func parseArgs(args []string) (Config, map[string]bool, error) {
 			flags["--ignore-paste"] = true
 		case "--password-strength":
 			flags["--password-strength"] = true
-			cfg.Mode = ModePasswordStrength
+			if !modeSet {
+				cfg.Mode = ModePasswordStrength
+				modeSet = true
+			}
 		case "--help", "-h":
 			flags["--help"] = true
 		default:
@@ -182,9 +199,6 @@ func parseArgs(args []string) (Config, map[string]bool, error) {
 func validateConfig(cfg Config, flags map[string]bool) error {
 	for flag, present := range flags {
 		if !present {
-			continue
-		}
-		if flag == "--magic" || flag == "--pretty" || flag == "--live" || flag == "--help" || flag == "--password-strength" {
 			continue
 		}
 		if !contains(cfg.Mode.allowedMods(), flag) {
