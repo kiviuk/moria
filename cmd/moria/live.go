@@ -102,12 +102,17 @@ func (m liveModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			tea.KeyHome, tea.KeyEnd, tea.KeyPgUp, tea.KeyPgDown,
 			tea.KeyInsert, tea.KeyDelete:
 			return m, nil
-		case tea.KeyRunes:
+		case tea.KeyRunes, tea.KeySpace:
+			runes := msg.Runes
+			if msg.Type == tea.KeySpace {
+				// Makes TestLiveModel_Space_SingleKey work without relying on the terminal's handling of space input.
+				runes = []rune{' '}
+			}
 			if m.pasteMode == PasteIgnored && len(msg.Runes) > 1 {
 				m.err = MsgPasteIgnored
 				return m, nil
 			}
-			for _, ch := range msg.Runes {
+			for _, ch := range runes {
 				if ch < 32 || ch == 127 {
 					continue
 				}

@@ -216,7 +216,9 @@ func TestLiveModel_Space_SingleKey(t *testing.T) {
 	m := newLiveModel(matrix, testMasterRaw, 0, PasteAllowed)
 
 	m = simulateKey(m, "a")
-	m = simulateKey(m, " ")
+	// simulateKey(m, " ")
+	result, _ := m.Update(tea.KeyMsg{Type: tea.KeySpace})
+	m = result.(liveModel)
 	m = simulateKey(m, "b")
 
 	if m.spell != "a b" {
