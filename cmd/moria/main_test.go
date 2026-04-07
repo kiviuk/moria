@@ -8,6 +8,19 @@ import (
 	"github.com/kiviuk/moria/internal/testutil"
 )
 
+const (
+	expectsError = true
+	expectsOK    = false
+)
+
+func flagsSet(flags ...string) map[string]bool {
+	m := make(map[string]bool, len(flags))
+	for _, f := range flags {
+		m[f] = true
+	}
+	return m
+}
+
 func TestPipeInput_PlainText(t *testing.T) {
 	// Verify plain text is returned unchanged when piped
 	input := "my-secret"
@@ -125,11 +138,11 @@ func TestParseArgs_MaxLen(t *testing.T) {
 		expectedMax int
 		expectedErr bool
 	}{
-		{[]string{"--max-len", "16", "amazon"}, 16, false},
-		{[]string{"--max-len", "5", "test"}, 5, false},
-		{[]string{"amazon"}, 0, false},
-		{[]string{"--max-len", "abc"}, 0, true},
-		{[]string{"--max-len"}, 0, true},
+		{[]string{"--max-len", "16", "amazon"}, 16, expectsOK},
+		{[]string{"--max-len", "5", "test"}, 5, expectsOK},
+		{[]string{"amazon"}, 0, expectsOK},
+		{[]string{"--max-len", "abc"}, 0, expectsError},
+		{[]string{"--max-len"}, 0, expectsError},
 	}
 
 	for _, tt := range tests {
@@ -168,14 +181,14 @@ func TestValidateConfig_AllowedMods(t *testing.T) {
 		flags       map[string]bool
 		expectedErr bool
 	}{
-		{Config{Mode: ModeBatch, Spell: "test", MaxLen: 16}, map[string]bool{"--max-len": true}, false},
-		{Config{Mode: ModeLive, Spell: "", MaxLen: 16}, map[string]bool{"--max-len": true, "--live": true}, false},
-		{Config{Mode: ModeMagic, Spell: "", MaxLen: 16}, map[string]bool{"--max-len": true, "--magic": true}, true},
-		{Config{Mode: ModePretty, Spell: "", MaxLen: 16}, map[string]bool{"--max-len": true, "--pretty": true}, true},
-		{Config{Mode: ModeLive, Spell: ""}, map[string]bool{"--live": true, "--ignore-paste": true}, false},
-		{Config{Mode: ModeBatch, Spell: "test"}, map[string]bool{"--ignore-paste": true}, true},
-		{Config{Mode: ModeMagic}, map[string]bool{"--ignore-paste": true, "--magic": true}, true},
-		{Config{Mode: ModePretty}, map[string]bool{"--ignore-paste": true, "--pretty": true}, true},
+		{Config{Mode: ModeBatch, Spell: "test", MaxLen: 16}, flagsSet("--max-len"), expectsOK},
+		{Config{Mode: ModeLive, Spell: "", MaxLen: 16}, flagsSet("--max-len", "--live"), expectsOK},
+		{Config{Mode: ModeMagic, Spell: "", MaxLen: 16}, flagsSet("--max-len", "--magic"), expectsError},
+		{Config{Mode: ModePretty, Spell: "", MaxLen: 16}, flagsSet("--max-len", "--pretty"), expectsError},
+		{Config{Mode: ModeLive, Spell: ""}, flagsSet("--live", "--ignore-paste"), expectsOK},
+		{Config{Mode: ModeBatch, Spell: "test"}, flagsSet("--ignore-paste"), expectsError},
+		{Config{Mode: ModeMagic}, flagsSet("--ignore-paste", "--magic"), expectsError},
+		{Config{Mode: ModePretty}, flagsSet("--ignore-paste", "--pretty"), expectsError},
 	}
 
 	for _, tt := range tests {
@@ -199,10 +212,10 @@ func TestParseArgs_IgnorePaste(t *testing.T) {
 		expectedFlags map[string]bool
 		expectedErr   bool
 	}{
-		{[]string{"--live", "--ignore-paste"}, map[string]bool{"--live": true, "--ignore-paste": true}, false},
-		{[]string{"--ignore-paste", "--live"}, map[string]bool{"--live": true, "--ignore-paste": true}, false},
-		{[]string{"--live"}, map[string]bool{"--live": true}, false},
-		{[]string{"--ignore-paste"}, map[string]bool{"--ignore-paste": true}, false},
+		{[]string{"--live", "--ignore-paste"}, flagsSet("--live", "--ignore-paste"), expectsOK},
+		{[]string{"--ignore-paste", "--live"}, flagsSet("--live", "--ignore-paste"), expectsOK},
+		{[]string{"--live"}, flagsSet("--live"), expectsOK},
+		{[]string{"--ignore-paste"}, flagsSet("--ignore-paste"), expectsOK},
 	}
 
 	for _, tt := range tests {
