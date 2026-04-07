@@ -216,27 +216,27 @@ func TestValidateConfig_ConflictingModes(t *testing.T) {
 		{Config{Mode: ModeMagic}, flagsSet("--magic"), expectsOK},
 		{Config{Mode: ModePretty}, flagsSet("--pretty"), expectsOK},
 		{Config{Mode: ModeLive}, flagsSet("--live"), expectsOK},
-		{Config{Mode: ModePasswordStrength}, flagsSet("--password-strength"), expectsOK},
+		{Config{Mode: ModeShowPasswordStrength}, flagsSet("--show-strength"), expectsOK},
 
 		// Conflict: ModeMagic rejects other mode flags
 		{Config{Mode: ModeMagic}, flagsSet("--pretty"), expectsError},
 		{Config{Mode: ModeMagic}, flagsSet("--live"), expectsError},
-		{Config{Mode: ModeMagic}, flagsSet("--password-strength"), expectsError},
+		{Config{Mode: ModeMagic}, flagsSet("--show-strength"), expectsError},
 
 		// Conflict: ModePretty rejects other mode flags
 		{Config{Mode: ModePretty}, flagsSet("--magic"), expectsError},
 		{Config{Mode: ModePretty}, flagsSet("--live"), expectsError},
-		{Config{Mode: ModePretty}, flagsSet("--password-strength"), expectsError},
+		{Config{Mode: ModePretty}, flagsSet("--show-strength"), expectsError},
 
 		// Conflict: ModeLive rejects other mode flags
 		{Config{Mode: ModeLive}, flagsSet("--magic"), expectsError},
 		{Config{Mode: ModeLive}, flagsSet("--pretty"), expectsError},
-		{Config{Mode: ModeLive}, flagsSet("--password-strength"), expectsError},
+		{Config{Mode: ModeLive}, flagsSet("--show-strength"), expectsError},
 
-		// Conflict: ModePasswordStrength rejects other mode flags
-		{Config{Mode: ModePasswordStrength}, flagsSet("--magic"), expectsError},
-		{Config{Mode: ModePasswordStrength}, flagsSet("--pretty"), expectsError},
-		{Config{Mode: ModePasswordStrength}, flagsSet("--live"), expectsError},
+		// Conflict: ModeShowPasswordStrength rejects other mode flags
+		{Config{Mode: ModeShowPasswordStrength}, flagsSet("--magic"), expectsError},
+		{Config{Mode: ModeShowPasswordStrength}, flagsSet("--pretty"), expectsError},
+		{Config{Mode: ModeShowPasswordStrength}, flagsSet("--live"), expectsError},
 	}
 
 	for _, tt := range tests {
@@ -265,8 +265,8 @@ func TestParseArgs_FirstModeWins(t *testing.T) {
 		{[]string{"--pretty", "--live"}, ModePretty},
 		{[]string{"--magic", "--live"}, ModeMagic},
 		{[]string{"--live", "--magic"}, ModeLive},
-		{[]string{"--password-strength", "--magic"}, ModePasswordStrength},
-		{[]string{"--magic", "--password-strength"}, ModeMagic},
+		{[]string{"--show-strength", "--magic"}, ModeShowPasswordStrength},
+		{[]string{"--magic", "--show-strength"}, ModeMagic},
 		{[]string{"--pretty", "--live", "--magic"}, ModePretty},
 	}
 

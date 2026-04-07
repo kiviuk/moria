@@ -104,7 +104,7 @@ cat the-key.txt | ./bin/moria --max-len 16 "phrase-i-can-remember"
 Analyze the strength of any password using [zxcvbn](https://github.com/ccojocar/zxcvbn-go) pattern detection:
 
 ```bash
-echo "i'm super hunger today" | ./bin/moria --password-strength
+echo "i'm super hunger today" | ./bin/moria --show-strength
 ```
 
 Output:
@@ -130,12 +130,12 @@ Your master password and spell are secret. The generated password is what you us
 
 The strength of your derived passwords is limited by your master password. A long spell cannot compensate for a weak master.
 
-`--password-strength` analyzes your master password strength using `zxcvbn` pattern detection:
+`--show-strength` analyzes your master password strength using `zxcvbn` pattern detection:
 
 ### Example: A Passphrase Master Password
 
 ```bash
-echo "i'm super hunger today" | ./bin/moria --password-strength
+echo "i'm super hunger today" | ./bin/moria --show-strength
 ```
 
 Output:
@@ -171,13 +171,13 @@ To change the matrix size, edit the constants and run `make test && make build`.
 ## CLI Reference
 
 ```
-Usage: moria [--magic|--pretty|--live|--password-strength] [--max-len N] [--ignore-paste] [spell]
+Usage: moria [--magic|--pretty|--live|--show-strength] [--max-len N] [--ignore-paste] [spell]
 
 Options:
   --magic                Generate a master password
   --pretty               Display the password matrix from your master password
   --live                 Interactive mode: type your spell and see the password build in real-time
-  --password-strength    Analyze password strength from stdin (standalone, no spell)
+  --show-strength    Analyze password strength from stdin (standalone, no spell)
   --max-len N            Truncate output to N > 0 characters (live and batch modes only)
   --ignore-paste         Ignore pasted input in live mode (live mode only)
   -h, --help             Show this help message

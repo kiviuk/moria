@@ -168,7 +168,7 @@ Expands the 32-byte key to 600 characters using HKDF (RFC 5869). The output is d
 
 **This means you can use any input as long as it has sufficient entropy:**
 - **SSH/GPG keys**: High entropy (generated with crypto/rand) — ideal
-- **Strong passphrases**: Sufficient if long enough (see `--password-strength`)
+- **Strong passphrases**: Sufficient if long enough (see `--show-strength`)
 - **Weak passphrases**: Risky — Argon2id slows attacks but doesn't replace missing entropy
 
 ### Stage 3: Rejection Sampling
@@ -201,10 +201,10 @@ For a 6-letter spell:
 
 ### Master Password
 
-Use `--password-strength` to check your master password:
+Use `--show-strength` to check your master password:
 
 ```bash
-$ echo "i'm super hunger today" | moria --password-strength
+$ echo "i'm super hunger today" | moria --show-strength
 Master password entropy: 50 bits
 zxcvbn crack time estimate (generic): centuries
 Time to guess (master password, via Argon2id):
@@ -221,7 +221,7 @@ When you run `moria --magic`, the tool bypasses human psychology entirely. It go
 
 ```bash
 $ moria --magic > master.txt
-$ cat master.txt | moria --password-strength
+$ cat master.txt | moria --show-strength
 Master password entropy: 3346 bits
 zxcvbn crack time estimate (generic): effectively uncrackable
 Time to guess (master password, via Argon2id):
@@ -269,7 +269,7 @@ By using `--magic`, you are abandoning the "brain-only" approach. You save that 
 
 2. **A long spell cannot compensate for a weak master.** `"amazon"` vs `"amazonprime"` doesn't matter if your master is `"password123"`.
 
-3. **Use `--password-strength` to validate.** If it shows "instant" or "minutes", pick a stronger master — not a longer spell.
+3. **Use `--show-strength` to validate.** If it shows "instant" or "minutes", pick a stronger master — not a longer spell.
 
 4. **Same master + same spell = same password.** This is deterministic by design. If you forget your master password, there is no recovery.
 
@@ -299,7 +299,7 @@ By using `--magic`, you are abandoning the "brain-only" approach. You save that 
 ## Recommendations
 
 1. **Generate a random master password** with `moria --magic` and store it securely
-2. **Check its strength** with `moria --password-strength`
+2. **Check its strength** with `moria --show-strength`
 3. **Use memorable but strong passphrases** if you must type it manually (e.g., 5-6 random words)
 4. **Never use dictionary phrases** that zxcvbn can detect
 5. **Back up your master password** — there is no recovery if lost

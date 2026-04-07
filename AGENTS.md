@@ -24,7 +24,7 @@ Use `-v` for verbose output showing each test's PASS/FAIL status.
 ```
 moria/
 ├── cmd/moria/
-│   ├── main.go                # CLI entry point (--magic, --pretty, --live, --max-len, --strength, --ignore-paste, -h/--help)
+│   ├── main.go                # CLI entry point (--magic, --pretty, --live, --max-len, --show-strength, --ignore-paste, -h/--help)
 │   ├── live.go                # Bubbletea TUI for interactive password generation
 │   ├── live_test.go           # Tests for live mode model
 │   ├── password_prompt.go     # Bubbletea password input prompt (masked with •)
@@ -65,7 +65,7 @@ moria "amazon" < master.txt
 moria --max-len 16 "amazon" < master.txt
 
 # Show time-to-guess estimates (batch mode only)
-moria --strength "amazon" < master.txt
+moria --show-strength "amazon" < master.txt
 
 # Help
 moria --help

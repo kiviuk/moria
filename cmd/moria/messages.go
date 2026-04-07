@@ -22,8 +22,8 @@ const (
 	ErrUnknownMode = "unknown mode: %s"
 	// ErrModNotAllowed is a format string returned when a flag is not permitted in the current mode.
 	ErrModNotAllowed = "%s not allowed in %s mode"
-	// ErrPasswordStrengthNoSpell is returned when --password-strength is used with a spell.
-	ErrPasswordStrengthNoSpell = "--password-strength is standalone, spell not allowed"
+	// ErrPasswordStrengthNoSpell is returned when --show-strength is used with a spell.
+	ErrPasswordStrengthNoSpell = "--show-strength is standalone, spell not allowed"
 	// ErrSpellRequired is a format string returned when a mode requires a spell but none was provided.
 	ErrSpellRequired = "%s mode requires a spell"
 	// ErrFailedReadMaster is a format string returned when reading the master password from stdin fails.
@@ -92,8 +92,8 @@ const (
 	MsgOptMaxLen = "  --max-len                 Truncate generated output to N characters (live and batch modes only)"
 	// MsgOptIgnorePaste is the description for --ignore-paste.
 	MsgOptIgnorePaste = "  --ignore-paste            Ignore pasted input in live mode (single characters only, live mode only)"
-	// MsgOptPasswordStrength is the description for --password-strength.
-	MsgOptPasswordStrength = "  --password-strength         Show entropy for any password from stdin (standalone, no spell)"
+	// MsgOptPasswordStrength is the description for --show-strength.
+	MsgOptPasswordStrength = "  --show-strength         Show entropy for any password from stdin (standalone, no spell)"
 	// MsgOptHelp is the description for --help.
 	MsgOptHelp = "  -h, --help                Show this help message"
 	// MsgUsageExamples is the examples header.
@@ -112,8 +112,8 @@ const (
 	MsgExLiveIgnorePaste = "  cat master.txt | moria --live --ignore-paste # Interactive mode (paste blocked)"
 	// MsgExMaxLen is the example for --max-len.
 	MsgExMaxLen = "  cat master.txt | moria --max-len 16 \"amazon\"  # Limited length"
-	// MsgExPasswordStrength is the example for --password-strength.
-	MsgExPasswordStrength = `  echo "x" | moria --password-strength  # Show password strength` //nolint:gosec // example only, not a real password
+	// MsgExPasswordStrength is the example for --show-strength.
+	MsgExPasswordStrength = `  echo "x" | moria --show-strength  # Show password strength` //nolint:gosec // example only, not a real password
 )
 
 // Generic CLI messages.

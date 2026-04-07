@@ -34,18 +34,18 @@ const (
 	ModePretty
 	// ModeLive runs an interactive TUI for building passwords character by character.
 	ModeLive
-	// ModePasswordStrength analyzes the strength of a password from stdin.
-	ModePasswordStrength
+	// ModeShowPasswordStrength analyzes the strength of a password from stdin.
+	ModeShowPasswordStrength
 )
 
 // String returns the human-readable name of the mode.
 func (m Mode) String() string {
-	return [...]string{"batch", "magic", "pretty", "live", "password-strength"}[m]
+	return [...]string{"batch", "magic", "pretty", "live", "show-strength"}[m]
 }
 
 // needsStdin reports whether this mode requires reading a master password from stdin.
 func (m Mode) needsStdin() bool {
-	return m == ModePretty || m == ModeLive || m == ModeBatch || m == ModePasswordStrength
+	return m == ModePretty || m == ModeLive || m == ModeBatch || m == ModeShowPasswordStrength
 }
 
 // needsSpell reports whether this mode requires a spell argument.
@@ -64,8 +64,8 @@ func (m Mode) allowedMods() []string {
 		return []string{"--magic"}
 	case ModePretty:
 		return []string{"--pretty"}
-	case ModePasswordStrength:
-		return []string{"--password-strength"}
+	case ModeShowPasswordStrength:
+		return []string{"--show-strength"}
 	default:
 		return nil
 	}
@@ -175,10 +175,10 @@ func parseArgs(args []string) (Config, map[string]bool, error) {
 			cfg.MaxLen = val
 		case "--ignore-paste":
 			flags["--ignore-paste"] = true
-		case "--password-strength":
-			flags["--password-strength"] = true
+		case "--show-strength":
+			flags["--show-strength"] = true
 			if !modeSet {
-				cfg.Mode = ModePasswordStrength
+				cfg.Mode = ModeShowPasswordStrength
 				modeSet = true
 			}
 		case "--help", "-h":
@@ -206,7 +206,7 @@ func validateConfig(cfg Config, flags map[string]bool) error {
 		}
 	}
 
-	if cfg.Mode == ModePasswordStrength && cfg.Spell != "" {
+	if cfg.Mode == ModeShowPasswordStrength && cfg.Spell != "" {
 		return fmt.Errorf("%s", ErrPasswordStrengthNoSpell)
 	}
 
@@ -361,7 +361,7 @@ func main() { //nolint:gocyclo // main has high complexity due to mode switching
 		password = truncatePassword(password, cfg.MaxLen)
 		fmt.Print(password)
 
-	case ModePasswordStrength:
+	case ModeShowPasswordStrength:
 		runPasswordStrengthMode(cfg)
 	}
 }
