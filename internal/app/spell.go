@@ -132,7 +132,7 @@ func (m MagicSpell) MagicLetters() []MagicLetter {
 	return letters
 }
 
-// ModN returns value modulo n, handling negative values correctly.
+// ModN returns value modulo n (negative n not to be expected)
 func ModN(value, n int) int {
 	return value % n
 }
