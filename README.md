@@ -6,6 +6,12 @@ A deterministic, matrix-based password generator. Generate unique, strong passwo
 
 ![Moria live mode](docs/moria-live.png)
 
+Inspired by [pwgen](https://www.uni-muenster.de/CERT/pwgen/index.php?lang=en&mode=pwcard)
+
+Based on [zxcvb](https://github.com/ccojocar/zxcvbn-go) and [Argon2id](https://en.wikipedia.org/wiki/Argon2)
+
+Videos: [zxcvbn](https://www.youtube.com/watch?v=vf37jh3dV2I) [Argon2id](https://youtu.be/Sc3aHMCc4h0?t=114)
+
 ## Core Concept
 
 `moria` uses a **password matrix** — a grid of random character fragments — combined with a **spell** (any memorable key phrase) to derive unique passwords. The same master password + spell always produces the same password.
