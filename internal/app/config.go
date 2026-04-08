@@ -39,3 +39,6 @@ const MatrixBytes = PasswordMatrixRows * PasswordMatrixColumns * CharactersPerMa
 // CharsetBits is the entropy per character in the matrix (log₂(73) ≈ 6.19 bits).
 // The master password character pool contains exactly 73 characters.
 const CharsetBits = 6
+
+// LiveModeWrapWidth is the max display width for spell/password lines in live mode.
+const LiveModeWrapWidth = 80

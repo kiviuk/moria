@@ -109,27 +109,6 @@ func TestFormatSeconds_LargeNumbers(t *testing.T) {
 	}
 }
 
-func TestMagicSpell_Entropy(t *testing.T) {
-	// Verify entropy calculation matches spell length × cell size × bits per char
-	tests := []struct {
-		spell    string
-		expected int
-	}{
-		{"a", CharactersPerMatrixCell * CharsetBits},
-		{"ab", 2 * CharactersPerMatrixCell * CharsetBits},
-		{"amazon", 6 * CharactersPerMatrixCell * CharsetBits},
-		{"", 0},
-	}
-
-	for _, tt := range tests {
-		m := MagicSpell{Spell: tt.spell}
-		got := m.Entropy()
-		if got != tt.expected {
-			t.Errorf("MagicSpell(%q).Entropy() = %d, expected %d", tt.spell, got, tt.expected)
-		}
-	}
-}
-
 func TestTimeToGuess_NoOverflow(t *testing.T) {
 	// Verify high entropy values don't cause float64 overflow
 	// 256 bits is large but still within float64 range

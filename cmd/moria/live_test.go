@@ -324,3 +324,49 @@ func simulateBackspace(m liveModel) liveModel {
 	result, _ := m.Update(tea.KeyMsg{Type: tea.KeyBackspace})
 	return result.(liveModel)
 }
+
+func TestWrapWithIndent_Short(t *testing.T) {
+	// Verify text shorter than width is returned unchanged
+	got := wrapWithIndent("hello", 80, "            ")
+	if got != "hello" {
+		t.Errorf("expected %q, got %q", "hello", got)
+	}
+}
+
+func TestWrapWithIndent_ExactWidth(t *testing.T) {
+	// Verify text exactly at width is returned unchanged
+	text := "12345678901234567890123456789012345678901234567890123456789012345678901234567890"
+	got := wrapWithIndent(text, 80, "            ")
+	if got != text {
+		t.Errorf("expected unchanged text, got %q", got)
+	}
+}
+
+func TestWrapWithIndent_OneOver(t *testing.T) {
+	// Verify text one character over width wraps to two lines
+	text := "123456789012345678901234567890123456789012345678901234567890123456789012345678901"
+	got := wrapWithIndent(text, 80, "  ")
+	expected := "12345678901234567890123456789012345678901234567890123456789012345678901234567890\n  1"
+	if got != expected {
+		t.Errorf("expected %q, got %q", expected, got)
+	}
+}
+
+func TestWrapWithIndent_MultipleWraps(t *testing.T) {
+	// Verify text requiring multiple wraps produces correct output
+	// 81 chars / 10 = 8 full lines + 1 remaining
+	text := "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+	got := wrapWithIndent(text, 10, "  ")
+	expected := "aaaaaaaaaa\n  aaaaaaaaaa\n  aaaaaaaaaa\n  aaaaaaaaaa\n  aaaaaaaaaa\n  aaaaaaaaaa\n  aaaaaaaaaa\n  aaaaaaaaaa\n  a"
+	if got != expected {
+		t.Errorf("expected %q, got %q", expected, got)
+	}
+}
+
+func TestWrapWithIndent_Empty(t *testing.T) {
+	// Verify empty string is returned unchanged
+	got := wrapWithIndent("", 80, "            ")
+	if got != "" {
+		t.Errorf("expected empty string, got %q", got)
+	}
+}

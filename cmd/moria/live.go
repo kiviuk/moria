@@ -143,6 +143,25 @@ func (m liveModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
+// wrapWithIndent breaks text into lines of max width, indenting continuation lines.
+// Purely visual — never modifies the underlying model data.
+func wrapWithIndent(text string, width int, indent string) string {
+	if len(text) <= width {
+		return text
+	}
+	var lines []string
+	lines = append(lines, text[:width])
+	remaining := text[width:]
+	for len(remaining) > width {
+		lines = append(lines, indent+remaining[:width])
+		remaining = remaining[width:]
+	}
+	if remaining != "" {
+		lines = append(lines, indent+remaining)
+	}
+	return strings.Join(lines, "\n")
+}
+
 // View renders the live mode TUI screen.
 func (m liveModel) View() string {
 	var sb strings.Builder
@@ -189,15 +208,18 @@ func (m liveModel) View() string {
 	} else {
 		cursor = " "
 	}
-	fmt.Fprintf(&sb, MsgSpellPrompt, spellStyle.Render(m.spell), cursor)
+	wrappedSpell := wrapWithIndent(m.spell, app.LiveModeWrapWidth, "            ")
+	fmt.Fprintf(&sb, MsgSpellPrompt, spellStyle.Render(wrappedSpell), cursor)
 
 	if m.maxLen > 0 {
-		fmt.Fprintf(&sb, MsgPasswordWithMaxLen, passStyle.Render(m.password), len(m.password), m.maxLen)
+		wrappedPass := wrapWithIndent(m.password, app.LiveModeWrapWidth, "            ")
+		fmt.Fprintf(&sb, MsgPasswordWithMaxLen, passStyle.Render(wrappedPass), len(m.password), m.maxLen)
 		if m.state == StateMaxLenReached {
 			fmt.Fprintf(&sb, MsgLiveError, errorStyle.Render(fmt.Sprintf(MsgMaxPasswordReached, m.maxLen)))
 		}
 	} else {
-		fmt.Fprintf(&sb, MsgPasswordNoMaxLen, passStyle.Render(m.password), len(m.password))
+		wrappedPass := wrapWithIndent(m.password, app.LiveModeWrapWidth, "            ")
+		fmt.Fprintf(&sb, MsgPasswordNoMaxLen, passStyle.Render(wrappedPass), len(m.password))
 	}
 
 	if m.err != "" {
