@@ -1,12 +1,12 @@
 # moria
 
-A deterministic, matrix-based password generator. Generate unique, strong passwords for every service/login/vault from a single master password and a memorable spell.
+A deterministic, matrix-based password generator for the terminal. Generate unique, strong passwords for every service/login/vault from a single master password and a memorable spell.
 
 > *"Speak, friend, and enter."* — Your spell is the password. The matrix is the mine.
 
 ![Moria live mode](docs/moria-live.png)
 
-**Primary use case for developers:** If you already have an SSH private key (e.g., for GitHub, servers, or CI/CD), you can reuse it as your master password. Generate passwords tied to that same ecosystem — no new secret to manage.
+**Primary use case for developers:** If you already have an SSH private key (e.g., for GitHub, servers, or CI/CD), you can reuse that or any high entropy key as your master password. Generate passwords tied to that same ecosystem — no new secret to manage.
 
 Inspired by [pwgen](https://www.uni-muenster.de/CERT/pwgen/index.php?lang=en&mode=pwcard)
 
