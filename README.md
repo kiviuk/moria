@@ -6,6 +6,8 @@ A deterministic, matrix-based password generator. Generate unique, strong passwo
 
 ![Moria live mode](docs/moria-live.png)
 
+**Primary use case for developers:** If you already have an SSH private key (e.g., for GitHub, servers, or CI/CD), you can reuse it as your master password. Generate passwords tied to that same ecosystem — no new secret to manage.
+
 Inspired by [pwgen](https://www.uni-muenster.de/CERT/pwgen/index.php?lang=en&mode=pwcard)
 
 Based on [zxcvb](https://github.com/ccojocar/zxcvbn-go) and [Argon2id](https://en.wikipedia.org/wiki/Argon2)
