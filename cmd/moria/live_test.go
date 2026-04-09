@@ -326,47 +326,55 @@ func simulateBackspace(m liveModel) liveModel {
 }
 
 func TestWrapWithIndent_Short(t *testing.T) {
-	// Verify text shorter than width is returned unchanged
+	// Verify text shorter than width is returned as a single-element slice
 	got := wrapWithIndent("hello", 80, "            ")
-	if got != "hello" {
-		t.Errorf("expected %q, got %q", "hello", got)
+	if len(got) != 1 || got[0] != "hello" {
+		t.Errorf("expected [%q], got %v", "hello", got)
 	}
 }
 
 func TestWrapWithIndent_ExactWidth(t *testing.T) {
-	// Verify text exactly at width is returned unchanged
+	// Verify text exactly at width is returned as a single-element slice
 	text := "12345678901234567890123456789012345678901234567890123456789012345678901234567890"
 	got := wrapWithIndent(text, 80, "            ")
-	if got != text {
-		t.Errorf("expected unchanged text, got %q", got)
+	if len(got) != 1 || got[0] != text {
+		t.Errorf("expected [%q], got %v", text, got)
 	}
 }
 
 func TestWrapWithIndent_OneOver(t *testing.T) {
-	// Verify text one character over width wraps to two lines
+	// Verify text one character over width wraps to two elements
 	text := "123456789012345678901234567890123456789012345678901234567890123456789012345678901"
 	got := wrapWithIndent(text, 80, "  ")
-	expected := "12345678901234567890123456789012345678901234567890123456789012345678901234567890\n  1"
-	if got != expected {
-		t.Errorf("expected %q, got %q", expected, got)
+	expected := []string{
+		"12345678901234567890123456789012345678901234567890123456789012345678901234567890",
+		"  1",
+	}
+	if len(got) != len(expected) || got[0] != expected[0] || got[1] != expected[1] {
+		t.Errorf("expected %v, got %v", expected, got)
 	}
 }
 
 func TestWrapWithIndent_MultipleWraps(t *testing.T) {
-	// Verify text requiring multiple wraps produces correct output
-	// 81 chars / 10 = 8 full lines + 1 remaining
+	// Verify text requiring multiple wraps produces correct number of elements
+	// 81 chars / 10 = 8 full lines + 1 remaining = 9 elements
 	text := "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
 	got := wrapWithIndent(text, 10, "  ")
-	expected := "aaaaaaaaaa\n  aaaaaaaaaa\n  aaaaaaaaaa\n  aaaaaaaaaa\n  aaaaaaaaaa\n  aaaaaaaaaa\n  aaaaaaaaaa\n  aaaaaaaaaa\n  a"
-	if got != expected {
-		t.Errorf("expected %q, got %q", expected, got)
+	if len(got) != 9 {
+		t.Errorf("expected 9 chunks, got %d: %v", len(got), got)
+	}
+	if got[0] != "aaaaaaaaaa" {
+		t.Errorf("expected first chunk %q, got %q", "aaaaaaaaaa", got[0])
+	}
+	if got[8] != "  a" {
+		t.Errorf("expected last chunk %q, got %q", "  a", got[8])
 	}
 }
 
 func TestWrapWithIndent_Empty(t *testing.T) {
-	// Verify empty string is returned unchanged
+	// Verify empty string returns a single-element slice containing empty string
 	got := wrapWithIndent("", 80, "            ")
-	if got != "" {
-		t.Errorf("expected empty string, got %q", got)
+	if len(got) != 1 || got[0] != "" {
+		t.Errorf("expected [%q], got %v", "", got)
 	}
 }
