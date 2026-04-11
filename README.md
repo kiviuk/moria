@@ -1,12 +1,26 @@
 # moria
 
-A deterministic, matrix-based password generator for the terminal. Generate unique, strong passwords for every service/login/vault from a single master password and a memorable spell.
+A deterministic, matrix-based password generator for developers. Generate unique, strong passwords for every service/login/vault from a single master password and a memorable spell.
+
+```
+Master Password (secret) + Spell (pass-phrase) → Unique Password
+```
+
+Example: Your `id_ed25519` key grants access to GitHub? Use the same key to generate your GitHub password, personal access tokens, or other GitHub-related credentials.
+
+```bash
+cat ~/.ssh/id_ed25519 | ./bin/moria "g g i i t t h h u u b b" | pbcopy
+```
+
+Moria has also a visual live mode.
 
 > *"Speak, friend, and enter."* — Your spell is the password. The matrix is the mine.
 
-![Moria live mode](docs/moria-live.png)
+```bash
+cat ~/.ssh/id_ed25519 | ./bin/moria --live
+```
 
-**Primary use case for developers:** If you already have an SSH private key (e.g., for GitHub, servers, or CI/CD), you can reuse that or any high entropy key as your master password. Generate passwords tied to that same ecosystem — no new secret to manage.
+![Moria live mode](docs/moria-live.png)
 
 Inspired by [pwgen](https://www.uni-muenster.de/CERT/pwgen/index.php?lang=en&mode=pwcard)
 
@@ -17,14 +31,6 @@ Videos: [zxcvbn](https://www.youtube.com/watch?v=vf37jh3dV2I) [Argon2id](https:/
 ## Core Concept
 
 `moria` uses a **password matrix** — a grid of random character fragments — combined with a **spell** (any memorable key phrase) to derive unique passwords. The same master password + spell always produces the same password.
-
-```
-Master Password (secret) + Spell (pass-phrase) → Unique Password
-```
-
-**Primary use case for developers:** If you already have an SSH private key (e.g., for GitHub, servers, or CI/CD), you can reuse it as your master password. Generate passwords tied to that same ecosystem — no new secret to manage.
-
-Example: Your `id_ed25519` key grants access to GitHub. Use the same key to generate your GitHub password, personal access tokens, or other GitHub-related credentials.
 
 ## Installation
 

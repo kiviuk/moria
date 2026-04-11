@@ -19,10 +19,10 @@ import (
 // Each cell holds CharactersPerMatrixCell characters that are concatenated to form the password.
 type Matrix [PasswordMatrixRows][PasswordMatrixColumns]string
 
-// NewMatrix distributes a random string into the 2D matrix using arithmetic.
+// Matrix factory distributes a random string into the 2D matrix using arithmetic.
 // The random string must be exactly PasswordMatrixRows * PasswordMatrixColumns * CharactersPerMatrixCell bytes.
 func NewMatrix(randomString string) (Matrix, error) {
-	expectedLen := PasswordMatrixRows * PasswordMatrixColumns * CharactersPerMatrixCell
+	expectedLen := MatrixBytes
 	if len(randomString) != expectedLen {
 		return Matrix{}, fmt.Errorf("random string length %d, expected %d", len(randomString), expectedLen)
 	}
@@ -52,6 +52,51 @@ func (m Matrix) cell(row, col int) (string, error) {
 // The row is guaranteed valid by the QueryLetter type, but the column is still validated defensively.
 func (m Matrix) Cell(t QueryLetter) (string, error) {
 	return m.cell(t.MatrixRow, t.LetterGroup)
+}
+
+// Wipe zeroizes all cells in the matrix.
+// Should be called when the matrix is no longer needed to prevent sensitive
+// data from lingering in memory after the program exits.
+func (m *Matrix) Wipe() {
+	for row := range PasswordMatrixRows {
+		for col := range PasswordMatrixColumns {
+			memguard.WipeBytes([]byte(m[row][col]))
+			m[row][col] = ""
+		}
+	}
+}
+
+// Pretty returns a human-readable string representation of the matrix.
+// Column headers are computed dynamically from AlphabetSize and CharactersPerMatrixCell.
+func (m Matrix) Pretty() string {
+	const colWidth = CharactersPerMatrixCell + 1
+
+	var sb strings.Builder
+
+	// Header row
+	sb.WriteString(strings.Repeat(" ", colWidth))
+	for col := 0; col < PasswordMatrixColumns; col++ {
+		fmt.Fprintf(&sb, "%-*s", colWidth, ColHeader(col))
+	}
+	sb.WriteByte('\n')
+
+	// Separator
+	sb.WriteString(strings.Repeat(" ", colWidth))
+	for col := 0; col < PasswordMatrixColumns; col++ {
+		sb.WriteString(strings.Repeat("─", colWidth-1) + " ")
+	}
+	sb.WriteByte('\n')
+
+	// Data rows
+	for row := 0; row < PasswordMatrixRows; row++ {
+		fmt.Fprintf(&sb, "%-*d", colWidth, row)
+		for col := 0; col < PasswordMatrixColumns; col++ {
+			fmt.Fprintf(&sb, "%-*s", colWidth, m[row][col])
+		}
+		sb.WriteByte('\n')
+	}
+
+	return sb.String()
 }
 
 // GenerateMasterPassword produces a cryptographically secure master password of the given length.
@@ -141,47 +186,3 @@ func ColHeader(col int) string {
 	return sb.String()
 }
 
-// Pretty returns a human-readable string representation of the matrix.
-// Column headers are computed dynamically from AlphabetSize and CharactersPerMatrixCell.
-func (m Matrix) Pretty() string {
-	const colWidth = CharactersPerMatrixCell + 1
-
-	var sb strings.Builder
-
-	// Header row
-	sb.WriteString(strings.Repeat(" ", colWidth))
-	for col := 0; col < PasswordMatrixColumns; col++ {
-		fmt.Fprintf(&sb, "%-*s", colWidth, ColHeader(col))
-	}
-	sb.WriteByte('\n')
-
-	// Separator
-	sb.WriteString(strings.Repeat(" ", colWidth))
-	for col := 0; col < PasswordMatrixColumns; col++ {
-		sb.WriteString(strings.Repeat("─", colWidth-1) + " ")
-	}
-	sb.WriteByte('\n')
-
-	// Data rows
-	for row := 0; row < PasswordMatrixRows; row++ {
-		fmt.Fprintf(&sb, "%-*d", colWidth, row)
-		for col := 0; col < PasswordMatrixColumns; col++ {
-			fmt.Fprintf(&sb, "%-*s", colWidth, m[row][col])
-		}
-		sb.WriteByte('\n')
-	}
-
-	return sb.String()
-}
-
-// Wipe zeroizes all cells in the matrix.
-// Should be called when the matrix is no longer needed to prevent sensitive
-// data from lingering in memory after the program exits.
-func (m *Matrix) Wipe() {
-	for row := range PasswordMatrixRows {
-		for col := range PasswordMatrixColumns {
-			memguard.WipeBytes([]byte(m[row][col]))
-			m[row][col] = ""
-		}
-	}
-}

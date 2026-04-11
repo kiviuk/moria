@@ -33,12 +33,8 @@ const AllowedSpecialChars = `!@#$%^&*()-_=+[]{}|;:,.<>?/~` + " " + "`" + "'" + "
 // Excludes shell metacharacters: {} [] ~ " ' space $ ! # & * ? ( ) | < > ; \ `
 const MasterPasswordChars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789@-_=+:%.^/,"
 
-// MatrixBytes is the exact number of characters needed for the matrix.
 // Argon2Salt is the salt used for Argon2id key derivation.
 const Argon2Salt = "moria-argon-salt-v1"
-
-// HKDFSalt is the salt used for HKDF expansion.
-const HKDFSalt = "moria-hkdf-salt-v1"
 
 // MatrixBytes is the exact number of characters needed for the matrix.
 const MatrixBytes = PasswordMatrixRows * PasswordMatrixColumns * CharactersPerMatrixCell
