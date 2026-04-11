@@ -34,7 +34,7 @@ moria/
 │   ├── app/
 │   │   ├── config.go               # Package-level constants
 │   │   ├── spell.go                # Core domain types (MagicLetter, QueryLetter, MagicSpell, DirtySpell)
-│   │   ├── spell_test.go           # Tests for parsing, grouping, resolution, case sensitivity, entropy
+│   │   ├── spell_test.go           # Tests for parsing, grouping, resolution, case sensitivity, IsAllowedSpellChar
 │   │   ├── password_matrix.go      # Matrix type, generation, Pretty(), Cell access, ExpandToMatrix()
 │   │   ├── password_matrix_test.go # Matrix dimension, content, and integration tests
 │   │   ├── strength.go             # Time-to-guess calculation and human-readable formatting
@@ -103,9 +103,9 @@ moria -h
 
 ### Naming Conventions
 - **Exported types:** `PascalCase` — `MagicLetter`, `QueryLetter`, `MagicSpell`, `DirtySpell`, `Matrix`, `ParseError`, `Errors`
-- **Exported constants:** `PascalCase` — `PasswordMatrixRows`, `CharactersPerMatrixCell`, `AlphabetSize`, `MaxLetterGroups`, `PasswordMatrixColumns`, `MasterPasswordChars`, `MatrixBytes`
-- **Exported functions:** `PascalCase` — `LetterGroup()`, `ModN()`, `GenerateMasterPassword()`, `NewMatrix()`, `ColHeader()`, `ExpandToMatrix()`
-- **Unexported:** `camelCase` — `cell()`, `mapToCharset()`, `newTestMatrix()`, `getPassword()`
+- **Exported constants:** `PascalCase` — `PasswordMatrixRows`, `CharactersPerMatrixCell`, `AlphabetSize`, `MaxLetterGroups`, `PasswordMatrixColumns`, `MasterPasswordChars`, `MatrixBytes`, `CharsetBits`, `LiveModeWrapWidth`
+- **Exported functions:** `PascalCase` — `IsAllowedSpellChar()`, `LetterGroup()`, `ModN()`, `GenerateMasterPassword()`, `NewMatrix()`, `ColHeader()`, `ExpandToMatrix()`, `ExtractPassword()`, `FormatSecondsCompact()`, `CalculateMasterPasswordEntropy()`, `CalculateMasterPasswordStrength()`
+- **Unexported:** `camelCase` — `cell()`, `mapToCharset()`, `newTestMatrix()`, `getPassword()`, `wrapWithIndent()`
 - **Test functions:** `Test<TypeName>_<Method>_<Scenario>` — e.g., `TestDirtySpell_Parse_Valid`
 - **Receiver names:** Short, single-letter abbreviations — `d` for `DirtySpell`, `m` for `MagicSpell`/`MagicLetter`, `e` for `Errors`
 
@@ -148,7 +148,7 @@ moria -h
 - **Resolution pipeline:** `MagicSpell.MagicLetters()` → `[]MagicLetter` → `.Query()` → `[]QueryLetter` → `Matrix.Cell()` → password
 - **Key derivation:** Any input → `ExpandToMatrix()` (Argon2id + HKDF) → `MatrixBytes` string → `NewMatrix()` → `Matrix`
 - **Constants-driven:** All magic numbers and character sets live in `config.go`
-- **Matrix navigation:** `MatrixRow` = row (0-9, wrapped via modulo), `LetterGroup` = col (0 = non-letters, 1+ = letter groups)
+- **Matrix navigation:** `MatrixRow` = row (0-19, wrapped via modulo), `LetterGroup` = col (0 = non-letters, 1+ = letter groups)
 - **Case-sensitive rows:** Uppercase letters shift row by `PasswordMatrixRows/2`, making case significant
 - **Case-insensitive grouping:** `a` and `A` both map to group 1
 - **Deterministic:** Same master password + same spell = same password every time

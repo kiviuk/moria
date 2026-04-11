@@ -144,10 +144,11 @@ func (m liveModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 // wrapWithIndent breaks text into lines of max width, indenting continuation lines.
+// Returns each visual line as a separate string for independent per-chunk rendering.
 // Purely visual — never modifies the underlying model data.
-func wrapWithIndent(text string, width int, indent string) string {
+func wrapWithIndent(text string, width int, indent string) []string {
 	if len(text) <= width {
-		return text
+		return []string{text}
 	}
 	var lines []string
 	lines = append(lines, text[:width])
@@ -159,7 +160,7 @@ func wrapWithIndent(text string, width int, indent string) string {
 	if remaining != "" {
 		lines = append(lines, indent+remaining)
 	}
-	return strings.Join(lines, "\n")
+	return lines
 }
 
 // View renders the live mode TUI screen.
@@ -208,18 +209,33 @@ func (m liveModel) View() string {
 	} else {
 		cursor = " "
 	}
-	wrappedSpell := wrapWithIndent(m.spell, app.LiveModeWrapWidth, "            ")
-	fmt.Fprintf(&sb, MsgSpellPrompt, spellStyle.Render(wrappedSpell), cursor)
+	spellChunks := wrapWithIndent(m.spell, app.LiveModeWrapWidth, "            ")
+	for i, chunk := range spellChunks {
+		isLast := i == len(spellChunks)-1
+		if i == 0 {
+			if isLast {
+				fmt.Fprintf(&sb, MsgSpellPrompt, spellStyle.Render(chunk), cursor)
+			} else {
+				fmt.Fprintf(&sb, MsgSpellPrompt, spellStyle.Render(chunk), "")
+			}
+		} else {
+			if isLast {
+				fmt.Fprintf(&sb, "%s%s\n", spellStyle.Render(chunk), cursor)
+			} else {
+				fmt.Fprintf(&sb, "%s\n", spellStyle.Render(chunk))
+			}
+		}
+	}
 
 	if m.maxLen > 0 {
 		wrappedPass := wrapWithIndent(m.password, app.LiveModeWrapWidth, "            ")
-		fmt.Fprintf(&sb, MsgPasswordWithMaxLen, passStyle.Render(wrappedPass), len(m.password), m.maxLen)
+		fmt.Fprintf(&sb, MsgPasswordWithMaxLen, passStyle.Render(strings.Join(wrappedPass, "\n")), len(m.password), m.maxLen)
 		if m.state == StateMaxLenReached {
 			fmt.Fprintf(&sb, MsgLiveError, errorStyle.Render(fmt.Sprintf(MsgMaxPasswordReached, m.maxLen)))
 		}
 	} else {
 		wrappedPass := wrapWithIndent(m.password, app.LiveModeWrapWidth, "            ")
-		fmt.Fprintf(&sb, MsgPasswordNoMaxLen, passStyle.Render(wrappedPass), len(m.password))
+		fmt.Fprintf(&sb, MsgPasswordNoMaxLen, passStyle.Render(strings.Join(wrappedPass, "\n")), len(m.password))
 	}
 
 	if m.err != "" {

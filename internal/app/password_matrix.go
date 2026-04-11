@@ -110,9 +110,8 @@ func mapToCharset(source io.Reader, pool string, length int) string {
 // Uses Argon2id for memory-hard key derivation to resist brute-force attacks on weak passwords,
 // followed by HKDF for expansion and rejection sampling for unbiased character mapping.
 func ExpandToMatrix(input string) string {
-	salt := []byte("moria-salt-v1")
 	cpus := uint8(4)
-	key := argon2.IDKey([]byte(input), salt, 1, 64*1024, cpus, 32)
+	key := argon2.IDKey([]byte(input), []byte(Argon2Salt), 1, 64*1024, cpus, 32)
 
 	hkdfReader := hkdf.New(sha256.New, key, nil, []byte("moria-matrix-expansion"))
 
