@@ -71,3 +71,7 @@ issues:
       linters:
         - gocritic
       text: "singleCaseSwitch"
+    - path: cmd/moria/main\.go
+      linters:
+        - gocritic
+      text: "exitAfterDefer"

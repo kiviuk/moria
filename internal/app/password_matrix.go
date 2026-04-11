@@ -7,6 +7,7 @@ import (
 	"io"
 	"strings"
 
+	"github.com/awnumar/memguard"
 	"golang.org/x/crypto/argon2"
 	"golang.org/x/crypto/hkdf"
 )
@@ -113,9 +114,13 @@ func ExpandToMatrix(input string) string {
 	cpus := uint8(4)
 	key := argon2.IDKey([]byte(input), salt, 1, 64*1024, cpus, 32)
 
-	hkdfReader := hkdf.New(sha256.New, key, []byte("moria-salt-v1"), []byte("moria-matrix-expansion"))
+	hkdfReader := hkdf.New(sha256.New, key, nil, []byte("moria-matrix-expansion"))
 
-	return mapToCharset(hkdfReader, MasterPasswordChars, MatrixBytes)
+	result := mapToCharset(hkdfReader, MasterPasswordChars, MatrixBytes)
+
+	memguard.WipeBytes(key)
+
+	return result
 }
 
 // ColHeader returns the display name for a matrix column.
@@ -168,4 +173,16 @@ func (m Matrix) Pretty() string {
 	}
 
 	return sb.String()
+}
+
+// Wipe zeroizes all cells in the matrix.
+// Should be called when the matrix is no longer needed to prevent sensitive
+// data from lingering in memory after the program exits.
+func (m *Matrix) Wipe() {
+	for row := range PasswordMatrixRows {
+		for col := range PasswordMatrixColumns {
+			memguard.WipeBytes([]byte(m[row][col]))
+			m[row][col] = ""
+		}
+	}
 }

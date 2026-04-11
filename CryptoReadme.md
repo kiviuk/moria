@@ -160,7 +160,7 @@ Takes any input (random string, passphrase, SSH key) and produces a 32-byte high
 ### Stage 2: HKDF Expansion
 
 ```go
-hkdfReader := hkdf.New(sha256.New, key, salt, []byte("moria-matrix-expansion"))
+hkdfReader := hkdf.New(sha256.New, key, nil, []byte("moria-matrix-expansion"))
 matrix := mapToCharset(hkdfReader, MasterPasswordChars, MatrixBytes)
 ```
 

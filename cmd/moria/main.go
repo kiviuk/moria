@@ -19,6 +19,8 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/awnumar/memguard"
+
 	"github.com/kiviuk/moria/internal/app"
 )
 
@@ -301,6 +303,7 @@ func main() { //nolint:gocyclo // main has high complexity due to mode switching
 		}
 		cfg.MasterRaw = master
 		cfg.Master = app.ExpandToMatrix(master)
+		memguard.WipeBytes([]byte(master))
 	}
 
 	switch cfg.Mode {
@@ -315,23 +318,28 @@ func main() { //nolint:gocyclo // main has high complexity due to mode switching
 	case ModePretty:
 		matrix, err := getMatrix(cfg.Master)
 		if err != nil {
+			matrix.Wipe()
 			fmt.Fprintln(os.Stderr, err)
 			os.Exit(1)
 		}
+		defer matrix.Wipe()
 		fmt.Print(matrix.Pretty())
 
 	case ModeLive:
 		matrix, err := getMatrix(cfg.Master)
 		if err != nil {
+			matrix.Wipe()
 			fmt.Fprintln(os.Stderr, err)
 			os.Exit(1)
 		}
+		defer matrix.Wipe()
 		pasteMode := PasteAllowed
 		if flags["--ignore-paste"] {
 			pasteMode = PasteIgnored
 		}
 		finalModel, err := LiveMode(matrix, cfg.MaxLen, pasteMode, cfg.MasterRaw)
 		if err != nil {
+			matrix.Wipe()
 			fmt.Fprintf(os.Stderr, ErrLiveMode+"\n", err)
 			os.Exit(1)
 		}
@@ -340,26 +348,35 @@ func main() { //nolint:gocyclo // main has high complexity due to mode switching
 		if password != "" {
 			fmt.Print(password)
 		}
+		memguard.WipeBytes([]byte(password))
+		memguard.WipeBytes([]byte(cfg.MasterRaw))
 
 	case ModeBatch:
 		matrix, err := getMatrix(cfg.Master)
 		if err != nil {
+			matrix.Wipe()
 			fmt.Fprintln(os.Stderr, err)
 			os.Exit(1)
 		}
+		defer matrix.Wipe()
 		dirty := app.DirtySpell{Spell: cfg.Spell}
 		magic, err := dirty.Parse()
 		if err != nil {
+			matrix.Wipe()
 			fmt.Fprintf(os.Stderr, ErrInvalidSpell+"\n", err)
 			os.Exit(1)
 		}
 		password, err := magic.ExtractPassword(matrix)
 		if err != nil {
+			matrix.Wipe()
 			fmt.Fprintf(os.Stderr, ErrExtractPassword+"\n", err)
 			os.Exit(1)
 		}
 		password = truncatePassword(password, cfg.MaxLen)
-		fmt.Print(password)
+		if password != "" {
+			fmt.Print(password)
+		}
+		memguard.WipeBytes([]byte(password))
 
 	case ModeShowPasswordStrength:
 		runPasswordStrengthMode(cfg)

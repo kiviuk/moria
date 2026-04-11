@@ -249,5 +249,7 @@ func LiveMode(matrix app.Matrix, maxLen int, pasteMode PasteMode, masterPassword
 		return liveModel{}, errors.New(ErrUnexpectedModel)
 	}
 
+	lm.matrix.Wipe()
+
 	return lm, nil
 }
