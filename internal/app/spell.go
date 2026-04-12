@@ -125,7 +125,7 @@ func LetterGroup(letter string) int {
 // MagicLetters converts the spell into a slice of MagicLetter values,
 // one for each character, preserving order and position.
 func (m MagicSpell) MagicLetters() []MagicLetter {
-	letters := make([]MagicLetter, len(m.Spell))
+	var letters []MagicLetter = make([]MagicLetter, len(m.Spell))
 	for i, r := range m.Spell {
 		letters[i] = MagicLetter{Letter: string(r), LetterPosition: i}
 	}
@@ -163,7 +163,7 @@ func (m MagicLetter) Query() QueryLetter {
 // CharactersPerMatrixCell characters to the output.
 func (m MagicSpell) ExtractPassword(matrix Matrix) (string, error) {
 	letters := m.MagicLetters()
-	var password strings.Builder
+	var password strings.Builder = strings.Builder{}
 	for _, l := range letters {
 		query := l.Query()
 		cell, err := matrix.Cell(query)

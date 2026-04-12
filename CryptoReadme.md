@@ -161,7 +161,7 @@ Takes any input (random string, passphrase, SSH key) and produces a 32-byte high
 
 ```go
 hkdfReader := hkdf.New(sha256.New, key, nil, []byte("moria-matrix-expansion"))
-matrix := mapToCharset(hkdfReader, MasterPasswordChars, MatrixBytes)
+matrix := mapStringSourceToAlphabet(hkdfReader, MasterPasswordChars, MatrixBytes)
 ```
 
 Expands the 32-byte key to 600 characters using HKDF (RFC 5869). The output is deterministic — same key always produces the same matrix.

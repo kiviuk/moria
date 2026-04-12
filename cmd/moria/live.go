@@ -124,7 +124,7 @@ func (m liveModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.state = StateMaxLenReached
 					return m, nil
 				}
-				charStr := string(ch)
+				var charStr string = string(ch)
 				m.spell += charStr
 				letter := app.MagicLetter{Letter: charStr, LetterPosition: len(m.spell) - 1}
 				query := letter.Query()
@@ -181,7 +181,7 @@ func (m liveModel) View() string {
 	}
 	sb.WriteByte('\n')
 
-	visited := make(map[string]bool)
+	var visited map[string]bool = make(map[string]bool)
 	for _, q := range m.queryLetters {
 		key := fmt.Sprintf("%d-%d", q.MatrixRow, q.LetterGroup)
 		visited[key] = true

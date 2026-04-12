@@ -102,22 +102,22 @@ func (m Matrix) Pretty() string {
 // GenerateMasterPassword produces a cryptographically secure master password of the given length.
 // Characters are drawn from the provided pool using rejection sampling for zero bias.
 func GenerateMasterPassword(length int, pool string) (string, error) {
-	return mapToCharset(rand.Reader, pool, length), nil
+	return mapStringSourceToAlphabet(rand.Reader, pool, length), nil
 }
 
-// mapToCharset maps bytes from an io.Reader to a character pool using rejection sampling.
-// Guarantees zero modulo bias regardless of pool size by discarding bytes that would create bias.
+// mapStringSourceToAlphabet maps bytes from an io.Reader to an alphabet using rejection sampling.
+// Guarantees zero modulo bias regardless of alphabet size by discarding bytes that would create bias.
 // The io.Reader can be deterministic (hkdf.New for ExpandToMatrix) or random (rand.Reader for GenerateMasterPassword).
 // This design preserves determinism: the same io.Reader will always produce the same output.
-func mapToCharset(source io.Reader, pool string, length int) string {
-	poolBytes := []byte(pool)
-	poolLen := len(poolBytes)
+func mapStringSourceToAlphabet(source io.Reader, alphabet string, length int) string {
+	var alphabetBytes []byte = []byte(alphabet)
+	alphabetLen := len(alphabetBytes)
 	// threshold defines the maximum byte value that can be used without introducing modulo bias.
-	// For a pool of size N, we can only use bytes 0 to (256 - (256 % N)) - 1.
+	// For an alphabet of size N, we can only use bytes 0 to (256 - (256 % N)) - 1.
 	// Bytes >= threshold are discarded to ensure uniform distribution.
-	threshold := 256 - (256 % poolLen)
+	threshold := 256 - (256 % alphabetLen)
 
-	result := make([]byte, length)
+	var result []byte = make([]byte, length)
 	buf := make([]byte, length*4)
 	bytesRead := 0
 	j := len(buf)
@@ -142,7 +142,7 @@ func mapToCharset(source io.Reader, pool string, length int) string {
 
 			// Accept byte only if it falls within the unbiased range
 			if b < threshold {
-				result[i] = poolBytes[b%poolLen]
+				result[i] = alphabetBytes[b%alphabetLen]
 				break
 			}
 			// Otherwise, discard and try next byte (rejection sampling)
@@ -156,11 +156,13 @@ func mapToCharset(source io.Reader, pool string, length int) string {
 // followed by HKDF for expansion and rejection sampling for unbiased character mapping.
 func ExpandToMatrix(input string) string {
 	cpus := uint8(4)
-	key := argon2.IDKey([]byte(input), []byte(Argon2Salt), 1, 64*1024, cpus, 32)
+	var inputBytes []byte = []byte(input)
+	var saltBytes []byte = []byte(Argon2Salt)
+	key := argon2.IDKey(inputBytes, saltBytes, 1, 64*1024, cpus, 32)
 
 	hkdfReader := hkdf.New(sha256.New, key, nil, []byte("moria-matrix-expansion"))
 
-	result := mapToCharset(hkdfReader, MasterPasswordChars, MatrixBytes)
+	result := mapStringSourceToAlphabet(hkdfReader, MasterPasswordChars, MatrixBytes)
 
 	memguard.WipeBytes(key)
 

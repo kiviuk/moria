@@ -105,7 +105,7 @@ moria -h
 - **Exported types:** `PascalCase` — `MagicLetter`, `QueryLetter`, `MagicSpell`, `DirtySpell`, `Matrix`, `ParseError`, `Errors`
 - **Exported constants:** `PascalCase` — `PasswordMatrixRows`, `CharactersPerMatrixCell`, `AlphabetSize`, `MaxLetterGroups`, `PasswordMatrixColumns`, `MasterPasswordChars`, `MatrixBytes`, `CharsetBits`, `LiveModeWrapWidth`
 - **Exported functions:** `PascalCase` — `IsAllowedSpellChar()`, `LetterGroup()`, `ModN()`, `GenerateMasterPassword()`, `NewMatrix()`, `ColHeader()`, `ExpandToMatrix()`, `ExtractPassword()`, `FormatSecondsCompact()`, `CalculateMasterPasswordEntropy()`, `CalculateMasterPasswordStrength()`
-- **Unexported:** `camelCase` — `cell()`, `mapToCharset()`, `newTestMatrix()`, `getPassword()`, `wrapWithIndent()`
+- **Unexported:** `camelCase` — `cell()`, `mapStringSourceToAlphabet()`, `newTestMatrix()`, `getPassword()`, `wrapWithIndent()`
 - **Test functions:** `Test<TypeName>_<Method>_<Scenario>` — e.g., `TestDirtySpell_Parse_Valid`
 - **Receiver names:** Short, single-letter abbreviations — `d` for `DirtySpell`, `m` for `MagicSpell`/`MagicLetter`, `e` for `Errors`
 
@@ -156,7 +156,7 @@ moria -h
 - **Bash-friendly master password:** Uses `MasterPasswordChars` (excludes `{}`, `[]`, `~`, `"`, `'`, space, `$`, `!`, `#`, `&`, `*`, `?`, `()`, `|`, `<>`, `;`, `\`, `` ` ``)
 - **SRP:** `GenerateMasterPassword(length, pool)` accepts character pool as parameter — no hardcoded pools
 - **Defensive access:** `Matrix.Cell(t QueryLetter)` validates column bounds; row is guaranteed valid by `QueryLetter` type
-- **Rejection sampling:** `mapToCharset()` ensures zero modulo bias when mapping random bytes to character pool
+- **Rejection sampling:** `mapStringSourceToAlphabet()` ensures zero modulo bias when mapping random bytes to character pool
 
 ### Flexibility
 - Change `CharactersPerMatrixCell` in `config.go` to adjust cell size (1, 2, 3, etc.)
