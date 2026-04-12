@@ -138,12 +138,19 @@ func (c *Config) Wipe() {
 func main() {
     // ... argument parsing ...
     
-    if cfg.Mode.needsStdin() {
-        master, err := readStdin()  // Returns *SecureBytes
-        cfg.MasterRaw = master
-        cfg.Master = app.ExpandToMatrix(master)
-        defer cfg.Wipe()  // ONE place to wipe everything
-    }
+	if cfg.Mode.needsStdin() {
+		master, err := readStdin() // Returns *SecureBytes
+		if err != nil {
+			// handle error
+		}
+		cfg.MasterRaw = master
+		expanded, err := app.ExpandToMatrix(master)
+		if err != nil {
+			// handle error
+		}
+		cfg.Master = expanded
+		defer cfg.Wipe() // ONE place to wipe everything
+	}
     
     // ... rest of main ...
 }
@@ -223,19 +230,25 @@ All tests updated to use `SecureBytes`:
 
 ```go
 func TestExpandToMatrix_Deterministic(t *testing.T) {
-    in1 := app.NewSecureBytesFromString("test-secret")
-    in2 := app.NewSecureBytesFromString("test-secret")
-    defer in1.Wipe()
-    defer in2.Wipe()
-    
-    out1 := app.ExpandToMatrix(in1)
-    out2 := app.ExpandToMatrix(in2)
-    defer out1.Wipe()
-    defer out2.Wipe()
-    
-    if out1.String() != out2.String() {
-        t.Error("not deterministic")
-    }
+	in1 := app.NewSecureBytesFromString("test-secret")
+	in2 := app.NewSecureBytesFromString("test-secret")
+	defer in1.Wipe()
+	defer in2.Wipe()
+
+	out1, err := app.ExpandToMatrix(in1)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	out2, err := app.ExpandToMatrix(in2)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	defer out1.Wipe()
+	defer out2.Wipe()
+
+	if out1.String() != out2.String() {
+		t.Error("not deterministic")
+	}
 }
 ```
 

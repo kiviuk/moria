@@ -79,7 +79,8 @@ func getPassword() (*app.SecureBytes, error) {
 		return nil, pm.err
 	}
 
-	sb := app.NewSecureBytesFromString(pm.input.Value())
+	value := pm.input.Value()
+	sb := app.NewSecureBytesFromString(value)
 	pm.Wipe()
 
 	return sb, nil

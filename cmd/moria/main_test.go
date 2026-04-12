@@ -145,17 +145,18 @@ func TestBatchMode_MaxLen(t *testing.T) {
 }
 
 func TestParseArgs_MaxLen(t *testing.T) {
-	// Verify --max-len flag is parsed correctly
+	// Verify --max-len flag is parsed correctly and spell is captured
 	tests := []struct {
-		args        []string
-		expectedMax int
-		expectedErr bool
+		args          []string
+		expectedMax   int
+		expectedSpell string
+		expectedErr   bool
 	}{
-		{[]string{"--max-len", "16", "amazon"}, 16, expectsOK},
-		{[]string{"--max-len", "5", "test"}, 5, expectsOK},
-		{[]string{"amazon"}, 0, expectsOK},
-		{[]string{"--max-len", "abc"}, 0, expectsError},
-		{[]string{"--max-len"}, 0, expectsError},
+		{[]string{"--max-len", "16", "amazon"}, 16, "amazon", expectsOK},
+		{[]string{"--max-len", "5", "test"}, 5, "test", expectsOK},
+		{[]string{"amazon"}, 0, "amazon", expectsOK},
+		{[]string{"--max-len", "abc"}, 0, "", expectsError},
+		{[]string{"--max-len"}, 0, "", expectsError},
 	}
 
 	for _, tt := range tests {
@@ -172,6 +173,9 @@ func TestParseArgs_MaxLen(t *testing.T) {
 		}
 		if cfg.MaxLen != tt.expectedMax {
 			t.Errorf("args %v: expected maxLen %d, got %d", tt.args, tt.expectedMax, cfg.MaxLen)
+		}
+		if cfg.Spell != tt.expectedSpell {
+			t.Errorf("args %v: expected spell %q, got %q", tt.args, tt.expectedSpell, cfg.Spell)
 		}
 	}
 }

@@ -202,7 +202,7 @@ func mapBytesSourceToAlphabet(source io.Reader, alphabet string, length int) ([]
 // Uses Argon2id for memory-hard key derivation to resist brute-force attacks on weak passwords,
 // followed by HKDF for expansion and rejection sampling for unbiased character mapping.
 // Returns a SecureBytes that can be securely wiped when no longer needed.
-func ExpandToMatrix(input *SecureBytes) *SecureBytes {
+func ExpandToMatrix(input *SecureBytes) (*SecureBytes, error) {
 	cpus := uint8(4)
 	saltBytes := []byte(Argon2Salt)
 	key := argon2.IDKey(input.Bytes(), saltBytes, 1, 64*1024, cpus, 32)
@@ -212,14 +212,14 @@ func ExpandToMatrix(input *SecureBytes) *SecureBytes {
 	result, err := mapBytesSourceToAlphabet(hkdfReader, MasterPasswordChars, MatrixBytes)
 	if err != nil {
 		memguard.WipeBytes(key)
-		panic(fmt.Sprintf("deterministic expansion failed: %v", err))
+		return nil, fmt.Errorf("deterministic expansion failed: %w", err)
 	}
 
 	memguard.WipeBytes(key)
 
 	sb := NewSecureBytes(result)
 	memguard.WipeBytes(result)
-	return sb
+	return sb, nil
 }
 
 // ColHeader returns the display name for a matrix column.

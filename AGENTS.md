@@ -104,7 +104,7 @@ moria -h
 ### Naming Conventions
 - **Exported types:** `PascalCase` — `MagicLetter`, `QueryLetter`, `MagicSpell`, `DirtySpell`, `Matrix`, `ParseError`, `Errors`
 - **Exported constants:** `PascalCase` — `PasswordMatrixRows`, `CharactersPerMatrixCell`, `AlphabetSize`, `MaxLetterGroups`, `PasswordMatrixColumns`, `MasterPasswordChars`, `MatrixBytes`, `LiveModeWrapWidth`
-- **Exported functions:** `PascalCase` — `IsAllowedSpellChar()`, `LetterGroup()`, `ModN()`, `GenerateMasterPassword()`, `NewMatrix()`, `ColHeader()`, `ExpandToMatrix()`, `ExtractPassword()`, `FormatSecondsCompact()`, `CalculateMasterPasswordEntropy()`, `CalculateMasterPasswordStrength()`
+- **Exported functions:** `PascalCase` — `IsAllowedSpellChar()`, `LetterGroup()`, `ModN()`, `GenerateMasterPassword()`, `NewMatrix()`, `ColHeader()`, `ExpandToMatrix()`, `ExtractPassword()`, `FormatSecondsCompact()`, `CalculateMasterPasswordEntropy()`, `CalculateMasterPasswordStrength()`. Note: `ExpandToMatrix()` returns `(*SecureBytes, error)`.
 - **Unexported:** `camelCase` — `cell()`, `mapStringSourceToAlphabet()`, `newTestMatrix()`, `getPassword()`, `wrapWithIndent()`
 - **Test functions:** `Test<TypeName>_<Method>_<Scenario>` — e.g., `TestDirtySpell_Parse_Valid`
 - **Receiver names:** Short, single-letter abbreviations — `d` for `DirtySpell`, `m` for `MagicSpell`/`MagicLetter`, `e` for `Errors`
@@ -146,7 +146,7 @@ moria -h
 ### Architecture Patterns
 - **Parse pattern:** `DirtySpell` (untrusted) → `.Parse()` → `MagicSpell` (validated)
 - **Resolution pipeline:** `MagicSpell.MagicLetters()` → `[]MagicLetter` → `.Query()` → `[]QueryLetter` → `Matrix.Cell()` → password
-- **Key derivation:** Any input → `ExpandToMatrix()` (Argon2id + HKDF) → `MatrixBytes` string → `NewMatrix()` → `Matrix`
+- **Key derivation:** Any input → `ExpandToMatrix()` (Argon2id + HKDF) → `*SecureBytes` (caller checks error) → `NewMatrix()` → `Matrix`
 - **Constants-driven:** All magic numbers and character sets live in `config.go`
 - **Matrix navigation:** `MatrixRow` = row (0-19, wrapped via modulo), `LetterGroup` = col (0 = non-letters, 1+ = letter groups)
 - **Case-sensitive rows:** Uppercase letters shift row by `PasswordMatrixRows/2`, making case significant

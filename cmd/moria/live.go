@@ -74,6 +74,7 @@ func (m *liveModel) Wipe() {
 	if m.masterPasswordRaw != nil {
 		m.masterPasswordRaw.Wipe()
 	}
+	m.matrix.Wipe()
 	// Clear spell and password references (strings are immutable)
 	m.spell = ""
 	m.password = ""
@@ -128,31 +129,33 @@ func (m liveModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 // The function handles backspace in live mode
 func (m liveModel) doBackspace() liveModel {
+	// Nothing to delete if spell is empty
 	if m.spell == "" {
 		return m
 	}
-	// Prevent underflow by checking length before slicing
-	// If we have at least one query letter AND the password has at least 3 characters
-	// Or more verbosely:
-	// Only proceed with removing the last character if:
-	// 1. There is at least one query letter stored (queryLetters isn't empty), AND
-	// 2. The password has enough characters to safely remove one cell's worth
-	// (at least 3 characters, since each matrix cell contributes 3 characters to the password)
-	if len(m.queryLetters) > 0 && len(m.password) >= app.CharactersPerMatrixCell {
-		// Normal case: remove last character
-		m.spell = m.spell[:len(m.spell)-1]
+
+	// Remove the last character from the spell
+	m.spell = m.spell[:len(m.spell)-1]
+
+	// Remove the last query letter from the slice
+	if len(m.queryLetters) > 0 {
 		m.queryLetters = m.queryLetters[:len(m.queryLetters)-1]
-		m.password = m.password[:len(m.password)-app.CharactersPerMatrixCell]
+	}
+
+	// Calculate what the password length should be based on remaining query letters
+	// Each query letter contributes CharactersPerMatrixCell characters to the password
+	expectedLen := len(m.queryLetters) * app.CharactersPerMatrixCell
+
+	// Truncate password to match expected length
+	// If password is longer than expected, trim it down
+	// If password is shorter (corrupted state), clear it entirely
+	if len(m.password) >= expectedLen {
+		m.password = m.password[:expectedLen]
 	} else {
-		// Defensive case:
-		// Inconsistent state - reset everything
-		// Impact of the Else Case:
-		// User Impact: The user loses their entire spell entry.
-		// One backspace clears everything instead of just removing the last character.
-		m.spell = ""
-		m.queryLetters = nil
 		m.password = ""
 	}
+
+	// Reset state and clear any error message
 	m.state = StateNormal
 	m.err = ""
 	return m
@@ -183,16 +186,21 @@ func (m liveModel) doRunes(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 		charStr := string(ch)
-		m.spell += charStr
-		letter := app.MagicLetter{Letter: charStr, LetterPosition: len(m.spell) - 1}
+		letter := app.MagicLetter{Letter: charStr, LetterPosition: len(m.spell)}
 		query := letter.Query()
-		m.queryLetters = append(m.queryLetters, query)
 		cell, cellErr := m.matrix.Cell(query)
 		if cellErr != nil {
 			m.err = cellErr.Error()
 			return m, nil
 		}
-		m.password += string(cell)
+		cellStr := string(cell)
+		if m.maxLen > 0 && len(m.password)+len(cellStr) > m.maxLen {
+			remaining := m.maxLen - len(m.password)
+			cellStr = cellStr[:remaining]
+		}
+		m.spell += charStr
+		m.queryLetters = append(m.queryLetters, query)
+		m.password += cellStr
 		m.state = StateNormal
 		m.err = ""
 	}

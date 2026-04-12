@@ -24,8 +24,14 @@ func TestExpandToMatrix_Deterministic(t *testing.T) {
 	in2 := NewSecureBytesFromString("test-secret")
 	defer in1.Wipe()
 	defer in2.Wipe()
-	out1 := ExpandToMatrix(in1)
-	out2 := ExpandToMatrix(in2)
+	out1, err := ExpandToMatrix(in1)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	out2, err := ExpandToMatrix(in2)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
 	defer out1.Wipe()
 	defer out2.Wipe()
 	if out1.String() != out2.String() {
@@ -38,7 +44,12 @@ func TestExpandToMatrix_Length(t *testing.T) {
 	inputs := []string{"", "short", "medium-length-input", strings.Repeat("x", 1000)}
 	for _, input := range inputs {
 		in := NewSecureBytesFromString(input)
-		out := ExpandToMatrix(in)
+		out, err := ExpandToMatrix(in)
+		if err != nil {
+			t.Errorf("ExpandToMatrix(%q) unexpected error: %v", input, err)
+			in.Wipe()
+			continue
+		}
 		if out.Len() != MatrixBytes {
 			t.Errorf("ExpandToMatrix(%q) length = %d, expected %d", input, out.Len(), MatrixBytes)
 		}
@@ -50,7 +61,10 @@ func TestExpandToMatrix_Length(t *testing.T) {
 func TestExpandToMatrix_Charset(t *testing.T) {
 	// Verify all output characters are from MasterPasswordChars
 	in := NewSecureBytesFromString("any-input-string")
-	out := ExpandToMatrix(in)
+	out, err := ExpandToMatrix(in)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
 	defer in.Wipe()
 	defer out.Wipe()
 	for i, r := range out.String() {
@@ -64,7 +78,10 @@ func TestExpandToMatrix_AlwaysDerives(t *testing.T) {
 	// Verify even exact-length input is transformed, not returned as-is
 	input := strings.Repeat("a", MatrixBytes)
 	in := NewSecureBytesFromString(input)
-	out := ExpandToMatrix(in)
+	out, err := ExpandToMatrix(in)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
 	defer in.Wipe()
 	defer out.Wipe()
 	if out.String() == input {
@@ -78,8 +95,14 @@ func TestExpandToMatrix_DifferentInputs(t *testing.T) {
 	in2 := NewSecureBytesFromString("secret-b")
 	defer in1.Wipe()
 	defer in2.Wipe()
-	out1 := ExpandToMatrix(in1)
-	out2 := ExpandToMatrix(in2)
+	out1, err := ExpandToMatrix(in1)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	out2, err := ExpandToMatrix(in2)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
 	defer out1.Wipe()
 	defer out2.Wipe()
 	if out1.String() == out2.String() {
@@ -93,8 +116,14 @@ func TestExpandToMatrix_TrailingNewline(t *testing.T) {
 	in2 := NewSecureBytesFromString("secret\n")
 	defer in1.Wipe()
 	defer in2.Wipe()
-	out1 := ExpandToMatrix(in1)
-	out2 := ExpandToMatrix(in2)
+	out1, err := ExpandToMatrix(in1)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	out2, err := ExpandToMatrix(in2)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
 	defer out1.Wipe()
 	defer out2.Wipe()
 	if out1.String() == out2.String() {

@@ -123,9 +123,19 @@ func parseArgs(args []string) (Config, map[string]bool, error) {
 	flags := make(map[string]bool)
 	var positional []string
 	modeSet := false
+	flagEnd := false
 
-	for i, arg := range args {
+	for i := 0; i < len(args); i++ {
+		arg := args[i]
+
+		if flagEnd {
+			positional = append(positional, arg)
+			continue
+		}
+
 		switch arg {
+		case "--":
+			flagEnd = true
 		case "--magic":
 			flags["--magic"] = true
 			if !modeSet {
@@ -281,7 +291,12 @@ func main() { //nolint:gocyclo // main has high complexity due to mode switching
 			os.Exit(1)
 		}
 		cfg.MasterRaw = master
-		cfg.Master = app.ExpandToMatrix(master)
+		expanded, err := app.ExpandToMatrix(master)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, MsgErrorPrefix, err)
+			os.Exit(1)
+		}
+		cfg.Master = expanded
 		defer cfg.Wipe()
 	}
 
