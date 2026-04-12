@@ -87,7 +87,7 @@ func TestPipeInput_OnlyWhitespace(t *testing.T) {
 
 func TestBatchMode_MaxLen(t *testing.T) {
 	// Verify batch mode truncates password to maxLen
-	matrix := newTestMatrix()
+	matrix := newTestMatrix() // from live_test.go
 
 	dirty := app.DirtySpell{Spell: "1111"}
 	spell, err := dirty.Parse()

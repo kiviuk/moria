@@ -3,7 +3,7 @@ package main
 // Live mode UI messages displayed to the user during interactive input.
 const (
 	// MsgMaxPasswordReached is shown when the user tries to type beyond the configured max length.
-	MsgMaxPasswordReached = "[MAX PASSWORD LENGTH %d REACHED]"
+	MsgMaxPasswordReached = "max password length %d reached"
 	// MsgPasteIgnored is shown when the user attempts to paste while --ignore-paste is active.
 	MsgPasteIgnored = "paste ignored, use --live without --ignore-paste to allow pasting"
 	// MsgInvalidChar is a format string shown when an invalid character is typed.
@@ -93,7 +93,7 @@ const (
 	// MsgOptIgnorePaste is the description for --ignore-paste.
 	MsgOptIgnorePaste = "  --ignore-paste            Ignore pasted input in live mode (single characters only, live mode only)"
 	// MsgOptPasswordStrength is the description for --show-strength.
-	MsgOptPasswordStrength = "  --show-strength         Show entropy for any password from stdin (standalone, no spell)"
+	MsgOptPasswordStrength = "  --show-strength         Show strength of password from stdin (standalone mode)"
 	// MsgOptHelp is the description for --help.
 	MsgOptHelp = "  -h, --help                Show this help message"
 	// MsgUsageExamples is the examples header.

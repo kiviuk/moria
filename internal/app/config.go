@@ -11,9 +11,11 @@ package app
 
 // PasswordMatrixRows is the number of rows in the password fragment matrix.
 // Also used as the modulus for wrapping character positions.
+// Chosen for good distribution with common spell lengths (allows 20 unique rows).
 const PasswordMatrixRows = 20
 
 // CharactersPerMatrixCell is the number of characters stored in each matrix cell.
+// Provides 73 character pool (26*2 + 10 + 11 specials) with 3 chars per cell.
 const CharactersPerMatrixCell = 3
 
 // AlphabetSize is the total number of letters in the English alphabet.
@@ -41,3 +43,7 @@ const MatrixBytes = PasswordMatrixRows * PasswordMatrixColumns * CharactersPerMa
 
 // LiveModeWrapWidth is the max display width for spell/password lines in live mode.
 const LiveModeWrapWidth = (80 + CharactersPerMatrixCell - 1) / CharactersPerMatrixCell * CharactersPerMatrixCell
+
+// MaxSpellLength is the maximum allowed length for a spell to prevent memory issues.
+// Spells longer than this will be rejected during parsing.
+const MaxSpellLength = 1000

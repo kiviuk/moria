@@ -79,11 +79,15 @@ func IsAllowedSpellChar(r rune) bool {
 // Parse validates the spell string, rejecting any characters outside the allowed
 // set (letters, digits, space, and permitted special characters). All errors are
 // accumulated and returned together rather than failing on the first invalid character.
+// Spells exceeding MaxSpellLength are rejected.
 //
 // Returns MagicSpell on success, or Errors containing all ParseError values on failure.
 func (d DirtySpell) Parse() (MagicSpell, error) {
 	if d.Spell == "" {
 		return MagicSpell{}, fmt.Errorf("spell cannot be empty")
+	}
+	if len(d.Spell) > MaxSpellLength {
+		return MagicSpell{}, fmt.Errorf("spell exceeds maximum length of %d characters", MaxSpellLength)
 	}
 	var errs Errors
 	for i, r := range d.Spell {

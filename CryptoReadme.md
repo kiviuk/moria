@@ -151,7 +151,7 @@ Generated Password
 ### Stage 1: Argon2id
 
 ```go
-salt := []byte("moria-salt-v1")
+salt := []byte("moria-argon-salt-v1")
 key := argon2.IDKey(password, salt, 1, 64*1024, 4, 32)
 ```
 

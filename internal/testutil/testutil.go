@@ -4,9 +4,9 @@ import (
 	"strings"
 )
 
-// NewTestMatrixData returns a deterministic string suitable for app.NewMatrix().
-// The returned string has length PasswordMatrixRows * PasswordMatrixColumns * CharactersPerMatrixCell.
-// Each CharactersPerMatrixCell-byte segment contains unique characters for traceability.
+// NewTestMatrixData returns a deterministic string suitable for creating a test matrix.
+// The returned string has length rows * cols * cellSize characters.
+// Each cellSize-byte segment contains unique characters for traceability.
 func NewTestMatrixData(rows, cols, cellSize int) string {
 	var sb strings.Builder
 	cellChars := "abcdefghijklmnopqrstuvwxyz"

@@ -46,6 +46,14 @@ func (m Mode) String() string {
 	return [...]string{"batch", "magic", "pretty", "live", "show-strength"}[m]
 }
 
+// Validate checks whether the mode value is within the valid range.
+func (m Mode) Validate() error {
+	if m < ModeBatch || m > ModeShowPasswordStrength {
+		return fmt.Errorf("invalid mode: %d", m)
+	}
+	return nil
+}
+
 // needsStdin reports whether this mode requires reading a master password from stdin.
 func (m Mode) needsStdin() bool {
 	return m == ModePretty || m == ModeLive || m == ModeBatch || m == ModeShowPasswordStrength

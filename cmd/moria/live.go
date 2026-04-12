@@ -103,10 +103,11 @@ func (m liveModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			tea.KeyInsert, tea.KeyDelete:
 			return m, nil
 		case tea.KeyRunes, tea.KeySpace:
-			runes := msg.Runes
+			var runes []rune
 			if msg.Type == tea.KeySpace {
-				// Makes TestLiveModel_Space_SingleKey work without relying on the terminal's handling of space input.
 				runes = []rune{' '}
+			} else {
+				runes = msg.Runes
 			}
 			if m.pasteMode == PasteIgnored && len(msg.Runes) > 1 {
 				m.err = MsgPasteIgnored
@@ -146,19 +147,32 @@ func (m liveModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 // wrapWithIndent breaks text into lines of max width, indenting continuation lines.
 // Returns each visual line as a separate string for independent per-chunk rendering.
 // Purely visual — never modifies the underlying model data.
+// Uses strings.Builder for efficient string construction.
 func wrapWithIndent(text string, width int, indent string) []string {
 	if len(text) <= width {
 		return []string{text}
 	}
+
 	var lines []string
-	lines = append(lines, text[:width])
+	var sb strings.Builder
+	sb.Grow(width + len(indent))
+
+	sb.WriteString(text[:width])
+	lines = append(lines, sb.String())
+	sb.Reset()
+
 	remaining := text[width:]
 	for len(remaining) > width {
-		lines = append(lines, indent+remaining[:width])
+		sb.WriteString(indent)
+		sb.WriteString(remaining[:width])
+		lines = append(lines, sb.String())
+		sb.Reset()
 		remaining = remaining[width:]
 	}
 	if remaining != "" {
-		lines = append(lines, indent+remaining)
+		sb.WriteString(indent)
+		sb.WriteString(remaining)
+		lines = append(lines, sb.String())
 	}
 	return lines
 }
