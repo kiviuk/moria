@@ -26,6 +26,8 @@ const (
 	ErrPasswordStrengthNoSpell = "--show-strength is standalone, spell not allowed"
 	// ErrSpellRequired is a format string returned when a mode requires a spell but none was provided.
 	ErrSpellRequired = "%s mode requires a spell"
+	// ErrUnknownFlag is returned when an argument looks like a flag but isn't recognized.
+	ErrUnknownFlag = "unknown flag: %s (use '--' before spell if intentional)"
 	// ErrFailedReadMaster is a format string returned when reading the master password from stdin fails.
 	ErrFailedReadMaster = "Failed to read master password from pipe: %v"
 	// ErrFailedGenerateMaster is a format string returned when master password generation fails.
@@ -79,23 +81,25 @@ const (
 	// MsgUsageTitle is the title line of the help output.
 	MsgUsageTitle = "moria — deterministic password generator"
 	// MsgUsageHeader is the usage format line.
-	MsgUsageHeader = "Usage: moria [--magic|--pretty|--live] [--max-len N] [--ignore-paste] <spell>"
+	MsgUsageHeader = "Usage: moria [--magic|--pretty|--live|--show-strength] [--max-len N] [--ignore-paste] [--] <spell>"
 	// MsgUsageOptions is the options header.
 	MsgUsageOptions = "Options:"
 	// MsgOptMagic is the description for --magic.
-	MsgOptMagic = "  --magic                   Generate a master password"
+	MsgOptMagic = " --magic Generate a master password"
 	// MsgOptPretty is the description for --pretty.
-	MsgOptPretty = "  --pretty                  Display the password matrix from your master password"
+	MsgOptPretty = " --pretty Display the password matrix from your master password"
 	// MsgOptLive is the description for --live.
-	MsgOptLive = "  --live                    Interactive mode: type your spell and see the password build in real-time"
+	MsgOptLive = " --live Interactive mode: type your spell and see the password build in real-time"
 	// MsgOptMaxLen is the description for --max-len.
-	MsgOptMaxLen = "  --max-len                 Truncate generated output to N characters (live and batch modes only)"
+	MsgOptMaxLen = " --max-len Truncate generated output to N characters (live and batch modes only)"
 	// MsgOptIgnorePaste is the description for --ignore-paste.
-	MsgOptIgnorePaste = "  --ignore-paste            Ignore pasted input in live mode (single characters only, live mode only)"
+	MsgOptIgnorePaste = " --ignore-paste Ignore pasted input in live mode (single characters only, live mode only)"
 	// MsgOptPasswordStrength is the description for --show-strength.
-	MsgOptPasswordStrength = "  --show-strength         Show strength of password from stdin (standalone mode)"
+	MsgOptPasswordStrength = " --show-strength Show strength of password from stdin (standalone mode)"
+	// MsgOptSeparator is the description for --.
+	MsgOptSeparator = " -- Spell separator (use before spells starting with --)"
 	// MsgOptHelp is the description for --help.
-	MsgOptHelp = "  -h, --help                Show this help message"
+	MsgOptHelp = " -h, --help Show this help message"
 	// MsgUsageExamples is the examples header.
 	MsgUsageExamples = "Examples:"
 	// MsgExMagic is the example for --magic.

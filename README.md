@@ -185,16 +185,17 @@ To change the matrix size, edit the constants and run `make test && make build`.
 ## CLI Reference
 
 ```
-Usage: moria [--magic|--pretty|--live|--show-strength] [--max-len N] [--ignore-paste] [spell]
+Usage: moria [--magic|--pretty|--live|--show-strength] [--max-len N] [--ignore-paste] [--] [spell]
 
 Options:
-  --magic                Generate a master password
-  --pretty               Display the password matrix from your master password
-  --live                 Interactive mode: type your spell and see the password build in real-time
-  --show-strength    Analyze password strength from stdin (standalone, no spell)
-  --max-len N            Truncate output to N > 0 characters (live and batch modes only)
-  --ignore-paste         Ignore pasted input in live mode (live mode only)
-  -h, --help             Show this help message
+--magic Generate a master password
+--pretty Display the password matrix from your master password
+--live Interactive mode: type your spell and see the password build in real-time
+--show-strength Analyze password strength from stdin (standalone, no spell)
+--max-len N Truncate output to N > 0 characters (live and batch modes only)
+--ignore-paste Ignore pasted input in live mode (live mode only)
+-- Spell separator (use before spells starting with --)
+-h, --help Show this help message
 ```
 
 ## Project Structure

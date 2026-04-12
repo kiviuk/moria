@@ -102,7 +102,7 @@ func (d DirtySpell) Parse() (MagicSpell, error) {
 	if len(errs) > 0 {
 		return MagicSpell{}, errs
 	}
-	return MagicSpell{Spell: d.Spell}, nil
+	return MagicSpell(d), nil
 }
 
 // LetterGroup returns the column group number for a given letter.

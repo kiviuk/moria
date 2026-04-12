@@ -67,6 +67,9 @@ moria --max-len 16 "amazon" < master.txt
 # Show time-to-guess estimates (batch mode only)
 moria --show-strength "amazon" < master.txt
 
+# Spell starting with -- (use -- separator)
+moria -- "--my-spell" < master.txt
+
 # Help
 moria --help
 moria -h

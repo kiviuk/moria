@@ -18,6 +18,7 @@ import (
 	"os"
 	"slices"
 	"strconv"
+	"strings"
 
 	"github.com/awnumar/memguard"
 
@@ -122,45 +123,35 @@ func parseArgs(args []string) (Config, map[string]bool, error) {
 	cfg := Config{Mode: ModeBatch}
 	flags := make(map[string]bool)
 	var positional []string
+	var positionalAfterFlagEnd []string
 	modeSet := false
 	flagEnd := false
+	i := 0
 
-	for i := 0; i < len(args); i++ {
+	for i < len(args) {
 		arg := args[i]
 
 		if flagEnd {
-			positional = append(positional, arg)
+			positionalAfterFlagEnd = append(positionalAfterFlagEnd, arg)
+			i++
+			continue
+		}
+
+		handled := handleModeFlag(arg, flags, &cfg, &modeSet)
+		if handled {
+			i++
 			continue
 		}
 
 		switch arg {
 		case "--":
 			flagEnd = true
-		case "--magic":
-			flags["--magic"] = true
-			if !modeSet {
-				cfg.Mode = ModeMagic
-				modeSet = true
-			}
-		case "--pretty":
-			flags["--pretty"] = true
-			if !modeSet {
-				cfg.Mode = ModePretty
-				modeSet = true
-			}
-		case "--live":
-			flags["--live"] = true
-			if !modeSet {
-				cfg.Mode = ModeLive
-				modeSet = true
-			}
 		case "--max-len":
 			flags["--max-len"] = true
 			if i+1 >= len(args) {
 				return cfg, flags, fmt.Errorf("%s", ErrMaxLenRequiresValue)
 			}
-			i++
-			val, err := strconv.Atoi(args[i])
+			val, err := strconv.Atoi(args[i+1])
 			if err != nil {
 				return cfg, flags, fmt.Errorf("%s", ErrMaxLenNotNumber)
 			}
@@ -168,26 +159,64 @@ func parseArgs(args []string) (Config, map[string]bool, error) {
 				return cfg, flags, fmt.Errorf("%s", ErrMaxLenNotNumber)
 			}
 			cfg.MaxLen = val
+			i++
 		case "--ignore-paste":
 			flags["--ignore-paste"] = true
-		case "--show-strength":
-			flags["--show-strength"] = true
-			if !modeSet {
-				cfg.Mode = ModeShowPasswordStrength
-				modeSet = true
-			}
 		case "--help", "-h":
 			flags["--help"] = true
 		default:
 			positional = append(positional, arg)
 		}
+		i++
+	}
+
+	for _, arg := range positional {
+		if strings.HasPrefix(arg, "--") {
+			return cfg, flags, fmt.Errorf(ErrUnknownFlag, arg)
+		}
 	}
 
 	if len(positional) > 0 {
 		cfg.Spell = positional[0]
+	} else if len(positionalAfterFlagEnd) > 0 {
+		cfg.Spell = positionalAfterFlagEnd[0]
 	}
 
 	return cfg, flags, nil
+}
+
+func handleModeFlag(arg string, flags map[string]bool, cfg *Config, modeSet *bool) bool {
+	switch arg {
+	case "--magic":
+		flags["--magic"] = true
+		if !*modeSet {
+			cfg.Mode = ModeMagic
+			*modeSet = true
+		}
+		return true
+	case "--pretty":
+		flags["--pretty"] = true
+		if !*modeSet {
+			cfg.Mode = ModePretty
+			*modeSet = true
+		}
+		return true
+	case "--live":
+		flags["--live"] = true
+		if !*modeSet {
+			cfg.Mode = ModeLive
+			*modeSet = true
+		}
+		return true
+	case "--show-strength":
+		flags["--show-strength"] = true
+		if !*modeSet {
+			cfg.Mode = ModeShowPasswordStrength
+			*modeSet = true
+		}
+		return true
+	}
+	return false
 }
 
 func validateConfig(cfg Config, flags map[string]bool) error {
@@ -223,6 +252,7 @@ func printUsage() {
 	fmt.Println(MsgOptMaxLen)
 	fmt.Println(MsgOptIgnorePaste)
 	fmt.Println(MsgOptPasswordStrength)
+	fmt.Println(MsgOptSeparator)
 	fmt.Println(MsgOptHelp)
 	fmt.Println()
 	fmt.Println(MsgUsageExamples)

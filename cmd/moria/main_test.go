@@ -180,6 +180,45 @@ func TestParseArgs_MaxLen(t *testing.T) {
 	}
 }
 
+func TestParseArgs_UnknownFlag(t *testing.T) {
+	// Verify unknown flags starting with -- are rejected unless after --
+	tests := []struct {
+		args        []string
+		expectedErr bool
+	}{
+		{[]string{"--unknown-flag"}, expectsError},
+		{[]string{"--s"}, expectsError},
+		{[]string{"--show-strength-typo"}, expectsError},
+		{[]string{"--", "--s"}, expectsOK},
+		{[]string{"--", "--unknown"}, expectsOK},
+		{[]string{"amazon"}, expectsOK},
+	}
+
+	for _, tt := range tests {
+		_, _, err := parseArgs(tt.args)
+		if tt.expectedErr {
+			if err == nil {
+				t.Errorf("args %v: expected error, got nil", tt.args)
+			}
+		} else {
+			if err != nil {
+				t.Errorf("args %v: unexpected error: %v", tt.args, err)
+			}
+		}
+	}
+}
+
+func TestParseArgs_FlagSeparator(t *testing.T) {
+	// Verify -- separator allows spells starting with --
+	cfg, _, err := parseArgs([]string{"--", "--my-spell"})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if cfg.Spell != "--my-spell" {
+		t.Errorf("expected spell %q, got %q", "--my-spell", cfg.Spell)
+	}
+}
+
 func TestValidateConfig_SpellRequired(t *testing.T) {
 	// Verify batch mode requires a spell
 	cfg := Config{Mode: ModeBatch, Spell: ""}
