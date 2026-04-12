@@ -109,8 +109,9 @@ func TestGenerateMasterPassword_Length(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if len(s) != expectedLen {
-		t.Errorf("expected length %d, got %d", expectedLen, len(s))
+	defer s.Wipe()
+	if s.Len() != expectedLen {
+		t.Errorf("expected length %d, got %d", expectedLen, s.Len())
 	}
 }
 
@@ -120,7 +121,8 @@ func TestGenerateMasterPassword_Charset(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	for i, r := range s {
+	defer s.Wipe()
+	for i, r := range s.String() {
 		if !strings.ContainsRune(MasterPasswordChars, r) {
 			t.Errorf("char %q at %d not in allowed pool", r, i)
 		}
@@ -134,11 +136,13 @@ func TestGenerateMasterPassword_NonDeterministic(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
+	defer s1.Wipe()
 	s2, err := GenerateMasterPassword(expectedLen, MasterPasswordChars)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if s1 == s2 {
+	defer s2.Wipe()
+	if s1.String() == s2.String() {
 		t.Error("expected different strings, got identical")
 	}
 }

@@ -101,54 +101,57 @@ func (m Matrix) Pretty() string {
 
 // GenerateMasterPassword produces a cryptographically secure master password of the given length.
 // Characters are drawn from the provided pool using rejection sampling for zero bias.
-func GenerateMasterPassword(length int, pool string) (string, error) {
-	return mapStringSourceToAlphabet(rand.Reader, pool, length)
+// Returns a SecureBytes that can be securely wiped when no longer needed.
+func GenerateMasterPassword(length int, pool string) (*SecureBytes, error) {
+	result, err := mapBytesSourceToAlphabet(rand.Reader, pool, length)
+	if err != nil {
+		return nil, err
+	}
+	return NewSecureBytes(result), nil
 }
 
-// mapStringSourceToAlphabet maps bytes from an io.Reader to an alphabet using rejection sampling.
+// mapBytesSourceToAlphabet maps bytes from an io.Reader to an alphabet using rejection sampling.
 // Guarantees zero modulo bias regardless of alphabet size by discarding bytes that would create bias.
-// The io.Reader can be deterministic (hkdf.New for ExpandToMatrix) or random (rand.Reader for GenerateMasterPassword).
-// This design preserves determinism: the same io.Reader will always produce the same output.
-func mapStringSourceToAlphabet(source io.Reader, alphabet string, length int) (string, error) {
-	var alphabetBytes []byte = []byte(alphabet)
-	alphabetLen := len(alphabetBytes)
-	// threshold defines the maximum byte value that can be used without introducing modulo bias.
-	// For an alphabet of size N, we can only use bytes 0 to (256 - (256 % N)) - 1.
-	// Bytes >= threshold are discarded to ensure uniform distribution.
+// Returns a []byte that should be wiped by the caller or wrapped in SecureBytes.
+func mapBytesSourceToAlphabet(source io.Reader, alphabet string, length int) ([]byte, error) {
+	alphabetLen := len(alphabet)
 	threshold := 256 - (256 % alphabetLen)
 
-	var result []byte = make([]byte, length)
+	result := make([]byte, length)
 	buf := make([]byte, length*4)
 	bytesRead := 0
 	j := len(buf)
 
 	for i := range length {
 		for {
-			// If buffer is exhausted, stream more bytes from the source
 			if j >= bytesRead {
 				n, err := source.Read(buf)
 				if err != nil && err != io.EOF {
-					return "", fmt.Errorf("entropy source failed: %w", err)
+					memguard.WipeBytes(result)
+					memguard.WipeBytes(buf)
+					return nil, fmt.Errorf("entropy source failed: %w", err)
 				}
 				bytesRead = n
 				j = 0
 				if bytesRead == 0 {
-					return "", fmt.Errorf("entropy source returned no data")
+					memguard.WipeBytes(result)
+					memguard.WipeBytes(buf)
+					return nil, fmt.Errorf("entropy source returned no data")
 				}
 			}
 
 			b := int(buf[j])
 			j++
 
-			// Accept byte only if it falls within the unbiased range
 			if b < threshold {
-				result[i] = alphabetBytes[b%alphabetLen]
+				result[i] = alphabet[b%alphabetLen]
 				break
 			}
-			// Otherwise, discard and try next byte (rejection sampling)
 		}
 	}
-	return string(result), nil
+
+	memguard.WipeBytes(buf)
+	return result, nil
 }
 
 // ExpandToMatrix deterministically expands any input to exactly MatrixBytes characters.
@@ -162,14 +165,17 @@ func ExpandToMatrix(input *SecureBytes) *SecureBytes {
 
 	hkdfReader := hkdf.New(sha256.New, key, nil, []byte("moria-matrix-expansion"))
 
-	result, err := mapStringSourceToAlphabet(hkdfReader, MasterPasswordChars, MatrixBytes)
+	result, err := mapBytesSourceToAlphabet(hkdfReader, MasterPasswordChars, MatrixBytes)
 	if err != nil {
+		memguard.WipeBytes(key)
 		panic(fmt.Sprintf("deterministic expansion failed: %v", err))
 	}
 
 	memguard.WipeBytes(key)
 
-	return NewSecureBytesFromString(result)
+	sb := NewSecureBytes(result)
+	memguard.WipeBytes(result)
+	return sb
 }
 
 // ColHeader returns the display name for a matrix column.

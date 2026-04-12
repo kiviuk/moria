@@ -299,7 +299,8 @@ func main() { //nolint:gocyclo // main has high complexity due to mode switching
 			fmt.Fprintf(os.Stderr, ErrFailedGenerateMaster+"\n", err)
 			os.Exit(1)
 		}
-		fmt.Print(master)
+		fmt.Print(master.String())
+		master.Wipe()
 
 	case ModePretty:
 		matrix, err := getMatrix(cfg.Master)
@@ -370,6 +371,6 @@ func main() { //nolint:gocyclo // main has high complexity due to mode switching
 }
 
 func runPasswordStrengthMode(masterPassword *app.SecureBytes) {
-	masterResult := app.CalculateMasterPasswordStrength(masterPassword.String())
+	masterResult := app.CalculateMasterPasswordStrength(masterPassword.Bytes())
 	printStrengthTable(masterResult)
 }

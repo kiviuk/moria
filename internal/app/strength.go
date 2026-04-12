@@ -98,11 +98,14 @@ type MasterPasswordResult struct {
 }
 
 // CalculateMasterPasswordStrength returns detailed strength analysis from zxcvbn.
-func CalculateMasterPasswordStrength(input string) MasterPasswordResult {
-	if input == "" {
+// NOTE: This function must convert to string for zxcvbn, which creates an immutable copy.
+// The caller should wipe the original []byte after calling this function.
+func CalculateMasterPasswordStrength(input []byte) MasterPasswordResult {
+	if len(input) == 0 {
 		return MasterPasswordResult{}
 	}
-	match := zxcvbn.PasswordStrength(input, nil)
+	// zxcvbn requires a string - this creates an immutable copy that cannot be wiped
+	match := zxcvbn.PasswordStrength(string(input), nil)
 	entropy := match.Entropy
 	if entropy < 0 {
 		entropy = 0

@@ -17,8 +17,8 @@ test:
 	go test ./...
 
 cover:
-	go test ./... -coverprofile=coverage.out
 	go tool cover -func=coverage.out
+	go test ./... -coverprofile=coverage.out
 
 clean:
 	rm -rf bin/

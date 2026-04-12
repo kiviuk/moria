@@ -1,8 +1,6 @@
 package app
 
 import (
-	"strings"
-
 	"github.com/awnumar/memguard"
 )
 
@@ -64,8 +62,45 @@ func (sb *SecureBytes) IsWiped() bool {
 	return sb.data == nil
 }
 
-// TrimSpace returns a new SecureBytes with leading/trailing whitespace removed.
+// TrimSpace removes leading/trailing whitespace in-place, returning the same SecureBytes.
+// This avoids creating intermediate strings.
 func (sb *SecureBytes) TrimSpace() *SecureBytes {
-	trimmed := strings.TrimSpace(string(sb.data))
-	return NewSecureBytesFromString(trimmed)
+	if sb.data == nil {
+		return sb
+	}
+
+	// Find first non-whitespace byte
+	start := 0
+	for start < len(sb.data) {
+		if !isWhitespace(sb.data[start]) {
+			break
+		}
+		start++
+	}
+
+	// Find last non-whitespace byte
+	end := len(sb.data)
+	for end > start {
+		if !isWhitespace(sb.data[end-1]) {
+			break
+		}
+		end--
+	}
+
+	// Zero out the trimmed portions
+	for i := range start {
+		sb.data[i] = 0
+	}
+	for i := end; i < len(sb.data); i++ {
+		sb.data[i] = 0
+	}
+
+	// Slice to the trimmed portion
+	sb.data = sb.data[start:end]
+	return sb
+}
+
+// isWhitespace returns true if the byte is whitespace (space, tab, newline, carriage return).
+func isWhitespace(b byte) bool {
+	return b == ' ' || b == '\t' || b == '\n' || b == '\r'
 }

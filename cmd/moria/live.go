@@ -52,6 +52,9 @@ var (
 )
 
 // liveModel holds the state for the interactive live mode TUI.
+// Note: password and spell are stored as strings for TUI rendering.
+// Go strings are immutable and cannot be securely wiped. The Wipe() method
+// sets them to empty strings, but the backing arrays may remain in memory.
 type liveModel struct {
 	matrix            app.Matrix
 	masterPasswordRaw *app.SecureBytes
@@ -65,13 +68,21 @@ type liveModel struct {
 }
 
 // Wipe clears all sensitive data from the model.
+// Note: password and spell are strings (immutable) - only references are cleared.
+// queryLetters backing array is explicitly zeroed.
 func (m *liveModel) Wipe() {
 	if m.masterPasswordRaw != nil {
 		m.masterPasswordRaw.Wipe()
 	}
+	// Clear spell and password references (strings are immutable)
 	m.spell = ""
-	m.queryLetters = nil
 	m.password = ""
+	// Zero out queryLetters backing array before setting to nil
+	for i := range m.queryLetters {
+		m.queryLetters[i] = app.QueryLetter{}
+	}
+	m.queryLetters = nil
+	m.err = ""
 }
 
 // newLiveModel creates a liveModel initialized with the given matrix and settings.

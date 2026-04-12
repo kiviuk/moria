@@ -60,13 +60,12 @@ func TestSecureBytes_TrimSpace(t *testing.T) {
 			t.Errorf("TrimSpace(%q) = %q, expected %q", tt.input, trimmed.String(), tt.expected)
 		}
 
-		// Verify original is unchanged
-		if sb.String() != tt.input {
-			t.Errorf("original changed after TrimSpace: got %q, expected %q", sb.String(), tt.input)
+		// TrimSpace now modifies in-place, so sb and trimmed are the same
+		if sb != trimmed {
+			t.Error("TrimSpace should return the same SecureBytes (in-place modification)")
 		}
 
 		sb.Wipe()
-		trimmed.Wipe()
 	}
 }
 
@@ -80,7 +79,6 @@ func TestSecureBytes_TrimSpace_Newline(t *testing.T) {
 	}
 
 	sb.Wipe()
-	trimmed.Wipe()
 }
 
 func TestSecureBytes_Len(t *testing.T) {

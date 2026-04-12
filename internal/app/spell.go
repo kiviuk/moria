@@ -3,6 +3,8 @@ package app
 import (
 	"fmt"
 	"strings"
+
+	"github.com/awnumar/memguard"
 )
 
 // MagicLetter represents a single character from a validated spell, paired with
@@ -167,14 +169,17 @@ func (m MagicLetter) Query() QueryLetter {
 // CharactersPerMatrixCell characters to the output.
 func (m MagicSpell) ExtractPassword(matrix Matrix) (string, error) {
 	letters := m.MagicLetters()
-	var password strings.Builder = strings.Builder{}
+	password := make([]byte, 0, len(letters)*CharactersPerMatrixCell)
 	for _, l := range letters {
 		query := l.Query()
 		cell, err := matrix.Cell(query)
 		if err != nil {
+			memguard.WipeBytes(password)
 			return "", err
 		}
-		password.WriteString(cell)
+		password = append(password, cell...)
 	}
-	return password.String(), nil
+	result := string(password)
+	memguard.WipeBytes(password)
+	return result, nil
 }
