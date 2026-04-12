@@ -25,11 +25,8 @@ const (
 	MasterPasswordGPUCluster = uint64(100_000)
 )
 
-// Uncrackable labels returned when entropy exceeds displayable range.
-const (
-	UncrackableCompact = "uncrackable"
-	Uncrackable        = "effectively uncrackable"
-)
+// Uncrackable label returned when entropy exceeds displayable range.
+const Uncrackable = "effectively uncrackable"
 
 // TimeToGuess returns the average seconds to exhaust half the keyspace
 // at the given guessing speed. Uses log-based calculation to avoid float64 overflow.
@@ -47,69 +44,6 @@ func TimeToGuess(entropyBits int, guessesPerSec uint64) float64 {
 		return math.Inf(1)
 	}
 	return math.Exp2(log2Seconds)
-}
-
-// FormatSecondsCompact returns a short human-readable duration for TUI display.
-func FormatSecondsCompact(seconds float64) string {
-	if seconds < 1 {
-		return "instant"
-	}
-
-	const (
-		minute = 60.0
-		hour   = 60.0 * minute
-		day    = 24.0 * hour
-		year   = 365.25 * day
-	)
-
-	if seconds < minute {
-		return fmt.Sprintf("%.0f sec", seconds)
-	}
-	if seconds < hour {
-		return fmt.Sprintf("%.0f min", seconds/minute)
-	}
-	if seconds < day {
-		return fmt.Sprintf("%.0f hrs", seconds/hour)
-	}
-	if seconds < year {
-		return fmt.Sprintf("%.0f days", seconds/day)
-	}
-
-	years := seconds / year
-	if years < 1_000 {
-		return fmt.Sprintf("%.0f yrs", years)
-	}
-	if years < 1_000_000 {
-		return fmt.Sprintf("%.1fK yrs", years/1_000)
-	}
-	if years < 1_000_000_000 {
-		return fmt.Sprintf("%.1fM yrs", years/1_000_000)
-	}
-	if years < 1_000_000_000_000 {
-		return fmt.Sprintf("%.1fB yrs", years/1_000_000_000)
-	}
-	if years < 1_000_000_000_000_000 {
-		return fmt.Sprintf("%.1fT yrs", years/1_000_000_000_000)
-	}
-
-	const ageOfUniverse = 13.8e9
-	universeAges := years / ageOfUniverse
-	if math.IsInf(universeAges, 1) || universeAges > 1e15 {
-		return UncrackableCompact
-	}
-	if universeAges < 1_000 {
-		return fmt.Sprintf("%.0f x universe age", universeAges)
-	}
-	if universeAges < 1_000_000 {
-		return fmt.Sprintf("%.1fK x universe age", universeAges/1_000)
-	}
-	if universeAges < 1_000_000_000 {
-		return fmt.Sprintf("%.1fM x universe age", universeAges/1_000_000)
-	}
-	if universeAges < 1_000_000_000_000 {
-		return fmt.Sprintf("%.1fB x universe age", universeAges/1_000_000_000)
-	}
-	return fmt.Sprintf("%.1fT x universe age", universeAges/1_000_000_000_000)
 }
 
 // FormatSeconds returns a human-readable duration string.
@@ -167,14 +101,6 @@ func FormatSeconds(seconds float64) string {
 		return Uncrackable
 	}
 	return fmt.Sprintf("%.1f billion times the age of the universe", universeAges/1_000_000_000)
-}
-
-// CalculateMasterPasswordEntropy uses zxcvbn to evaluate human-chosen master passwords.
-// zxcvbn detects dictionary words, patterns, common substitutions, and keyboard walks,
-// providing a realistic entropy estimate rather than naive length × charset math.
-func CalculateMasterPasswordEntropy(input string) int {
-	result := CalculateMasterPasswordStrength(input)
-	return result.Entropy
 }
 
 // MasterPasswordResult contains the strength analysis from zxcvbn.
