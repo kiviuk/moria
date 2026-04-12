@@ -75,3 +75,7 @@ issues:
       linters:
         - gocritic
       text: "exitAfterDefer"
+    - path: cmd/moria/messages\.go
+      linters:
+        - gosec
+      text: "G101"

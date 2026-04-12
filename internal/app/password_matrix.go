@@ -36,6 +36,12 @@ func NewMatrix(randomString string) (Matrix, error) {
 	return m, nil
 }
 
+// Cell returns the password fragment for a resolved query letter.
+// The row is guaranteed valid by the QueryLetter type, but the column is still validated defensively.
+func (m Matrix) Cell(t QueryLetter) (string, error) {
+	return m.cell(t.MatrixRow, t.LetterGroup)
+}
+
 // cell returns the password fragment at the given row and column.
 // Index validation is performed here as a defensive measure, even if input was validated upstream.
 func (m Matrix) cell(row, col int) (string, error) {
@@ -46,12 +52,6 @@ func (m Matrix) cell(row, col int) (string, error) {
 		return "", fmt.Errorf("col %d out of range [0, %d)", col, PasswordMatrixColumns)
 	}
 	return m[row][col], nil
-}
-
-// Cell returns the password fragment for a resolved query letter.
-// The row is guaranteed valid by the QueryLetter type, but the column is still validated defensively.
-func (m Matrix) Cell(t QueryLetter) (string, error) {
-	return m.cell(t.MatrixRow, t.LetterGroup)
 }
 
 // Wipe zeroizes all cells in the matrix.
@@ -185,4 +185,3 @@ func ColHeader(col int) string {
 	}
 	return sb.String()
 }
-

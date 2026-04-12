@@ -211,12 +211,12 @@ func TestLiveModel_SingleKey_UnaffectedByFlag(t *testing.T) {
 }
 
 func TestLiveModel_Space_SingleKey(t *testing.T) {
-	// Verify that space can be entered as a single keystroke
+	// Verify that space can be entered as a single keystroke.
 	matrix := newTestMatrix()
 	m := newLiveModel(matrix, testMasterRaw, 0, PasteAllowed)
 
 	m = simulateKey(m, "a")
-	// simulateKey(m, " ")
+	// Can't use simulateKey(m, " ") here because we need the actual tea.KeySpace type.
 	result, _ := m.Update(tea.KeyMsg{Type: tea.KeySpace})
 	m = result.(liveModel)
 	m = simulateKey(m, "b")
