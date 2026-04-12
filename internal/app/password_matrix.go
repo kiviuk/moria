@@ -151,14 +151,14 @@ func mapStringSourceToAlphabet(source io.Reader, alphabet string, length int) (s
 	return string(result), nil
 }
 
-// ExpandToMatrix deterministically expands any input string to exactly MatrixBytes characters.
+// ExpandToMatrix deterministically expands any input to exactly MatrixBytes characters.
 // Uses Argon2id for memory-hard key derivation to resist brute-force attacks on weak passwords,
 // followed by HKDF for expansion and rejection sampling for unbiased character mapping.
-func ExpandToMatrix(input string) string {
+// Returns a SecureBytes that can be securely wiped when no longer needed.
+func ExpandToMatrix(input *SecureBytes) *SecureBytes {
 	cpus := uint8(4)
-	var inputBytes []byte = []byte(input)
-	var saltBytes []byte = []byte(Argon2Salt)
-	key := argon2.IDKey(inputBytes, saltBytes, 1, 64*1024, cpus, 32)
+	saltBytes := []byte(Argon2Salt)
+	key := argon2.IDKey(input.Bytes(), saltBytes, 1, 64*1024, cpus, 32)
 
 	hkdfReader := hkdf.New(sha256.New, key, nil, []byte("moria-matrix-expansion"))
 
@@ -169,7 +169,7 @@ func ExpandToMatrix(input string) string {
 
 	memguard.WipeBytes(key)
 
-	return result
+	return NewSecureBytesFromString(result)
 }
 
 // ColHeader returns the display name for a matrix column.

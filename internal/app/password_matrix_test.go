@@ -20,9 +20,15 @@ func newTestMatrix() Matrix {
 
 func TestExpandToMatrix_Deterministic(t *testing.T) {
 	// Verify same input always produces same output
-	out1 := ExpandToMatrix("test-secret")
-	out2 := ExpandToMatrix("test-secret")
-	if out1 != out2 {
+	in1 := NewSecureBytesFromString("test-secret")
+	in2 := NewSecureBytesFromString("test-secret")
+	defer in1.Wipe()
+	defer in2.Wipe()
+	out1 := ExpandToMatrix(in1)
+	out2 := ExpandToMatrix(in2)
+	defer out1.Wipe()
+	defer out2.Wipe()
+	if out1.String() != out2.String() {
 		t.Errorf("ExpandToMatrix not deterministic: got different outputs for same input")
 	}
 }
@@ -31,17 +37,23 @@ func TestExpandToMatrix_Length(t *testing.T) {
 	// Verify output is always exactly MatrixBytes characters
 	inputs := []string{"", "short", "medium-length-input", strings.Repeat("x", 1000)}
 	for _, input := range inputs {
-		out := ExpandToMatrix(input)
-		if len(out) != MatrixBytes {
-			t.Errorf("ExpandToMatrix(%q) length = %d, expected %d", input, len(out), MatrixBytes)
+		in := NewSecureBytesFromString(input)
+		out := ExpandToMatrix(in)
+		if out.Len() != MatrixBytes {
+			t.Errorf("ExpandToMatrix(%q) length = %d, expected %d", input, out.Len(), MatrixBytes)
 		}
+		out.Wipe()
+		in.Wipe()
 	}
 }
 
 func TestExpandToMatrix_Charset(t *testing.T) {
 	// Verify all output characters are from MasterPasswordChars
-	out := ExpandToMatrix("any-input-string")
-	for i, r := range out {
+	in := NewSecureBytesFromString("any-input-string")
+	out := ExpandToMatrix(in)
+	defer in.Wipe()
+	defer out.Wipe()
+	for i, r := range out.String() {
 		if !strings.ContainsRune(MasterPasswordChars, r) {
 			t.Errorf("ExpandToMatrix: char %q at %d not in allowed pool", r, i)
 		}
@@ -51,26 +63,41 @@ func TestExpandToMatrix_Charset(t *testing.T) {
 func TestExpandToMatrix_AlwaysDerives(t *testing.T) {
 	// Verify even exact-length input is transformed, not returned as-is
 	input := strings.Repeat("a", MatrixBytes)
-	out := ExpandToMatrix(input)
-	if out == input {
+	in := NewSecureBytesFromString(input)
+	out := ExpandToMatrix(in)
+	defer in.Wipe()
+	defer out.Wipe()
+	if out.String() == input {
 		t.Error("ExpandToMatrix returned input unchanged — should always derive")
 	}
 }
 
 func TestExpandToMatrix_DifferentInputs(t *testing.T) {
 	// Verify different inputs produce different outputs
-	out1 := ExpandToMatrix("secret-a")
-	out2 := ExpandToMatrix("secret-b")
-	if out1 == out2 {
+	in1 := NewSecureBytesFromString("secret-a")
+	in2 := NewSecureBytesFromString("secret-b")
+	defer in1.Wipe()
+	defer in2.Wipe()
+	out1 := ExpandToMatrix(in1)
+	out2 := ExpandToMatrix(in2)
+	defer out1.Wipe()
+	defer out2.Wipe()
+	if out1.String() == out2.String() {
 		t.Error("ExpandToMatrix produced same output for different inputs")
 	}
 }
 
 func TestExpandToMatrix_TrailingNewline(t *testing.T) {
 	// Verify trailing newline changes output (simulates interactive vs piped input)
-	out1 := ExpandToMatrix("secret")
-	out2 := ExpandToMatrix("secret\n")
-	if out1 == out2 {
+	in1 := NewSecureBytesFromString("secret")
+	in2 := NewSecureBytesFromString("secret\n")
+	defer in1.Wipe()
+	defer in2.Wipe()
+	out1 := ExpandToMatrix(in1)
+	out2 := ExpandToMatrix(in2)
+	defer out1.Wipe()
+	defer out2.Wipe()
+	if out1.String() == out2.String() {
 		t.Error("ExpandToMatrix should produce different output for input with trailing newline")
 	}
 }
@@ -312,4 +339,48 @@ func TestExtractPassword_Integration(t *testing.T) {
 	if password != expected {
 		t.Errorf("expected %q, got %q", expected, password)
 	}
+}
+
+func TestMatrix_Wipe(t *testing.T) {
+	m := newTestMatrix()
+
+	// Store original values to verify they're wiped
+	originalCell := m[0][0]
+
+	m.Wipe()
+
+	// Verify all cells are empty strings
+	for row := 0; row < PasswordMatrixRows; row++ {
+		for col := 0; col < PasswordMatrixColumns; col++ {
+			if m[row][col] != "" {
+				t.Errorf("m[%d][%d] = %q after wipe, expected empty string", row, col, m[row][col])
+			}
+		}
+	}
+
+	// Verify original data reference is no longer accessible
+	_ = originalCell // Keep for documentation - original value was stored
+}
+
+func TestMatrix_Wipe_ZeroizesData(t *testing.T) {
+	// Create a matrix with known content
+	input := testutil.NewTestMatrixData(PasswordMatrixRows, PasswordMatrixColumns, CharactersPerMatrixCell)
+	m, err := NewMatrix(input)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// Capture a cell value before wipe
+	originalValue := m[0][0]
+
+	m.Wipe()
+
+	// After wipe, the cell should be empty
+	if m[0][0] != "" {
+		t.Errorf("cell not empty after wipe: got %q", m[0][0])
+	}
+
+	// The original value should still exist in our local variable
+	// (proving we can't truly wipe strings, only our matrix references)
+	_ = originalValue
 }

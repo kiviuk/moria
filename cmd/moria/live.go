@@ -54,7 +54,7 @@ var (
 // liveModel holds the state for the interactive live mode TUI.
 type liveModel struct {
 	matrix            app.Matrix
-	masterPasswordRaw string
+	masterPasswordRaw *app.SecureBytes
 	spell             string
 	queryLetters      []app.QueryLetter
 	password          string
@@ -64,8 +64,18 @@ type liveModel struct {
 	err               string
 }
 
+// Wipe clears all sensitive data from the model.
+func (m *liveModel) Wipe() {
+	if m.masterPasswordRaw != nil {
+		m.masterPasswordRaw.Wipe()
+	}
+	m.spell = ""
+	m.queryLetters = nil
+	m.password = ""
+}
+
 // newLiveModel creates a liveModel initialized with the given matrix and settings.
-func newLiveModel(matrix app.Matrix, masterPasswordRaw string, maxLen int, pasteMode PasteMode) liveModel {
+func newLiveModel(matrix app.Matrix, masterPasswordRaw *app.SecureBytes, maxLen int, pasteMode PasteMode) liveModel {
 	return liveModel{
 		matrix:            matrix,
 		masterPasswordRaw: masterPasswordRaw,
@@ -83,63 +93,86 @@ func (m liveModel) Init() tea.Cmd {
 
 // Update handles keyboard input and updates the model state.
 func (m liveModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	switch msg := msg.(type) {
-	case tea.KeyMsg:
-		switch msg.Type {
-		case tea.KeyCtrlC, tea.KeyEsc:
-			return m, tea.Quit
-		case tea.KeyEnter:
-			return m, tea.Quit
-		case tea.KeyBackspace:
-			if m.spell != "" {
-				m.spell = m.spell[:len(m.spell)-1]
-				m.queryLetters = m.queryLetters[:len(m.queryLetters)-1]
-				m.password = m.password[:len(m.password)-app.CharactersPerMatrixCell]
-				m.state = StateNormal
-				m.err = ""
-			}
-		case tea.KeyUp, tea.KeyDown, tea.KeyLeft, tea.KeyRight,
-			tea.KeyHome, tea.KeyEnd, tea.KeyPgUp, tea.KeyPgDown,
-			tea.KeyInsert, tea.KeyDelete:
-			return m, nil
-		case tea.KeyRunes, tea.KeySpace:
-			var runes []rune
-			if msg.Type == tea.KeySpace {
-				runes = []rune{' '}
-			} else {
-				runes = msg.Runes
-			}
-			if m.pasteMode == PasteIgnored && len(msg.Runes) > 1 {
-				m.err = MsgPasteIgnored
-				return m, nil
-			}
-			for _, ch := range runes {
-				if ch < 32 || ch == 127 {
-					continue
-				}
-				if !app.IsAllowedSpellChar(ch) {
-					m.err = fmt.Sprintf(MsgInvalidChar, string(ch))
-					return m, nil
-				}
-				if m.maxLen > 0 && len(m.password) >= m.maxLen {
-					m.state = StateMaxLenReached
-					return m, nil
-				}
-				var charStr string = string(ch)
-				m.spell += charStr
-				letter := app.MagicLetter{Letter: charStr, LetterPosition: len(m.spell) - 1}
-				query := letter.Query()
-				m.queryLetters = append(m.queryLetters, query)
-				cell, cellErr := m.matrix.Cell(query)
-				if cellErr != nil {
-					m.err = cellErr.Error()
-					return m, nil
-				}
-				m.password += cell
-				m.state = StateNormal
-				m.err = ""
-			}
+	keyMsg, ok := msg.(tea.KeyMsg)
+	if !ok {
+		return m, nil
+	}
+
+	switch keyMsg.Type {
+	case tea.KeyCtrlC, tea.KeyEsc:
+		return m, tea.Quit
+	case tea.KeyEnter:
+		return m, tea.Quit
+	case tea.KeyBackspace:
+		return m.doBackspace(), nil
+	case tea.KeyUp, tea.KeyDown, tea.KeyLeft, tea.KeyRight,
+		tea.KeyHome, tea.KeyEnd, tea.KeyPgUp, tea.KeyPgDown,
+		tea.KeyInsert, tea.KeyDelete:
+		return m, nil
+	case tea.KeyRunes, tea.KeySpace:
+		return m.doRunes(keyMsg)
+	}
+	return m, nil
+}
+
+// doBackspace processes backspace key presses.
+func (m liveModel) doBackspace() liveModel {
+	if m.spell == "" {
+		return m
+	}
+	// Prevent underflow by checking length before slicing
+	if len(m.queryLetters) > 0 && len(m.password) >= app.CharactersPerMatrixCell {
+		m.spell = m.spell[:len(m.spell)-1]
+		m.queryLetters = m.queryLetters[:len(m.queryLetters)-1]
+		m.password = m.password[:len(m.password)-app.CharactersPerMatrixCell]
+	} else {
+		// Reset to empty state if lengths are inconsistent
+		m.spell = ""
+		m.queryLetters = nil
+		m.password = ""
+	}
+	m.state = StateNormal
+	m.err = ""
+	return m
+}
+
+// doRunes processes rune input (regular characters and space).
+func (m liveModel) doRunes(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	var runes []rune
+	if msg.Type == tea.KeySpace {
+		runes = []rune{' '}
+	} else {
+		runes = msg.Runes
+	}
+	if m.pasteMode == PasteIgnored && len(msg.Runes) > 1 {
+		m.err = MsgPasteIgnored
+		return m, nil
+	}
+	for _, ch := range runes {
+		if ch < 32 || ch == 127 {
+			continue
 		}
+		if !app.IsAllowedSpellChar(ch) {
+			m.err = fmt.Sprintf(MsgInvalidChar, string(ch))
+			return m, nil
+		}
+		if m.maxLen > 0 && len(m.password) >= m.maxLen {
+			m.state = StateMaxLenReached
+			return m, nil
+		}
+		charStr := string(ch)
+		m.spell += charStr
+		letter := app.MagicLetter{Letter: charStr, LetterPosition: len(m.spell) - 1}
+		query := letter.Query()
+		m.queryLetters = append(m.queryLetters, query)
+		cell, cellErr := m.matrix.Cell(query)
+		if cellErr != nil {
+			m.err = cellErr.Error()
+			return m, nil
+		}
+		m.password += cell
+		m.state = StateNormal
+		m.err = ""
 	}
 	return m, nil
 }
@@ -304,7 +337,8 @@ func (m liveModel) renderPasswordChunks(sb *strings.Builder, withMaxLen bool) {
 
 // LiveMode starts the interactive live mode TUI and returns the final model state.
 // It runs the Bubbletea program with an alternate screen buffer.
-func LiveMode(matrix app.Matrix, maxLen int, pasteMode PasteMode, masterPasswordRaw string) (liveModel, error) {
+// Note: The caller is responsible for wiping the original matrix
+func LiveMode(matrix app.Matrix, maxLen int, pasteMode PasteMode, masterPasswordRaw *app.SecureBytes) (liveModel, error) {
 	m := newLiveModel(matrix, masterPasswordRaw, maxLen, pasteMode)
 	p := tea.NewProgram(m, tea.WithAltScreen())
 
@@ -318,6 +352,7 @@ func LiveMode(matrix app.Matrix, maxLen int, pasteMode PasteMode, masterPassword
 		return liveModel{}, errors.New(ErrUnexpectedModel)
 	}
 
+	// Wipe the matrix in the liveModel to prevent sensitive data from lingering
 	lm.matrix.Wipe()
 
 	return lm, nil

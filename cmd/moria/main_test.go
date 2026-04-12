@@ -369,7 +369,9 @@ func TestTruncatePassword_ZeroMaxLen(t *testing.T) {
 
 func TestGetMatrix_ValidInput(t *testing.T) {
 	matrixStr := testutil.NewTestMatrixData(app.PasswordMatrixRows, app.PasswordMatrixColumns, app.CharactersPerMatrixCell)
-	matrix, err := getMatrix(matrixStr)
+	sb := app.NewSecureBytesFromString(matrixStr)
+	defer sb.Wipe()
+	matrix, err := getMatrix(sb)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -379,15 +381,116 @@ func TestGetMatrix_ValidInput(t *testing.T) {
 }
 
 func TestGetMatrix_InvalidInput(t *testing.T) {
-	_, err := getMatrix("too-short")
+	sb := app.NewSecureBytesFromString("too-short")
+	defer sb.Wipe()
+	_, err := getMatrix(sb)
 	if err == nil {
 		t.Error("expected error for invalid input")
 	}
 }
 
 func TestGetMatrix_WrongLength(t *testing.T) {
-	_, err := getMatrix("a")
+	sb := app.NewSecureBytesFromString("a")
+	defer sb.Wipe()
+	_, err := getMatrix(sb)
 	if err == nil {
 		t.Error("expected error for wrong length input")
+	}
+}
+
+func TestConfig_Wipe(t *testing.T) {
+	masterRaw := app.NewSecureBytesFromString("raw-master-password")
+	master := app.NewSecureBytesFromString("expanded-master-password")
+
+	cfg := Config{
+		Mode:      ModeBatch,
+		MasterRaw: masterRaw,
+		Master:    master,
+	}
+
+	cfg.Wipe()
+
+	if !cfg.MasterRaw.IsWiped() {
+		t.Error("expected MasterRaw to be wiped")
+	}
+	if !cfg.Master.IsWiped() {
+		t.Error("expected Master to be wiped")
+	}
+}
+
+func TestConfig_Wipe_NilFields(t *testing.T) {
+	cfg := Config{
+		Mode:      ModeBatch,
+		MasterRaw: nil,
+		Master:    nil,
+	}
+
+	cfg.Wipe() // Should not panic
+}
+
+func TestMode_Validate(t *testing.T) {
+	tests := []struct {
+		mode      Mode
+		expectErr bool
+	}{
+		{ModeBatch, false},
+		{ModeMagic, false},
+		{ModePretty, false},
+		{ModeLive, false},
+		{ModeShowPasswordStrength, false},
+		{Mode(-1), true},
+		{Mode(100), true},
+	}
+
+	for _, tt := range tests {
+		err := tt.mode.Validate()
+		if tt.expectErr && err == nil {
+			t.Errorf("Mode(%d).Validate() expected error, got nil", tt.mode)
+		}
+		if !tt.expectErr && err != nil {
+			t.Errorf("Mode(%d).Validate() unexpected error: %v", tt.mode, err)
+		}
+	}
+}
+
+func TestMode_NeedsStdin(t *testing.T) {
+	tests := []struct {
+		mode     Mode
+		expected bool
+	}{
+		{ModeBatch, true},
+		{ModeMagic, false},
+		{ModePretty, true},
+		{ModeLive, true},
+		{ModeShowPasswordStrength, true},
+	}
+
+	for _, tt := range tests {
+		if got := tt.mode.needsStdin(); got != tt.expected {
+			t.Errorf("Mode(%d).needsStdin() = %v, expected %v", tt.mode, got, tt.expected)
+		}
+	}
+}
+
+func TestFormatGuessesPerSec(t *testing.T) {
+	tests := []struct {
+		n        uint64
+		expected string
+	}{
+		{0, "0"},
+		{1, "1"},
+		{999, "999"},
+		{1000, "1K"},
+		{1500, "1K"},
+		{999999, "999K"},
+		{1000000, "1M"},
+		{1500000, "1M"},
+		{5000000, "5M"},
+	}
+
+	for _, tt := range tests {
+		if got := formatGuessesPerSec(tt.n); got != tt.expected {
+			t.Errorf("formatGuessesPerSec(%d) = %q, expected %q", tt.n, got, tt.expected)
+		}
 	}
 }

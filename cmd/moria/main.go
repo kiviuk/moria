@@ -5,11 +5,11 @@
 //
 // Usage:
 //
-//	moria --magic                          # Generate a master password
-//	moria "amazon"                         # Generate password for Amazon
-//	cat master.txt | moria "amazon"        # Piped from password manager
-//	cat master.txt | moria --pretty        # Display the matrix
-//	cat master.txt | moria --live          # Interactive mode
+//	moria --magic                  # Generate a master password
+//	moria "amazon"                 # Generate password for Amazon
+//	cat master.txt | moria "amazon"  # Piped from password manager
+//	cat master.txt | moria --pretty # Display the matrix
+//	cat master.txt | moria --live   # Interactive mode
 package main
 
 import (
@@ -18,35 +18,26 @@ import (
 	"os"
 	"slices"
 	"strconv"
-	"strings"
 
 	"github.com/awnumar/memguard"
 
 	"github.com/kiviuk/moria/internal/app"
 )
 
-// Mode represents the CLI operation mode.
 type Mode int
 
 const (
-	// ModeBatch generates a password from a spell and master password.
-	ModeBatch Mode = iota
-	// ModeMagic generates a new random master password.
-	ModeMagic
-	// ModePretty displays the password matrix in human-readable form.
-	ModePretty
-	// ModeLive runs an interactive TUI for building passwords character by character.
-	ModeLive
-	// ModeShowPasswordStrength analyzes the strength of a password from stdin.
-	ModeShowPasswordStrength
+	ModeBatch                Mode = iota
+	ModeMagic                     // Generate master password
+	ModePretty                    // Display matrix
+	ModeLive                      // Interactive mode
+	ModeShowPasswordStrength      // Analyze password strength
 )
 
-// String returns the human-readable name of the mode.
 func (m Mode) String() string {
 	return [...]string{"batch", "magic", "pretty", "live", "show-strength"}[m]
 }
 
-// Validate checks whether the mode value is within the valid range.
 func (m Mode) Validate() error {
 	if m < ModeBatch || m > ModeShowPasswordStrength {
 		return fmt.Errorf("invalid mode: %d", m)
@@ -54,17 +45,14 @@ func (m Mode) Validate() error {
 	return nil
 }
 
-// needsStdin reports whether this mode requires reading a master password from stdin.
 func (m Mode) needsStdin() bool {
 	return m == ModePretty || m == ModeLive || m == ModeBatch || m == ModeShowPasswordStrength
 }
 
-// needsSpell reports whether this mode requires a spell argument.
 func (m Mode) needsSpell() bool {
 	return m == ModeBatch
 }
 
-// allowedMods returns the list of additional flags permitted in this mode.
 func (m Mode) allowedMods() []string {
 	switch m {
 	case ModeLive:
@@ -82,36 +70,35 @@ func (m Mode) allowedMods() []string {
 	}
 }
 
-// Config holds the parsed CLI configuration after argument parsing and validation.
 type Config struct {
-	// Mode is the selected operation mode.
-	Mode Mode
-	// Spell is the service name or memorable string for password derivation.
-	Spell string
-	// MaxLen limits the output password length (0 means no limit).
-	MaxLen int
-	// Master is the expanded master password string used to build the matrix.
-	Master string
-	// MasterRaw is the original unexpanded master input for entropy estimation.
-	MasterRaw string
+	Mode      Mode
+	Spell     string
+	MaxLen    int
+	Master    *app.SecureBytes
+	MasterRaw *app.SecureBytes
 }
 
-// flagPermittedInMode checks whether a given CLI flag is permitted for the currently selected mode.
+func (c *Config) Wipe() {
+	if c.Master != nil {
+		c.Master.Wipe()
+	}
+	if c.MasterRaw != nil {
+		c.MasterRaw.Wipe()
+	}
+}
+
 func flagPermittedInMode(allowedFlags []string, flagToCheck string) bool {
 	return slices.Contains(allowedFlags, flagToCheck)
 }
 
-// getMatrix builds a Matrix from the expanded master password string.
-func getMatrix(master string) (app.Matrix, error) {
-	matrix, err := app.NewMatrix(master)
+func getMatrix(master *app.SecureBytes) (app.Matrix, error) {
+	matrix, err := app.NewMatrix(master.String())
 	if err != nil {
 		return app.Matrix{}, fmt.Errorf(ErrFailedCreateMatrix, err)
 	}
 	return matrix, nil
 }
 
-// truncatePassword returns password truncated to maxLen characters.
-// If maxLen is 0 or password is shorter than maxLen, the original is returned.
 func truncatePassword(password string, maxLen int) string {
 	if maxLen > 0 && len(password) > maxLen {
 		return password[:maxLen]
@@ -119,26 +106,25 @@ func truncatePassword(password string, maxLen int) string {
 	return password
 }
 
-// readStdin reads the master password from stdin. If stdin is a terminal (not piped),
-// it falls back to an interactive masked password prompt.
-func readStdin() (string, error) {
+func readStdin() (*app.SecureBytes, error) {
 	stat, err := os.Stdin.Stat()
 	if err != nil {
-		return "", fmt.Errorf("could not stat stdin: %w", err)
+		return nil, fmt.Errorf("could not stat stdin: %w", err)
 	}
 	isPiped := (stat.Mode() & os.ModeCharDevice) == 0
 
 	if isPiped {
 		data, err := io.ReadAll(os.Stdin)
 		if err != nil {
-			return "", fmt.Errorf(ErrFailedReadMaster, err)
+			return nil, fmt.Errorf(ErrFailedReadMaster, err)
 		}
-		return strings.TrimSpace(string(data)), nil
+		sb := app.NewSecureBytes(data)
+		memguard.WipeBytes(data)
+		return sb.TrimSpace(), nil
 	}
 	return getPassword()
 }
 
-// parseArgs converts raw CLI arguments into a Config and a set of recognized flags.
 func parseArgs(args []string) (Config, map[string]bool, error) {
 	cfg := Config{Mode: ModeBatch}
 	flags := make(map[string]bool)
@@ -201,7 +187,6 @@ func parseArgs(args []string) (Config, map[string]bool, error) {
 	return cfg, flags, nil
 }
 
-// validateConfig checks that the parsed configuration is consistent with the selected mode.
 func validateConfig(cfg Config, flags map[string]bool) error {
 	for flag, present := range flags {
 		if !present {
@@ -223,7 +208,6 @@ func validateConfig(cfg Config, flags map[string]bool) error {
 	return nil
 }
 
-// printUsage displays the CLI help message.
 func printUsage() {
 	fmt.Println(MsgUsageTitle)
 	fmt.Println()
@@ -249,7 +233,6 @@ func printUsage() {
 	fmt.Println(MsgExPasswordStrength)
 }
 
-// printStrengthTable outputs worst-case time-to-guess estimate to stderr.
 func printStrengthTable(masterResult app.MasterPasswordResult) {
 	if masterResult.Entropy == 0 {
 		return
@@ -266,7 +249,6 @@ func printStrengthTable(masterResult app.MasterPasswordResult) {
 	fmt.Fprintf(os.Stderr, MsgTimeToGuessWorstCase, guessSpeed, masterResult.Entropy, app.FormatSeconds(seconds))
 }
 
-// formatGuessesPerSec formats guesses per second as a human-readable string.
 func formatGuessesPerSec(n uint64) string {
 	if n >= 1_000_000 {
 		return fmt.Sprintf("%dM", n/1_000_000)
@@ -307,7 +289,7 @@ func main() { //nolint:gocyclo // main has high complexity due to mode switching
 		}
 		cfg.MasterRaw = master
 		cfg.Master = app.ExpandToMatrix(master)
-		memguard.WipeBytes([]byte(master))
+		defer cfg.Wipe()
 	}
 
 	switch cfg.Mode {
@@ -344,7 +326,7 @@ func main() { //nolint:gocyclo // main has high complexity due to mode switching
 		finalModel, err := LiveMode(matrix, cfg.MaxLen, pasteMode, cfg.MasterRaw)
 		if err != nil {
 			matrix.Wipe()
-			fmt.Fprintf(os.Stderr, ErrLiveMode+"\n", err)
+			fmt.Fprintf(os.Stderr, ErrLiveMode+": %v\n", err)
 			os.Exit(1)
 		}
 		password := finalModel.password
@@ -352,8 +334,8 @@ func main() { //nolint:gocyclo // main has high complexity due to mode switching
 		if password != "" {
 			fmt.Print(password)
 		}
+		finalModel.Wipe()
 		memguard.WipeBytes([]byte(password))
-		memguard.WipeBytes([]byte(cfg.MasterRaw))
 
 	case ModeBatch:
 		matrix, err := getMatrix(cfg.Master)
@@ -367,13 +349,13 @@ func main() { //nolint:gocyclo // main has high complexity due to mode switching
 		magic, err := dirty.Parse()
 		if err != nil {
 			matrix.Wipe()
-			fmt.Fprintf(os.Stderr, ErrInvalidSpell+"\n", err)
+			fmt.Fprintf(os.Stderr, ErrInvalidSpell+": %v\n", err)
 			os.Exit(1)
 		}
 		password, err := magic.ExtractPassword(matrix)
 		if err != nil {
 			matrix.Wipe()
-			fmt.Fprintf(os.Stderr, ErrExtractPassword+"\n", err)
+			fmt.Fprintf(os.Stderr, ErrExtractPassword+": %v\n", err)
 			os.Exit(1)
 		}
 		password = truncatePassword(password, cfg.MaxLen)
@@ -383,12 +365,11 @@ func main() { //nolint:gocyclo // main has high complexity due to mode switching
 		memguard.WipeBytes([]byte(password))
 
 	case ModeShowPasswordStrength:
-		runPasswordStrengthMode(cfg)
+		runPasswordStrengthMode(cfg.MasterRaw)
 	}
 }
 
-// runPasswordStrengthMode calculates and displays the strength of a password from stdin.
-func runPasswordStrengthMode(cfg Config) {
-	masterResult := app.CalculateMasterPasswordStrength(cfg.MasterRaw)
+func runPasswordStrengthMode(masterPassword *app.SecureBytes) {
+	masterResult := app.CalculateMasterPasswordStrength(masterPassword.String())
 	printStrengthTable(masterResult)
 }

@@ -19,10 +19,14 @@ func newTestMatrix() app.Matrix {
 	return m
 }
 
+func newTestMasterRaw() *app.SecureBytes {
+	return app.NewSecureBytesFromString(testMasterRaw)
+}
+
 func TestLiveModel_MaxLen_AllowTyping(t *testing.T) {
 	// Verify that typing is blocked when password reaches maxLen
 	matrix := newTestMatrix()
-	m := newLiveModel(matrix, testMasterRaw, 2*app.CharactersPerMatrixCell, PasteAllowed)
+	m := newLiveModel(matrix, newTestMasterRaw(), 2*app.CharactersPerMatrixCell, PasteAllowed)
 
 	// Type "1" → password = CharactersPerMatrixCell chars
 	m = simulateKey(m, "1")
@@ -56,7 +60,7 @@ func TestLiveModel_MaxLen_Partial(t *testing.T) {
 	// Verify maxLen truncates password on exit, never exceeding maxLen
 	matrix := newTestMatrix()
 	maxLen := 2*app.CharactersPerMatrixCell + 1
-	m := newLiveModel(matrix, testMasterRaw, maxLen, PasteAllowed)
+	m := newLiveModel(matrix, newTestMasterRaw(), maxLen, PasteAllowed)
 
 	m = simulateKey(m, "1")
 	if len(m.password) != app.CharactersPerMatrixCell {
@@ -85,7 +89,7 @@ func TestLiveModel_MaxLen_Partial(t *testing.T) {
 func TestLiveModel_MaxLen_NoLimit(t *testing.T) {
 	// Verify maxLen=0 allows unlimited typing
 	matrix := newTestMatrix()
-	m := newLiveModel(matrix, testMasterRaw, 0, PasteAllowed)
+	m := newLiveModel(matrix, newTestMasterRaw(), 0, PasteAllowed)
 
 	for range 10 {
 		m = simulateKey(m, "a")
@@ -101,7 +105,7 @@ func TestLiveModel_MaxLen_NoLimit(t *testing.T) {
 func TestLiveModel_MaxLen_Backspace(t *testing.T) {
 	// Verify backspace removes chars and allows re-typing
 	matrix := newTestMatrix()
-	m := newLiveModel(matrix, testMasterRaw, 2*app.CharactersPerMatrixCell, PasteAllowed)
+	m := newLiveModel(matrix, newTestMasterRaw(), 2*app.CharactersPerMatrixCell, PasteAllowed)
 
 	m = simulateKey(m, "1")
 	m = simulateKey(m, "2")
@@ -125,7 +129,7 @@ func TestLiveModel_MaxLen_Backspace(t *testing.T) {
 func TestLiveModel_Paste_DefaultAllowsPasting(t *testing.T) {
 	// Verify that pasting a multi-character spell works by default
 	matrix := newTestMatrix()
-	m := newLiveModel(matrix, testMasterRaw, 0, PasteAllowed)
+	m := newLiveModel(matrix, newTestMasterRaw(), 0, PasteAllowed)
 
 	m = simulateKey(m, "amazon")
 	if m.spell != "amazon" {
@@ -145,7 +149,7 @@ func TestLiveModel_Paste_DefaultAllowsPasting(t *testing.T) {
 func TestLiveModel_Paste_IgnoredWhenFlagSet(t *testing.T) {
 	// Verify that pasting is rejected when --ignore-paste is set
 	matrix := newTestMatrix()
-	m := newLiveModel(matrix, testMasterRaw, 0, PasteIgnored)
+	m := newLiveModel(matrix, newTestMasterRaw(), 0, PasteIgnored)
 
 	m = simulateKey(m, "amazon")
 	if m.spell != "" {
@@ -162,7 +166,7 @@ func TestLiveModel_Paste_IgnoredWhenFlagSet(t *testing.T) {
 func TestLiveModel_Paste_RespectsMaxLen(t *testing.T) {
 	// Verify that pasting respects maxLen and stops at the limit
 	matrix := newTestMatrix()
-	m := newLiveModel(matrix, testMasterRaw, 2*app.CharactersPerMatrixCell, PasteAllowed)
+	m := newLiveModel(matrix, newTestMasterRaw(), 2*app.CharactersPerMatrixCell, PasteAllowed)
 
 	m = simulateKey(m, "amazon")
 	if m.spell != "am" {
@@ -179,7 +183,7 @@ func TestLiveModel_Paste_RespectsMaxLen(t *testing.T) {
 func TestLiveModel_Paste_InvalidCharStops(t *testing.T) {
 	// Verify that pasting stops at the first invalid character
 	matrix := newTestMatrix()
-	m := newLiveModel(matrix, testMasterRaw, 0, PasteAllowed)
+	m := newLiveModel(matrix, newTestMasterRaw(), 0, PasteAllowed)
 
 	m = simulateKey(m, "a€b")
 	if m.spell != "a" {
@@ -197,13 +201,13 @@ func TestLiveModel_SingleKey_UnaffectedByFlag(t *testing.T) {
 	// Verify that single-character input works regardless of --ignore-paste
 	matrix := newTestMatrix()
 
-	m := newLiveModel(matrix, testMasterRaw, 0, PasteAllowed)
+	m := newLiveModel(matrix, newTestMasterRaw(), 0, PasteAllowed)
 	m = simulateKey(m, "a")
 	if m.spell != "a" {
 		t.Errorf("without flag: expected spell 'a', got %q", m.spell)
 	}
 
-	m = newLiveModel(matrix, testMasterRaw, 0, PasteIgnored)
+	m = newLiveModel(matrix, newTestMasterRaw(), 0, PasteIgnored)
 	m = simulateKey(m, "a")
 	if m.spell != "a" {
 		t.Errorf("with flag: expected spell 'a', got %q", m.spell)
@@ -213,7 +217,7 @@ func TestLiveModel_SingleKey_UnaffectedByFlag(t *testing.T) {
 func TestLiveModel_Space_SingleKey(t *testing.T) {
 	// Verify that space can be entered as a single keystroke.
 	matrix := newTestMatrix()
-	m := newLiveModel(matrix, testMasterRaw, 0, PasteAllowed)
+	m := newLiveModel(matrix, newTestMasterRaw(), 0, PasteAllowed)
 
 	m = simulateKey(m, "a")
 	// Can't use simulateKey(m, " ") here because we need the actual tea.KeySpace type.
@@ -241,7 +245,7 @@ func TestLiveModel_Space_SingleKey(t *testing.T) {
 func TestLiveModel_Space_Pasted(t *testing.T) {
 	// Verify that space can be part of pasted input
 	matrix := newTestMatrix()
-	m := newLiveModel(matrix, testMasterRaw, 0, PasteAllowed)
+	m := newLiveModel(matrix, newTestMasterRaw(), 0, PasteAllowed)
 
 	m = simulateKey(m, "hello world")
 
@@ -267,7 +271,7 @@ func TestLiveModel_Space_RespectsMaxLen(t *testing.T) {
 	// maxLen=8 chars = 4 spell chars (each adds CharactersPerMatrixCell=2 to password)
 	matrix := newTestMatrix()
 	maxLen := 4 * app.CharactersPerMatrixCell
-	m := newLiveModel(matrix, testMasterRaw, maxLen, PasteAllowed)
+	m := newLiveModel(matrix, newTestMasterRaw(), maxLen, PasteAllowed)
 
 	m = simulateKey(m, "a") // password = 2 chars
 	m = simulateKey(m, " ") // password = 4 chars
@@ -289,7 +293,7 @@ func TestLiveModel_Space_RespectsMaxLen(t *testing.T) {
 func TestLiveModel_Space_Backspace(t *testing.T) {
 	// Verify that backspace removes space and allows re-typing
 	matrix := newTestMatrix()
-	m := newLiveModel(matrix, testMasterRaw, 0, PasteAllowed)
+	m := newLiveModel(matrix, newTestMasterRaw(), 0, PasteAllowed)
 
 	m = simulateKey(m, "a")
 	m = simulateKey(m, " ")

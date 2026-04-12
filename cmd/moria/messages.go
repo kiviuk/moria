@@ -32,12 +32,12 @@ const (
 	ErrFailedGenerateMaster = "Failed to generate master password: %v"
 	// ErrFailedCreateMatrix is a format string returned when matrix creation fails.
 	ErrFailedCreateMatrix = "Failed to create matrix: %v"
-	// ErrLiveMode is a format string returned when live mode encounters an error.
-	ErrLiveMode = "Live mode error: %v"
-	// ErrInvalidSpell is a format string returned when spell validation fails.
-	ErrInvalidSpell = "Invalid spell: %v"
-	// ErrExtractPassword is a format string returned when password extraction from the matrix fails.
-	ErrExtractPassword = "Failed to extract password: %v"
+	// ErrLiveMode is returned when live mode encounters an error.
+	ErrLiveMode = "Live mode error"
+	// ErrInvalidSpell is returned when spell validation fails.
+	ErrInvalidSpell = "Invalid spell"
+	// ErrExtractPassword is returned when password extraction from the matrix fails.
+	ErrExtractPassword = "Failed to extract password"
 	// ErrUnexpectedModel is returned when the Bubbletea program returns an unexpected model type.
 	ErrUnexpectedModel = "unexpected model type returned by bubbletea"
 )

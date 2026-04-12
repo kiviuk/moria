@@ -3,17 +3,18 @@ package main
 import (
 	"fmt"
 
+	"github.com/awnumar/memguard"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
+
+	"github.com/kiviuk/moria/internal/app"
 )
 
-// passwordModel is the Bubbletea model for the interactive masked password prompt.
 type passwordModel struct {
 	input textinput.Model
 	err   error
 }
 
-// newPasswordModel creates a passwordModel with a focused, masked text input.
 func newPasswordModel() passwordModel {
 	ti := textinput.New()
 	ti.Placeholder = "master password"
@@ -26,12 +27,10 @@ func newPasswordModel() passwordModel {
 	}
 }
 
-// Init starts the text input blink animation.
 func (m passwordModel) Init() tea.Cmd {
 	return textinput.Blink
 }
 
-// Update handles keyboard input for the password prompt.
 func (m passwordModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 
@@ -50,7 +49,6 @@ func (m passwordModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, cmd
 }
 
-// View renders the password prompt screen.
 func (m passwordModel) View() string {
 	return fmt.Sprintf(
 		MsgPasswordPrompt,
@@ -58,23 +56,31 @@ func (m passwordModel) View() string {
 	)
 }
 
-// getPassword runs the interactive password prompt and returns the entered value.
-func getPassword() (string, error) {
+func (m *passwordModel) Wipe() {
+	value := m.input.Value()
+	if value != "" {
+		memguard.WipeBytes([]byte(value))
+	}
+}
+
+func getPassword() (*app.SecureBytes, error) {
 	p := tea.NewProgram(newPasswordModel())
 
 	finalModel, err := p.Run()
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	pm, ok := finalModel.(passwordModel)
 	if !ok {
-		return "", fmt.Errorf("unexpected model type returned by bubbletea")
+		return nil, fmt.Errorf("unexpected model type returned by bubbletea")
 	}
-	m := pm
-	if m.err != nil {
-		return "", m.err
+	if pm.err != nil {
+		return nil, pm.err
 	}
 
-	return m.input.Value(), nil
+	sb := app.NewSecureBytesFromString(pm.input.Value())
+	pm.Wipe()
+
+	return sb, nil
 }
