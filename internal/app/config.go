@@ -40,4 +40,4 @@ const Argon2Salt = "moria-argon-salt-v1"
 const MatrixBytes = PasswordMatrixRows * PasswordMatrixColumns * CharactersPerMatrixCell
 
 // LiveModeWrapWidth is the max display width for spell/password lines in live mode.
-const LiveModeWrapWidth = 80
+const LiveModeWrapWidth = (80 + CharactersPerMatrixCell - 1) / CharactersPerMatrixCell * CharactersPerMatrixCell
