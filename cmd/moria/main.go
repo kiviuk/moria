@@ -16,6 +16,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -87,14 +88,9 @@ type Config struct {
 	MasterRaw string
 }
 
-// contains reports whether slice contains item.
-func contains(slice []string, item string) bool {
-	for _, s := range slice {
-		if s == item {
-			return true
-		}
-	}
-	return false
+// flagPermittedInMode checks whether a given CLI flag is permitted for the currently selected mode.
+func flagPermittedInMode(allowedFlags []string, flagToCheck string) bool {
+	return slices.Contains(allowedFlags, flagToCheck)
 }
 
 // getMatrix builds a Matrix from the expanded master password string.
@@ -203,7 +199,7 @@ func validateConfig(cfg Config, flags map[string]bool) error {
 		if !present {
 			continue
 		}
-		if !contains(cfg.Mode.allowedMods(), flag) {
+		if !flagPermittedInMode(cfg.Mode.allowedMods(), flag) {
 			return fmt.Errorf(ErrModNotAllowed, flag, cfg.Mode)
 		}
 	}
