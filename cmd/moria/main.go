@@ -99,13 +99,6 @@ func getMatrix(master *app.SecureBytes) (app.Matrix, error) {
 	return matrix, nil
 }
 
-func truncatePassword(password []byte, maxLen int) []byte {
-	if maxLen > 0 && len(password) > maxLen {
-		return password[:maxLen]
-	}
-	return password
-}
-
 func readStdin() (*app.SecureBytes, error) {
 	stat, err := os.Stdin.Stat()
 	if err != nil {
@@ -331,7 +324,11 @@ func main() { //nolint:gocyclo // main has high complexity due to mode switching
 			os.Exit(1)
 		}
 		password := finalModel.password
-		passwordBytes := truncatePassword([]byte(password), cfg.MaxLen)
+		// Truncate password to maxLen if specified
+		passwordBytes := []byte(password)
+		if cfg.MaxLen > 0 && len(passwordBytes) > cfg.MaxLen {
+			passwordBytes = passwordBytes[:cfg.MaxLen]
+		}
 		if len(passwordBytes) > 0 {
 			os.Stdout.Write(passwordBytes)
 		}
@@ -353,18 +350,16 @@ func main() { //nolint:gocyclo // main has high complexity due to mode switching
 			fmt.Fprintf(os.Stderr, ErrInvalidSpell+": %v\n", err)
 			os.Exit(1)
 		}
-		password, err := magic.ExtractPassword(matrix)
+		password, err := magic.ExtractPassword(matrix, cfg.MaxLen)
 		if err != nil {
 			matrix.Wipe()
 			fmt.Fprintf(os.Stderr, ErrExtractPassword+": %v\n", err)
 			os.Exit(1)
 		}
 		defer password.Wipe()
-		passwordBytes := truncatePassword(password.Bytes(), cfg.MaxLen)
-		if len(passwordBytes) > 0 {
-			os.Stdout.Write(passwordBytes)
+		if password.Len() > 0 {
+			os.Stdout.Write(password.Bytes())
 		}
-		memguard.WipeBytes(passwordBytes)
 
 	case ModeShowPasswordStrength:
 		runPasswordStrengthMode(cfg.MasterRaw)

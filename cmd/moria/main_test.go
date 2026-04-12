@@ -96,7 +96,8 @@ func TestBatchMode_MaxLen(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	password, err := spell.ExtractPassword(matrix)
+	// Test with no truncation (maxLen = 0)
+	password, err := spell.ExtractPassword(matrix, 0)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -125,15 +126,21 @@ func TestBatchMode_MaxLen(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		result := password.Bytes()
+		result, err := spell.ExtractPassword(matrix, tt.maxLen)
+		if err != nil {
+			t.Errorf("maxLen=%d: unexpected error: %v", tt.maxLen, err)
+			continue
+		}
+
 		expectedLen := fullLen
-		if tt.maxLen > 0 && len(result) > tt.maxLen {
-			result = result[:tt.maxLen]
+		if tt.maxLen > 0 && tt.maxLen < fullLen {
 			expectedLen = tt.maxLen
 		}
-		if len(result) != expectedLen {
-			t.Errorf("maxLen=%d: expected len %d, got %d", tt.maxLen, expectedLen, len(result))
+
+		if result.Len() != expectedLen {
+			t.Errorf("maxLen=%d: expected len %d, got %d", tt.maxLen, expectedLen, result.Len())
 		}
+		result.Wipe()
 	}
 }
 
@@ -331,7 +338,7 @@ func TestBatchMode_OutputNoNewline(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	password, err := spell.ExtractPassword(matrix)
+	password, err := spell.ExtractPassword(matrix, 0) // 0 = no truncation
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -339,38 +346,6 @@ func TestBatchMode_OutputNoNewline(t *testing.T) {
 
 	if strings.HasSuffix(string(password.Bytes()), "\n") {
 		t.Error("password should not have trailing newline")
-	}
-}
-
-func TestTruncatePassword_Truncates(t *testing.T) {
-	password := []byte("abcdefghij")
-	result := truncatePassword(password, 5)
-	if string(result) != "abcde" {
-		t.Errorf("expected %q, got %q", "abcde", result)
-	}
-}
-
-func TestTruncatePassword_NoTruncateWhenShorter(t *testing.T) {
-	password := []byte("abc")
-	result := truncatePassword(password, 5)
-	if string(result) != "abc" {
-		t.Errorf("expected %q, got %q", "abc", result)
-	}
-}
-
-func TestTruncatePassword_NoTruncateWhenEqual(t *testing.T) {
-	password := []byte("abcde")
-	result := truncatePassword(password, 5)
-	if string(result) != "abcde" {
-		t.Errorf("expected %q, got %q", "abcde", result)
-	}
-}
-
-func TestTruncatePassword_ZeroMaxLen(t *testing.T) {
-	password := []byte("abcdef")
-	result := truncatePassword(password, 0)
-	if string(result) != "abcdef" {
-		t.Errorf("expected %q, got %q", "abcdef", result)
 	}
 }
 

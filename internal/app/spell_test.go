@@ -331,7 +331,7 @@ func TestMagicSpell_ExtractPassword_Digits(t *testing.T) {
 	// Verify digits map to group 0 and extract correct cells from the test matrix
 	matrix := newTestMatrix()
 	spell := MagicSpell{Spell: "1111"}
-	password, err := spell.ExtractPassword(matrix)
+	password, err := spell.ExtractPassword(matrix, 0) // 0 = no truncation
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -350,7 +350,7 @@ func TestMagicSpell_ExtractPassword_OnePerGroup(t *testing.T) {
 	// Verify one letter from each group extracts cells across different columns
 	matrix := newTestMatrix()
 	spell := MagicSpell{Spell: "adgjmpsvy"}
-	password, err := spell.ExtractPassword(matrix)
+	password, err := spell.ExtractPassword(matrix, 0) // 0 = no truncation
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -372,7 +372,7 @@ func TestMagicSpell_ExtractPassword_Spaces(t *testing.T) {
 	// Verify spaces map to group 0 same as digits, extracting identical cells
 	matrix := newTestMatrix()
 	spell := MagicSpell{Spell: " "}
-	password, err := spell.ExtractPassword(matrix)
+	password, err := spell.ExtractPassword(matrix, 0) // 0 = no truncation
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -417,19 +417,19 @@ func TestExtractPassword_CaseSensitive(t *testing.T) {
 	spellUpper := MagicSpell{Spell: "AMAZON"}
 	spellMixed := MagicSpell{Spell: "AmAzOn"}
 
-	passLower, err := spellLower.ExtractPassword(matrix)
+	passLower, err := spellLower.ExtractPassword(matrix, 0) // 0 = no truncation
 	if err != nil {
 		t.Fatalf("unexpected error for lowercase: %v", err)
 	}
 	defer passLower.Wipe()
 
-	passUpper, err := spellUpper.ExtractPassword(matrix)
+	passUpper, err := spellUpper.ExtractPassword(matrix, 0) // 0 = no truncation
 	if err != nil {
 		t.Fatalf("unexpected error for uppercase: %v", err)
 	}
 	defer passUpper.Wipe()
 
-	passMixed, err := spellMixed.ExtractPassword(matrix)
+	passMixed, err := spellMixed.ExtractPassword(matrix, 0) // 0 = no truncation
 	if err != nil {
 		t.Fatalf("unexpected error for mixed case: %v", err)
 	}
@@ -443,6 +443,39 @@ func TestExtractPassword_CaseSensitive(t *testing.T) {
 	}
 	if bytes.Equal(passUpper.Bytes(), passMixed.Bytes()) {
 		t.Error("uppercase and mixed case spells produced identical passwords")
+	}
+}
+
+func TestMagicSpell_ExtractPassword_Truncation(t *testing.T) {
+	// Verify truncation works correctly at various lengths including mid-cell boundaries
+	matrix := newTestMatrix()
+	spell := MagicSpell{Spell: "aaaa"} // 4 cells = 12 characters (at CharactersPerMatrixCell=3)
+
+	tests := []struct {
+		name     string
+		maxLen   int
+		expected int
+	}{
+		{"no truncation", 0, 12},
+		{"exact length", 12, 12},
+		{"longer than password", 100, 12},
+		{"truncate to 5 chars", 5, 5},
+		{"truncate to 1 char", 1, 1},
+		{"truncate to exact cell boundary", 9, 9}, // 3 full cells
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			password, err := spell.ExtractPassword(matrix, tt.maxLen)
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			defer password.Wipe()
+
+			if password.Len() != tt.expected {
+				t.Errorf("maxLen=%d: expected len %d, got %d", tt.maxLen, tt.expected, password.Len())
+			}
+		})
 	}
 }
 
