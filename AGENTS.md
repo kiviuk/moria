@@ -157,6 +157,7 @@ moria -h
 - **SRP:** `GenerateMasterPassword(length, pool)` accepts character pool as parameter — no hardcoded pools
 - **Defensive access:** `Matrix.Cell(t QueryLetter)` validates column bounds; row is guaranteed valid by `QueryLetter` type
 - **Rejection sampling:** `mapStringSourceToAlphabet()` ensures zero modulo bias when mapping random bytes to character pool
+- **Matrix cells are []byte:** Each cell owns its own memory, allowing secure wiping via `Matrix.Wipe()`
 
 ### Flexibility
 - Change `CharactersPerMatrixCell` in `config.go` to adjust cell size (1, 2, 3, etc.)

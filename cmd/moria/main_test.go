@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"strings"
 	"testing"
 
@@ -99,11 +100,16 @@ func TestBatchMode_MaxLen(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
+	defer password.Wipe()
 
 	// Full password: 4 cells × CharactersPerMatrixCell
-	expectedFull := matrix[0][0] + matrix[1][0] + matrix[2][0] + matrix[3%app.PasswordMatrixRows][0]
-	if password != expectedFull {
-		t.Fatalf("expected %q, got %q", expectedFull, password)
+	expectedFull := append(append(append(
+		matrix[0][0],
+		matrix[1][0]...),
+		matrix[2][0]...),
+		matrix[3%app.PasswordMatrixRows][0]...)
+	if !bytes.Equal(password.Bytes(), expectedFull) {
+		t.Fatalf("expected %q, got %q", expectedFull, password.Bytes())
 	}
 	fullLen := 4 * app.CharactersPerMatrixCell
 
@@ -119,7 +125,7 @@ func TestBatchMode_MaxLen(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		result := password
+		result := password.Bytes()
 		expectedLen := fullLen
 		if tt.maxLen > 0 && len(result) > tt.maxLen {
 			result = result[:tt.maxLen]
@@ -329,40 +335,41 @@ func TestBatchMode_OutputNoNewline(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
+	defer password.Wipe()
 
-	if strings.HasSuffix(password, "\n") {
+	if strings.HasSuffix(string(password.Bytes()), "\n") {
 		t.Error("password should not have trailing newline")
 	}
 }
 
 func TestTruncatePassword_Truncates(t *testing.T) {
-	password := "abcdefghij"
+	password := []byte("abcdefghij")
 	result := truncatePassword(password, 5)
-	if result != "abcde" {
+	if string(result) != "abcde" {
 		t.Errorf("expected %q, got %q", "abcde", result)
 	}
 }
 
 func TestTruncatePassword_NoTruncateWhenShorter(t *testing.T) {
-	password := "abc"
+	password := []byte("abc")
 	result := truncatePassword(password, 5)
-	if result != "abc" {
+	if string(result) != "abc" {
 		t.Errorf("expected %q, got %q", "abc", result)
 	}
 }
 
 func TestTruncatePassword_NoTruncateWhenEqual(t *testing.T) {
-	password := "abcde"
+	password := []byte("abcde")
 	result := truncatePassword(password, 5)
-	if result != "abcde" {
+	if string(result) != "abcde" {
 		t.Errorf("expected %q, got %q", "abcde", result)
 	}
 }
 
 func TestTruncatePassword_ZeroMaxLen(t *testing.T) {
-	password := "abcdef"
+	password := []byte("abcdef")
 	result := truncatePassword(password, 0)
-	if result != "abcdef" {
+	if string(result) != "abcdef" {
 		t.Errorf("expected %q, got %q", "abcdef", result)
 	}
 }
@@ -375,8 +382,9 @@ func TestGetMatrix_ValidInput(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if matrix == (app.Matrix{}) {
-		t.Error("matrix should not be zero value")
+	// Check that matrix has data by verifying first cell is not nil
+	if matrix[0][0] == nil {
+		t.Error("matrix should have data, first cell is nil")
 	}
 }
 

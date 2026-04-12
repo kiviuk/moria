@@ -126,18 +126,29 @@ func (m liveModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-// doBackspace processes backspace key presses.
+// The function handles backspace in live mode
 func (m liveModel) doBackspace() liveModel {
 	if m.spell == "" {
 		return m
 	}
 	// Prevent underflow by checking length before slicing
+	// If we have at least one query letter AND the password has at least 3 characters
+	// Or more verbosely:
+	// Only proceed with removing the last character if:
+	// 1. There is at least one query letter stored (queryLetters isn't empty), AND
+	// 2. The password has enough characters to safely remove one cell's worth
+	// (at least 3 characters, since each matrix cell contributes 3 characters to the password)
 	if len(m.queryLetters) > 0 && len(m.password) >= app.CharactersPerMatrixCell {
+		// Normal case: remove last character
 		m.spell = m.spell[:len(m.spell)-1]
 		m.queryLetters = m.queryLetters[:len(m.queryLetters)-1]
 		m.password = m.password[:len(m.password)-app.CharactersPerMatrixCell]
 	} else {
-		// Reset to empty state if lengths are inconsistent
+		// Defensive case:
+		// Inconsistent state - reset everything
+		// Impact of the Else Case:
+		// User Impact: The user loses their entire spell entry.
+		// One backspace clears everything instead of just removing the last character.
 		m.spell = ""
 		m.queryLetters = nil
 		m.password = ""
@@ -181,7 +192,7 @@ func (m liveModel) doRunes(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.err = cellErr.Error()
 			return m, nil
 		}
-		m.password += cell
+		m.password += string(cell)
 		m.state = StateNormal
 		m.err = ""
 	}
@@ -248,7 +259,7 @@ func (m liveModel) View() string {
 	for row := range app.PasswordMatrixRows {
 		fmt.Fprintf(&sb, "%s", rowNumStyle.Render(fmt.Sprintf("%d", row)))
 		for col := range app.PasswordMatrixColumns {
-			cell := m.matrix[row][col]
+			cell := string(m.matrix[row][col])
 			key := fmt.Sprintf("%d-%d", row, col)
 			if visited[key] {
 				sb.WriteString(highlightStyle.Render(cell))

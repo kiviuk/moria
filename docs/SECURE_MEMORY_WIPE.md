@@ -76,6 +76,14 @@ stdin → string → ExpandToMatrix() → string → Matrix
 
 ```
 stdin → []byte → SecureBytes → ExpandToMatrix() → SecureBytes → Matrix
+↑             ↑                              ↑             ↑
+read into     wipeable                       wipeable      wipeable
+buffer        (Wipe())                       (Wipe())      []byte cells
+↓
+TrimSpace()
+returns SecureBytes
+```
+stdin → []byte → SecureBytes → ExpandToMatrix() → SecureBytes → Matrix
          ↑            ↑                ↑                  ↑
          read into    wipeable         returns            wipeable
          buffer       (Wipe())         wipeable           (Wipe())
@@ -198,14 +206,16 @@ func (m *liveModel) Wipe() {
 | `liveModel.password` | ⚠️ Partial | ✅ Wiped in `liveModel.Wipe()` |
 | Password prompt input | ❌ Not wiped | ✅ Wiped after copying |
 | Piped stdin buffer | ❌ Not wiped | ✅ Wiped immediately |
+| Matrix cells | ❌ Strings cannot be wiped | ✅ `[]byte` cells properly wiped |
+| Extracted passwords | ❌ String returned | ✅ `*SecureBytes` returned and wiped |
 
 ## Limitations
 
 1. **`String()` creates copies**: When you call `sb.String()`, a new string is created. This string cannot be wiped. Use sparingly and only when absolutely necessary (e.g., for display or when passing to functions that require strings).
 
-2. **Matrix cells are still strings**: The `Matrix` type stores cells as strings. These cannot be wiped, but we call `matrix.Wipe()` which zeros each cell individually.
+2. **Display conversions create temporary strings**: When rendering the matrix in `--pretty` or `--live` modes, cells are converted to strings for display. These temporary strings exist briefly and cannot be wiped, but the underlying matrix cells are properly wipeable `[]byte`.
 
-3. **Output passwords**: Generated passwords printed to stdout exist as strings. We wipe them after printing, but they briefly exist in memory.
+3. **Output passwords**: Generated passwords printed to stdout are written as bytes and wiped immediately after. However, they briefly exist in memory and may be retained in terminal scrollback or clipboard history.
 
 ## Testing
 

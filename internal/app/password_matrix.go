@@ -17,7 +17,7 @@ import (
 // Columns (0-9) correspond to letter groups: column 0 for non-letters,
 // columns 1-9 for letter groups A-C through X-Z (CharactersPerMatrixCell letters per group).
 // Each cell holds CharactersPerMatrixCell characters that are concatenated to form the password.
-type Matrix [PasswordMatrixRows][PasswordMatrixColumns]string
+type Matrix [PasswordMatrixRows][PasswordMatrixColumns][]byte
 
 // Matrix factory distributes a random string into the 2D matrix using arithmetic.
 // The random string must be exactly PasswordMatrixRows * PasswordMatrixColumns * CharactersPerMatrixCell bytes.
@@ -30,7 +30,9 @@ func NewMatrix(randomString string) (Matrix, error) {
 	for row := range PasswordMatrixRows {
 		for col := range PasswordMatrixColumns {
 			start := (row*PasswordMatrixColumns + col) * CharactersPerMatrixCell
-			m[row][col] = randomString[start : start+CharactersPerMatrixCell]
+			// Copy the data into a new slice to ensure each cell owns its own memory
+			m[row][col] = make([]byte, CharactersPerMatrixCell)
+			copy(m[row][col], randomString[start:start+CharactersPerMatrixCell])
 		}
 	}
 	return m, nil
@@ -38,18 +40,18 @@ func NewMatrix(randomString string) (Matrix, error) {
 
 // Cell returns the password fragment for a resolved query letter.
 // The row is guaranteed valid by the QueryLetter type, but the column is still validated defensively.
-func (m Matrix) Cell(t QueryLetter) (string, error) {
+func (m Matrix) Cell(t QueryLetter) ([]byte, error) {
 	return m.cell(t.MatrixRow, t.LetterGroup)
 }
 
 // cell returns the password fragment at the given row and column.
 // Index validation is performed here as a defensive measure, even if input was validated upstream.
-func (m Matrix) cell(row, col int) (string, error) {
+func (m Matrix) cell(row, col int) ([]byte, error) {
 	if row < 0 || row >= PasswordMatrixRows {
-		return "", fmt.Errorf("row %d out of range [0, %d)", row, PasswordMatrixRows)
+		return nil, fmt.Errorf("row %d out of range [0, %d)", row, PasswordMatrixRows)
 	}
 	if col < 0 || col >= PasswordMatrixColumns {
-		return "", fmt.Errorf("col %d out of range [0, %d)", col, PasswordMatrixColumns)
+		return nil, fmt.Errorf("col %d out of range [0, %d)", col, PasswordMatrixColumns)
 	}
 	return m[row][col], nil
 }
@@ -60,8 +62,10 @@ func (m Matrix) cell(row, col int) (string, error) {
 func (m *Matrix) Wipe() {
 	for row := range PasswordMatrixRows {
 		for col := range PasswordMatrixColumns {
-			memguard.WipeBytes([]byte(m[row][col]))
-			m[row][col] = ""
+			if m[row][col] != nil {
+				memguard.WipeBytes(m[row][col])
+				m[row][col] = nil
+			}
 		}
 	}
 }
@@ -91,7 +95,7 @@ func (m Matrix) Pretty() string {
 	for row := range PasswordMatrixRows {
 		fmt.Fprintf(&sb, "%-*d", colWidth, row)
 		for col := range PasswordMatrixColumns {
-			fmt.Fprintf(&sb, "%-*s", colWidth, m[row][col])
+			fmt.Fprintf(&sb, "%-*s", colWidth, string(m[row][col]))
 		}
 		sb.WriteByte('\n')
 	}

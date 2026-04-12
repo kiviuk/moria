@@ -167,7 +167,8 @@ func (m MagicLetter) Query() QueryLetter {
 // ExtractPassword generates the final password by reading cells from the matrix
 // along the path defined by the spell. Each character in the spell contributes
 // CharactersPerMatrixCell characters to the output.
-func (m MagicSpell) ExtractPassword(matrix Matrix) (string, error) {
+// Returns a SecureBytes that can be securely wiped when no longer needed.
+func (m MagicSpell) ExtractPassword(matrix Matrix) (*SecureBytes, error) {
 	letters := m.MagicLetters()
 	password := make([]byte, 0, len(letters)*CharactersPerMatrixCell)
 	for _, l := range letters {
@@ -175,11 +176,9 @@ func (m MagicSpell) ExtractPassword(matrix Matrix) (string, error) {
 		cell, err := matrix.Cell(query)
 		if err != nil {
 			memguard.WipeBytes(password)
-			return "", err
+			return nil, err
 		}
 		password = append(password, cell...)
 	}
-	result := string(password)
-	memguard.WipeBytes(password)
-	return result, nil
+	return NewSecureBytes(password), nil
 }

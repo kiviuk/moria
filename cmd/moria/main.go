@@ -99,7 +99,7 @@ func getMatrix(master *app.SecureBytes) (app.Matrix, error) {
 	return matrix, nil
 }
 
-func truncatePassword(password string, maxLen int) string {
+func truncatePassword(password []byte, maxLen int) []byte {
 	if maxLen > 0 && len(password) > maxLen {
 		return password[:maxLen]
 	}
@@ -331,12 +331,12 @@ func main() { //nolint:gocyclo // main has high complexity due to mode switching
 			os.Exit(1)
 		}
 		password := finalModel.password
-		password = truncatePassword(password, cfg.MaxLen)
-		if password != "" {
-			fmt.Print(password)
+		passwordBytes := truncatePassword([]byte(password), cfg.MaxLen)
+		if len(passwordBytes) > 0 {
+			os.Stdout.Write(passwordBytes)
 		}
 		finalModel.Wipe()
-		memguard.WipeBytes([]byte(password))
+		memguard.WipeBytes(passwordBytes)
 
 	case ModeBatch:
 		matrix, err := getMatrix(cfg.Master)
@@ -359,11 +359,12 @@ func main() { //nolint:gocyclo // main has high complexity due to mode switching
 			fmt.Fprintf(os.Stderr, ErrExtractPassword+": %v\n", err)
 			os.Exit(1)
 		}
-		password = truncatePassword(password, cfg.MaxLen)
-		if password != "" {
-			fmt.Print(password)
+		defer password.Wipe()
+		passwordBytes := truncatePassword(password.Bytes(), cfg.MaxLen)
+		if len(passwordBytes) > 0 {
+			os.Stdout.Write(passwordBytes)
 		}
-		memguard.WipeBytes([]byte(password))
+		memguard.WipeBytes(passwordBytes)
 
 	case ModeShowPasswordStrength:
 		runPasswordStrengthMode(cfg.MasterRaw)

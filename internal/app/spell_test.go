@@ -1,6 +1,7 @@
 package app
 
 import (
+	"bytes"
 	"strings"
 	"testing"
 )
@@ -334,9 +335,14 @@ func TestMagicSpell_ExtractPassword_Digits(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	expected := matrix[0][0] + matrix[1][0] + matrix[2][0] + matrix[3%PasswordMatrixRows][0]
-	if password != expected {
-		t.Errorf("expected %q, got %q", expected, password)
+	defer password.Wipe()
+	expected := append(append(append(
+		matrix[0][0],
+		matrix[1][0]...),
+		matrix[2][0]...),
+		matrix[3%PasswordMatrixRows][0]...)
+	if !bytes.Equal(password.Bytes(), expected) {
+		t.Errorf("expected %q, got %q", expected, password.Bytes())
 	}
 }
 
@@ -348,30 +354,33 @@ func TestMagicSpell_ExtractPassword_OnePerGroup(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
+	defer password.Wipe()
 
 	// Build expected password by computing each letter's group
 	letters := spell.MagicLetters()
-	var expected strings.Builder
+	var expected []byte
 	for _, l := range letters {
 		q := l.Query()
-		expected.WriteString(matrix[q.MatrixRow][q.LetterGroup])
+		expected = append(expected, matrix[q.MatrixRow][q.LetterGroup]...)
 	}
-	if password != expected.String() {
-		t.Errorf("expected %q, got %q", expected.String(), password)
+	if !bytes.Equal(password.Bytes(), expected) {
+		t.Errorf("expected %q, got %q", expected, password.Bytes())
 	}
 }
 
 func TestMagicSpell_ExtractPassword_Spaces(t *testing.T) {
 	// Verify spaces map to group 0 same as digits, extracting identical cells
 	matrix := newTestMatrix()
-	spell := MagicSpell{Spell: "    "}
+	spell := MagicSpell{Spell: " "}
 	password, err := spell.ExtractPassword(matrix)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	expected := matrix[0][0] + matrix[1][0] + matrix[2][0] + matrix[3%PasswordMatrixRows][0]
-	if password != expected {
-		t.Errorf("expected %q, got %q", expected, password)
+	defer password.Wipe()
+	// " " is one space so only 1 cell is used, not 4
+	expected := matrix[0][0]
+	if !bytes.Equal(password.Bytes(), expected) {
+		t.Errorf("expected %q, got %q", expected, password.Bytes())
 	}
 }
 
@@ -412,24 +421,27 @@ func TestExtractPassword_CaseSensitive(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error for lowercase: %v", err)
 	}
+	defer passLower.Wipe()
 
 	passUpper, err := spellUpper.ExtractPassword(matrix)
 	if err != nil {
 		t.Fatalf("unexpected error for uppercase: %v", err)
 	}
+	defer passUpper.Wipe()
 
 	passMixed, err := spellMixed.ExtractPassword(matrix)
 	if err != nil {
 		t.Fatalf("unexpected error for mixed case: %v", err)
 	}
+	defer passMixed.Wipe()
 
-	if passLower == passUpper {
+	if bytes.Equal(passLower.Bytes(), passUpper.Bytes()) {
 		t.Error("lowercase and uppercase spells produced identical passwords")
 	}
-	if passLower == passMixed {
+	if bytes.Equal(passLower.Bytes(), passMixed.Bytes()) {
 		t.Error("lowercase and mixed case spells produced identical passwords")
 	}
-	if passUpper == passMixed {
+	if bytes.Equal(passUpper.Bytes(), passMixed.Bytes()) {
 		t.Error("uppercase and mixed case spells produced identical passwords")
 	}
 }

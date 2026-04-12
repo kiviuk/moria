@@ -165,8 +165,8 @@ func TestNewMatrix_Population(t *testing.T) {
 	for row := 0; row < PasswordMatrixRows; row++ {
 		for col := 0; col < PasswordMatrixColumns; col++ {
 			start := (row*PasswordMatrixColumns + col) * CharactersPerMatrixCell
-			expected := input[start : start+CharactersPerMatrixCell]
-			if m[row][col] != expected {
+			expected := []byte(input[start : start+CharactersPerMatrixCell])
+			if !bytesEqual(m[row][col], expected) {
 				t.Errorf("m[%d][%d] = %q, expected %q", row, col, m[row][col], expected)
 			}
 		}
@@ -178,7 +178,7 @@ func TestMatrix_Cell(t *testing.T) {
 	m := newTestMatrix()
 	tests := []struct {
 		query    QueryLetter
-		expected string
+		expected []byte
 	}{
 		{QueryLetter{MatrixRow: 0, LetterGroup: 0}, m[0][0]},
 		{QueryLetter{MatrixRow: 0, LetterGroup: PasswordMatrixColumns - 1}, m[0][PasswordMatrixColumns-1]},
@@ -190,7 +190,7 @@ func TestMatrix_Cell(t *testing.T) {
 		if err != nil {
 			t.Errorf("Cell(%+v) unexpected error: %v", tt.query, err)
 		}
-		if got != tt.expected {
+		if !bytesEqual(got, tt.expected) {
 			t.Errorf("Cell(%+v) = %q, expected %q", tt.query, got, tt.expected)
 		}
 	}
@@ -316,7 +316,7 @@ func TestMatrix_Pretty(t *testing.T) {
 	// Check cell values are present
 	for row := 0; row < PasswordMatrixRows; row++ {
 		for col := 0; col < PasswordMatrixColumns; col++ {
-			if !strings.Contains(output, m[row][col]) {
+			if !strings.Contains(output, string(m[row][col])) {
 				t.Errorf("Pretty output missing cell value %q at [%d][%d]", m[row][col], row, col)
 			}
 		}
@@ -339,10 +339,15 @@ func TestExtractPassword_Integration(t *testing.T) {
 	}
 
 	// "1111" → all digits (group 0), positions 0-3 → cells (0,0)+(1,0)+(2,0)+(3%rows,0)
-	expected := matrix[0][0] + matrix[1%PasswordMatrixRows][0] + matrix[2%PasswordMatrixRows][0] + matrix[3%PasswordMatrixRows][0]
-	if password != expected {
-		t.Errorf("expected %q, got %q", expected, password)
+	expected := append(append(append(
+		matrix[0][0],
+		matrix[1%PasswordMatrixRows][0]...),
+		matrix[2%PasswordMatrixRows][0]...),
+		matrix[3%PasswordMatrixRows][0]...)
+	if !bytesEqual(password.Bytes(), expected) {
+		t.Errorf("expected %q, got %q", expected, password.Bytes())
 	}
+	password.Wipe()
 }
 
 func TestMatrix_Wipe(t *testing.T) {
@@ -353,11 +358,11 @@ func TestMatrix_Wipe(t *testing.T) {
 
 	m.Wipe()
 
-	// Verify all cells are empty strings
+	// Verify all cells are nil after wipe
 	for row := 0; row < PasswordMatrixRows; row++ {
 		for col := 0; col < PasswordMatrixColumns; col++ {
-			if m[row][col] != "" {
-				t.Errorf("m[%d][%d] = %q after wipe, expected empty string", row, col, m[row][col])
+			if m[row][col] != nil {
+				t.Errorf("m[%d][%d] = %q after wipe, expected nil", row, col, m[row][col])
 			}
 		}
 	}
@@ -379,12 +384,12 @@ func TestMatrix_Wipe_ZeroizesData(t *testing.T) {
 
 	m.Wipe()
 
-	// After wipe, the cell should be empty
-	if m[0][0] != "" {
-		t.Errorf("cell not empty after wipe: got %q", m[0][0])
+	// After wipe, the cell should be nil
+	if m[0][0] != nil {
+		t.Errorf("cell not nil after wipe: got %q", m[0][0])
 	}
 
 	// The original value should still exist in our local variable
-	// (proving we can't truly wipe strings, only our matrix references)
+	// (proving we can't truly wipe byte slices, only our matrix references)
 	_ = originalValue
 }
