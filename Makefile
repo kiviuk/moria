@@ -1,7 +1,11 @@
-.PHONY: build clean test cover deps lint
+.PHONY: build clean test cover deps lint prod
 
 build:
 	go build -o bin/moria ./cmd/moria
+
+# Compile with maximum performance optimization and smallest binary size
+prod:
+	CGO_ENABLED=0 go build -ldflags="-s -w" -o bin/moria ./cmd/moria
 
 run: build
 	./bin/moria
