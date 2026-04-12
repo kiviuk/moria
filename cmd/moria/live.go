@@ -228,14 +228,12 @@ func (m liveModel) View() string {
 	}
 
 	if m.maxLen > 0 {
-		wrappedPass := wrapWithIndent(m.password, app.LiveModeWrapWidth, "            ")
-		fmt.Fprintf(&sb, MsgPasswordWithMaxLen, passStyle.Render(strings.Join(wrappedPass, "\n")), len(m.password), m.maxLen)
+		m.renderPasswordChunks(&sb, true)
 		if m.state == StateMaxLenReached {
 			fmt.Fprintf(&sb, MsgLiveError, errorStyle.Render(fmt.Sprintf(MsgMaxPasswordReached, m.maxLen)))
 		}
 	} else {
-		wrappedPass := wrapWithIndent(m.password, app.LiveModeWrapWidth, "            ")
-		fmt.Fprintf(&sb, MsgPasswordNoMaxLen, passStyle.Render(strings.Join(wrappedPass, "\n")), len(m.password))
+		m.renderPasswordChunks(&sb, false)
 	}
 
 	if m.err != "" {
@@ -247,6 +245,50 @@ func (m liveModel) View() string {
 	sb.WriteByte('\n')
 
 	return sb.String()
+}
+
+// renderPasswordChunks renders the password with proper line wrapping and alignment.
+// Each chunk is rendered with the appropriate format based on its position (first/middle/last).
+// The length counter appears only on the final line to align with the visual wrap point.
+func (m liveModel) renderPasswordChunks(sb *strings.Builder, withMaxLen bool) {
+	// Split password into chunks that fit within LiveModeWrapWidth (80 chars), padded with indent for continuation lines
+	wrappedPass := wrapWithIndent(m.password, app.LiveModeWrapWidth, "            ")
+
+	// Iterate through each wrapped chunk of the password
+	for i, chunk := range wrappedPass {
+		// Check if this is the last chunk - determines where length counter goes (only on last line)
+		isLast := i == len(wrappedPass)-1
+		// Check if this is the first chunk - determines if "Password:" label is shown
+		isFirst := i == 0
+
+		// switch evaluates cases in order - first matching case executes
+		switch {
+		// First chunk + maxLen enabled + is last = single-line password with max length info
+		case isFirst && withMaxLen && isLast:
+			fmt.Fprintf(sb, MsgPasswordWithMaxLen, passStyle.Render(chunk), len(m.password), m.maxLen)
+		// First chunk + maxLen enabled = first line of wrapped, needs "Password:" label
+		case isFirst && withMaxLen:
+			fmt.Fprintf(sb, "  Password: %s\n", passStyle.Render(chunk))
+		// First chunk + is last = single-line password without max length
+		case isFirst && isLast:
+			fmt.Fprintf(sb, MsgPasswordNoMaxLen, passStyle.Render(chunk), len(m.password))
+		// First chunk = first line of wrapped password, needs "Password:" label
+		case isFirst:
+			fmt.Fprintf(sb, "  Password: %s\n", passStyle.Render(chunk))
+		// Middle chunk + maxLen enabled + is last = last line of wrapped with max length info
+		case withMaxLen && isLast:
+			fmt.Fprintf(sb, "%s%s (%d/%d)\n", passStyle.Render(chunk), "", len(m.password), m.maxLen)
+		// Middle chunk + maxLen enabled = continuation line without length info
+		case withMaxLen:
+			fmt.Fprintf(sb, "%s\n", passStyle.Render(chunk))
+		// Middle chunk + is last = last line of wrapped without max length info
+		case isLast:
+			fmt.Fprintf(sb, "%s%s (%d)\n", passStyle.Render(chunk), "", len(m.password))
+		// Middle chunk = continuation line without length info
+		default:
+			fmt.Fprintf(sb, "%s\n", passStyle.Render(chunk))
+		}
+	}
 }
 
 // LiveMode starts the interactive live mode TUI and returns the final model state.
