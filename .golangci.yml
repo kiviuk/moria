@@ -18,6 +18,7 @@ linters:
     - unused
     - gocritic
     - noctx
+    - intrange
 
 linters-settings:
   govet:
@@ -58,6 +59,7 @@ issues:
         - gosec
         - gocyclo
         - revive
+        - intrange
     - path: _test\.go
       text: "unused-parameter"
     - path: cmd/moria/main\.go

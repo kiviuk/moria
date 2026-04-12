@@ -11,9 +11,9 @@ func NewTestMatrixData(rows, cols, cellSize int) string {
 	var sb strings.Builder
 	cellChars := "abcdefghijklmnopqrstuvwxyz"
 	idx := 0
-	for row := 0; row < rows; row++ {
-		for col := 0; col < cols; col++ {
-			for i := 0; i < cellSize; i++ {
+	for range rows {
+		for range cols {
+			for range cellSize {
 				sb.WriteByte(cellChars[idx%len(cellChars)])
 				idx++
 			}

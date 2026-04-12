@@ -75,22 +75,22 @@ func (m Matrix) Pretty() string {
 
 	// Header row
 	sb.WriteString(strings.Repeat(" ", colWidth))
-	for col := 0; col < PasswordMatrixColumns; col++ {
+	for col := range PasswordMatrixColumns {
 		fmt.Fprintf(&sb, "%-*s", colWidth, ColHeader(col))
 	}
 	sb.WriteByte('\n')
 
 	// Separator
 	sb.WriteString(strings.Repeat(" ", colWidth))
-	for col := 0; col < PasswordMatrixColumns; col++ {
+	for range PasswordMatrixColumns {
 		sb.WriteString(strings.Repeat("─", colWidth-1) + " ")
 	}
 	sb.WriteByte('\n')
 
 	// Data rows
-	for row := 0; row < PasswordMatrixRows; row++ {
+	for row := range PasswordMatrixRows {
 		fmt.Fprintf(&sb, "%-*d", colWidth, row)
-		for col := 0; col < PasswordMatrixColumns; col++ {
+		for col := range PasswordMatrixColumns {
 			fmt.Fprintf(&sb, "%-*s", colWidth, m[row][col])
 		}
 		sb.WriteByte('\n')
@@ -122,7 +122,7 @@ func mapToCharset(source io.Reader, pool string, length int) string {
 	bytesRead := 0
 	j := len(buf)
 
-	for i := 0; i < length; i++ {
+	for i := range length {
 		for {
 			// If buffer is exhausted, stream more bytes from the source
 			if j >= bytesRead {
@@ -175,7 +175,7 @@ func ColHeader(col int) string {
 	}
 	start := (col - 1) * CharactersPerMatrixCell
 	var sb strings.Builder
-	for i := 0; i < CharactersPerMatrixCell; i++ {
+	for i := range CharactersPerMatrixCell {
 		letter := 'A' + rune(start+i)
 		if letter > 'Z' {
 			sb.WriteByte(' ')
