@@ -203,6 +203,12 @@ func mapBytesSourceToAlphabet(source io.Reader, alphabet string, length int) ([]
 // followed by HKDF for expansion and rejection sampling for unbiased character mapping.
 // Returns a SecureBytes that can be securely wiped when no longer needed.
 func ExpandToMatrix(input *SecureBytes) (*SecureBytes, error) {
+	if input == nil {
+		return nil, fmt.Errorf("input cannot be nil")
+	}
+	if input.Len() == 0 {
+		return nil, fmt.Errorf("input cannot be empty")
+	}
 	cpus := uint8(4)
 	saltBytes := []byte(Argon2Salt)
 	key := argon2.IDKey(input.Bytes(), saltBytes, 1, 64*1024, cpus, 32)

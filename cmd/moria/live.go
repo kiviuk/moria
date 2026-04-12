@@ -52,9 +52,11 @@ var (
 )
 
 // liveModel holds the state for the interactive live mode TUI.
-// Note: password and spell are stored as strings for TUI rendering.
-// Go strings are immutable and cannot be securely wiped. The Wipe() method
-// sets them to empty strings, but the backing arrays may remain in memory.
+// SECURITY LIMITATION: password and spell are stored as strings for TUI rendering.
+// Go strings are immutable - every keystroke creates new string allocations,
+// leaving intermediate password prefixes in memory until garbage collection.
+// This is a known limitation of the Bubbletea TUI framework which uses strings.
+// The Wipe() method clears references but cannot wipe the underlying memory.
 type liveModel struct {
 	matrix            app.Matrix
 	masterPasswordRaw *app.SecureBytes
@@ -147,15 +149,15 @@ func (m liveModel) doBackspace() liveModel {
 	expectedLen := len(m.queryLetters) * app.CharactersPerMatrixCell
 
 	// Truncate password to match expected length
-	// If password is longer than expected, trim it down
-	// If password is shorter (corrupted state), clear it entirely
 	if len(m.password) >= expectedLen {
 		m.password = m.password[:expectedLen]
 	} else {
+		// State is corrupted - clear everything to maintain consistency
+		m.spell = ""
+		m.queryLetters = nil
 		m.password = ""
 	}
 
-	// Reset state and clear any error message
 	m.state = StateNormal
 	m.err = ""
 	return m

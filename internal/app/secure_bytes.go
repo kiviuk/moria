@@ -51,10 +51,8 @@ func (sb *SecureBytes) Len() int {
 // Wipe securely erases the data from memory.
 // After calling Wipe, the SecureBytes is empty and should not be used.
 func (sb *SecureBytes) Wipe() {
-	if sb.data != nil {
-		memguard.WipeBytes(sb.data)
-		sb.data = nil
-	}
+	memguard.WipeBytes(sb.data)
+	sb.data = nil
 }
 
 // IsWiped returns true if the data has been wiped.

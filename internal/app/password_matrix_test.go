@@ -41,7 +41,7 @@ func TestExpandToMatrix_Deterministic(t *testing.T) {
 
 func TestExpandToMatrix_Length(t *testing.T) {
 	// Verify output is always exactly MatrixBytes characters
-	inputs := []string{"", "short", "medium-length-input", strings.Repeat("x", 1000)}
+	inputs := []string{"short", "medium-length-input", strings.Repeat("x", 1000)}
 	for _, input := range inputs {
 		in := NewSecureBytesFromString(input)
 		out, err := ExpandToMatrix(in)

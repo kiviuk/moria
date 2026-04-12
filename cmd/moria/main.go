@@ -13,6 +13,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -149,14 +150,14 @@ func parseArgs(args []string) (Config, map[string]bool, error) {
 		case "--max-len":
 			flags["--max-len"] = true
 			if i+1 >= len(args) {
-				return cfg, flags, fmt.Errorf("%s", ErrMaxLenRequiresValue)
+				return cfg, flags, errors.New(ErrMaxLenRequiresValue)
 			}
 			val, err := strconv.Atoi(args[i+1])
 			if err != nil {
-				return cfg, flags, fmt.Errorf("%s", ErrMaxLenNotNumber)
+				return cfg, flags, errors.New(ErrMaxLenNotNumber)
 			}
 			if val <= 0 {
-				return cfg, flags, fmt.Errorf("%s", ErrMaxLenNotNumber)
+				return cfg, flags, errors.New(ErrMaxLenNotNumber)
 			}
 			cfg.MaxLen = val
 			i++
@@ -230,7 +231,7 @@ func validateConfig(cfg Config, flags map[string]bool) error {
 	}
 
 	if cfg.Mode == ModeShowPasswordStrength && cfg.Spell != "" {
-		return fmt.Errorf("%s", ErrPasswordStrengthNoSpell)
+		return errors.New(ErrPasswordStrengthNoSpell)
 	}
 
 	if cfg.Mode.needsSpell() && cfg.Spell == "" {
@@ -295,36 +296,36 @@ func formatGuessesPerSec(n uint64) string {
 func main() { //nolint:gocyclo // main has high complexity due to mode switching
 	if len(os.Args) < 2 {
 		printUsage()
-		os.Exit(0)
+		memguard.SafeExit(0)
 	}
 
 	cfg, flags, err := parseArgs(os.Args[1:])
 	if err != nil {
 		fmt.Fprintf(os.Stderr, MsgErrorPrefix, err)
-		os.Exit(1)
+		memguard.SafeExit(1)
 	}
 
 	if flags["--help"] {
 		printUsage()
-		os.Exit(0)
+		memguard.SafeExit(0)
 	}
 
 	if err := validateConfig(cfg, flags); err != nil {
 		fmt.Fprintf(os.Stderr, MsgErrorPrefix, err)
-		os.Exit(1)
+		memguard.SafeExit(1)
 	}
 
 	if cfg.Mode.needsStdin() {
 		master, err := readStdin()
 		if err != nil {
 			fmt.Fprintf(os.Stderr, MsgErrorPrefix, err)
-			os.Exit(1)
+			memguard.SafeExit(1)
 		}
 		cfg.MasterRaw = master
 		expanded, err := app.ExpandToMatrix(master)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, MsgErrorPrefix, err)
-			os.Exit(1)
+			memguard.SafeExit(1)
 		}
 		cfg.Master = expanded
 		defer cfg.Wipe()
@@ -335,7 +336,7 @@ func main() { //nolint:gocyclo // main has high complexity due to mode switching
 		master, err := app.GenerateMasterPassword(app.MatrixBytes, app.MasterPasswordChars)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, ErrFailedGenerateMaster+"\n", err)
-			os.Exit(1)
+			memguard.SafeExit(1)
 		}
 		fmt.Print(master.String())
 		master.Wipe()
@@ -345,7 +346,7 @@ func main() { //nolint:gocyclo // main has high complexity due to mode switching
 		if err != nil {
 			matrix.Wipe()
 			fmt.Fprintln(os.Stderr, err)
-			os.Exit(1)
+			memguard.SafeExit(1)
 		}
 		defer matrix.Wipe()
 		fmt.Print(matrix.Pretty())
@@ -355,7 +356,7 @@ func main() { //nolint:gocyclo // main has high complexity due to mode switching
 		if err != nil {
 			matrix.Wipe()
 			fmt.Fprintln(os.Stderr, err)
-			os.Exit(1)
+			memguard.SafeExit(1)
 		}
 		defer matrix.Wipe()
 		pasteMode := PasteAllowed
@@ -366,10 +367,9 @@ func main() { //nolint:gocyclo // main has high complexity due to mode switching
 		if err != nil {
 			matrix.Wipe()
 			fmt.Fprintf(os.Stderr, ErrLiveMode+": %v\n", err)
-			os.Exit(1)
+			memguard.SafeExit(1)
 		}
 		password := finalModel.password
-		// Truncate password to maxLen if specified
 		passwordBytes := []byte(password)
 		if cfg.MaxLen > 0 && len(passwordBytes) > cfg.MaxLen {
 			passwordBytes = passwordBytes[:cfg.MaxLen]
@@ -385,7 +385,7 @@ func main() { //nolint:gocyclo // main has high complexity due to mode switching
 		if err != nil {
 			matrix.Wipe()
 			fmt.Fprintln(os.Stderr, err)
-			os.Exit(1)
+			memguard.SafeExit(1)
 		}
 		defer matrix.Wipe()
 		dirty := app.DirtySpell{Spell: cfg.Spell}
@@ -393,13 +393,13 @@ func main() { //nolint:gocyclo // main has high complexity due to mode switching
 		if err != nil {
 			matrix.Wipe()
 			fmt.Fprintf(os.Stderr, ErrInvalidSpell+": %v\n", err)
-			os.Exit(1)
+			memguard.SafeExit(1)
 		}
 		password, err := matrix.ExtractPassword(magic, cfg.MaxLen)
 		if err != nil {
 			matrix.Wipe()
 			fmt.Fprintf(os.Stderr, ErrExtractPassword+": %v\n", err)
-			os.Exit(1)
+			memguard.SafeExit(1)
 		}
 		defer password.Wipe()
 		if password.Len() > 0 {
@@ -414,4 +414,5 @@ func main() { //nolint:gocyclo // main has high complexity due to mode switching
 func runPasswordStrengthMode(masterPassword *app.SecureBytes) {
 	masterResult := app.CalculateMasterPasswordStrength(masterPassword.Bytes())
 	printStrengthTable(masterResult)
+	masterPassword.Wipe()
 }
