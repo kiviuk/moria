@@ -7,23 +7,9 @@ import (
 	"github.com/ccojocar/zxcvbn-go"
 )
 
-// Attack scenario speeds in guesses per second.
-
-// Generated password attack speeds (attacker has the leaked password hash).
-const (
-	OnlineRateLimited = uint64(1_000)
-	OfflineSlowHash   = uint64(10_000)
-	OfflineFastHash   = uint64(100_000_000_000)
-	GPUSupercluster   = uint64(25_000_000_000_000)
-)
-
 // Master password attack speeds (attacker must run Argon2id + HKDF per guess).
 // Argon2id with 64MB memory is memory-bandwidth bound, not compute bound.
-const (
-	MasterPasswordSingleCPU  = uint64(10)
-	MasterPasswordGPUSingle  = uint64(10_000)
-	MasterPasswordGPUCluster = uint64(100_000)
-)
+const MasterPasswordGPUCluster = uint64(100_000)
 
 // Uncrackable label returned when entropy exceeds displayable range.
 const Uncrackable = "effectively uncrackable"

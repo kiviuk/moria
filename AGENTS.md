@@ -103,7 +103,7 @@ moria -h
 
 ### Naming Conventions
 - **Exported types:** `PascalCase` — `MagicLetter`, `QueryLetter`, `MagicSpell`, `DirtySpell`, `Matrix`, `ParseError`, `Errors`
-- **Exported constants:** `PascalCase` — `PasswordMatrixRows`, `CharactersPerMatrixCell`, `AlphabetSize`, `MaxLetterGroups`, `PasswordMatrixColumns`, `MasterPasswordChars`, `MatrixBytes`, `CharsetBits`, `LiveModeWrapWidth`
+- **Exported constants:** `PascalCase` — `PasswordMatrixRows`, `CharactersPerMatrixCell`, `AlphabetSize`, `MaxLetterGroups`, `PasswordMatrixColumns`, `MasterPasswordChars`, `MatrixBytes`, `LiveModeWrapWidth`
 - **Exported functions:** `PascalCase` — `IsAllowedSpellChar()`, `LetterGroup()`, `ModN()`, `GenerateMasterPassword()`, `NewMatrix()`, `ColHeader()`, `ExpandToMatrix()`, `ExtractPassword()`, `FormatSecondsCompact()`, `CalculateMasterPasswordEntropy()`, `CalculateMasterPasswordStrength()`
 - **Unexported:** `camelCase` — `cell()`, `mapStringSourceToAlphabet()`, `newTestMatrix()`, `getPassword()`, `wrapWithIndent()`
 - **Test functions:** `Test<TypeName>_<Method>_<Scenario>` — e.g., `TestDirtySpell_Parse_Valid`
