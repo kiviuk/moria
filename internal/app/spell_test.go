@@ -327,11 +327,15 @@ func TestQueryLetter_Grouping(t *testing.T) {
 	}
 }
 
-func TestMagicSpell_ExtractPassword_Digits(t *testing.T) {
+func TestMatrix_ExtractPassword_Digits(t *testing.T) {
 	// Verify digits map to group 0 and extract correct cells from the test matrix
 	matrix := newTestMatrix()
-	spell := MagicSpell{Spell: "1111"}
-	password, err := spell.ExtractPassword(matrix, 0) // 0 = no truncation
+	dirty := DirtySpell{Spell: "1111"}
+	spell, err := dirty.Parse()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	password, err := matrix.ExtractPassword(spell, 0) // 0 = no truncation
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -346,11 +350,15 @@ func TestMagicSpell_ExtractPassword_Digits(t *testing.T) {
 	}
 }
 
-func TestMagicSpell_ExtractPassword_OnePerGroup(t *testing.T) {
+func TestMatrix_ExtractPassword_OnePerGroup(t *testing.T) {
 	// Verify one letter from each group extracts cells across different columns
 	matrix := newTestMatrix()
-	spell := MagicSpell{Spell: "adgjmpsvy"}
-	password, err := spell.ExtractPassword(matrix, 0) // 0 = no truncation
+	dirty := DirtySpell{Spell: "adgjmpsvy"}
+	spell, err := dirty.Parse()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	password, err := matrix.ExtractPassword(spell, 0) // 0 = no truncation
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -368,16 +376,20 @@ func TestMagicSpell_ExtractPassword_OnePerGroup(t *testing.T) {
 	}
 }
 
-func TestMagicSpell_ExtractPassword_Spaces(t *testing.T) {
+func TestMatrix_ExtractPassword_Spaces(t *testing.T) {
 	// Verify spaces map to group 0 same as digits, extracting identical cells
 	matrix := newTestMatrix()
-	spell := MagicSpell{Spell: " "}
-	password, err := spell.ExtractPassword(matrix, 0) // 0 = no truncation
+	dirty := DirtySpell{Spell: " "}
+	spell, err := dirty.Parse()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	password, err := matrix.ExtractPassword(spell, 0) // 0 = no truncation
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	defer password.Wipe()
-	// " " is one space so only 1 cell is used, not 4
+	// " " is one space so only 1 cell is used
 	expected := matrix[0][0]
 	if !bytes.Equal(password.Bytes(), expected) {
 		t.Errorf("expected %q, got %q", expected, password.Bytes())
@@ -409,27 +421,41 @@ func TestQueryLetter_CaseSensitiveRow(t *testing.T) {
 	}
 }
 
-func TestExtractPassword_CaseSensitive(t *testing.T) {
+func TestMatrix_ExtractPassword_CaseSensitive(t *testing.T) {
 	// Verify that changing case of letters produces different passwords
 	matrix := newTestMatrix()
 
-	spellLower := MagicSpell{Spell: "amazon"}
-	spellUpper := MagicSpell{Spell: "AMAZON"}
-	spellMixed := MagicSpell{Spell: "AmAzOn"}
+	dirtyLower := DirtySpell{Spell: "amazon"}
+	spellLower, err := dirtyLower.Parse()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
 
-	passLower, err := spellLower.ExtractPassword(matrix, 0) // 0 = no truncation
+	dirtyUpper := DirtySpell{Spell: "AMAZON"}
+	spellUpper, err := dirtyUpper.Parse()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	dirtyMixed := DirtySpell{Spell: "AmAzOn"}
+	spellMixed, err := dirtyMixed.Parse()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	passLower, err := matrix.ExtractPassword(spellLower, 0) // 0 = no truncation
 	if err != nil {
 		t.Fatalf("unexpected error for lowercase: %v", err)
 	}
 	defer passLower.Wipe()
 
-	passUpper, err := spellUpper.ExtractPassword(matrix, 0) // 0 = no truncation
+	passUpper, err := matrix.ExtractPassword(spellUpper, 0) // 0 = no truncation
 	if err != nil {
 		t.Fatalf("unexpected error for uppercase: %v", err)
 	}
 	defer passUpper.Wipe()
 
-	passMixed, err := spellMixed.ExtractPassword(matrix, 0) // 0 = no truncation
+	passMixed, err := matrix.ExtractPassword(spellMixed, 0) // 0 = no truncation
 	if err != nil {
 		t.Fatalf("unexpected error for mixed case: %v", err)
 	}
@@ -446,10 +472,14 @@ func TestExtractPassword_CaseSensitive(t *testing.T) {
 	}
 }
 
-func TestMagicSpell_ExtractPassword_Truncation(t *testing.T) {
+func TestMatrix_ExtractPassword_Truncation(t *testing.T) {
 	// Verify truncation works correctly at various lengths including mid-cell boundaries
 	matrix := newTestMatrix()
-	spell := MagicSpell{Spell: "aaaa"} // 4 cells = 12 characters (at CharactersPerMatrixCell=3)
+	dirty := DirtySpell{Spell: "aaaa"}
+	spell, err := dirty.Parse()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
 
 	tests := []struct {
 		name     string
@@ -466,7 +496,7 @@ func TestMagicSpell_ExtractPassword_Truncation(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			password, err := spell.ExtractPassword(matrix, tt.maxLen)
+			password, err := matrix.ExtractPassword(spell, tt.maxLen)
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}

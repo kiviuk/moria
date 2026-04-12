@@ -70,6 +70,46 @@ func (m *Matrix) Wipe() {
 	}
 }
 
+// ExtractPassword generates the final password by reading cells from the matrix
+// along the path defined by the spell. Each character in the spell contributes
+// CharactersPerMatrixCell characters to the output.
+// If maxLen > 0, the password is truncated to at most maxLen characters.
+// Returns a SecureBytes that can be securely wiped when no longer needed.
+func (m Matrix) ExtractPassword(spell MagicSpell, maxLen int) (*SecureBytes, error) {
+	letters := spell.MagicLetters()
+
+	// Pre-calculate capacity to avoid reallocations
+	capacity := len(letters) * CharactersPerMatrixCell
+	if maxLen > 0 && maxLen < capacity {
+		capacity = maxLen
+	}
+
+	password := make([]byte, 0, capacity)
+	currentLen := 0
+
+	for _, l := range letters {
+		query := l.Query()
+		cell, err := m.Cell(query)
+		if err != nil {
+			memguard.WipeBytes(password)
+			return nil, err
+		}
+
+		// Check if we need to truncate this cell
+		if maxLen > 0 && currentLen+len(cell) > maxLen {
+			// Only take what fits to reach maxLen
+			remaining := maxLen - currentLen
+			password = append(password, cell[:remaining]...)
+			break
+		}
+
+		password = append(password, cell...)
+		currentLen += len(cell)
+	}
+
+	return NewSecureBytes(password), nil
+}
+
 // Pretty returns a human-readable string representation of the matrix.
 // Column headers are computed dynamically from AlphabetSize and CharactersPerMatrixCell.
 func (m Matrix) Pretty() string {

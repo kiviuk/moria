@@ -3,8 +3,6 @@ package app
 import (
 	"fmt"
 	"strings"
-
-	"github.com/awnumar/memguard"
 )
 
 // MagicLetter represents a single character from a validated spell, paired with
@@ -162,44 +160,4 @@ func (m MagicLetter) Query() QueryLetter {
 		MatrixRow:   row,
 		LetterGroup: LetterGroup(m.Letter),
 	}
-}
-
-// ExtractPassword generates the final password by reading cells from the matrix
-// along the path defined by the spell. Each character in the spell contributes
-// CharactersPerMatrixCell characters to the output.
-// If maxLen > 0, the password is truncated to at most maxLen characters.
-// Returns a SecureBytes that can be securely wiped when no longer needed.
-func (m MagicSpell) ExtractPassword(matrix Matrix, maxLen int) (*SecureBytes, error) {
-	letters := m.MagicLetters()
-
-	// Pre-calculate capacity to avoid reallocations
-	capacity := len(letters) * CharactersPerMatrixCell
-	if maxLen > 0 && maxLen < capacity {
-		capacity = maxLen
-	}
-
-	password := make([]byte, 0, capacity)
-	currentLen := 0
-
-	for _, l := range letters {
-		query := l.Query()
-		cell, err := matrix.Cell(query)
-		if err != nil {
-			memguard.WipeBytes(password)
-			return nil, err
-		}
-
-		// Check if we need to truncate this cell
-		if maxLen > 0 && currentLen+len(cell) > maxLen {
-			// Only take what fits to reach maxLen
-			remaining := maxLen - currentLen
-			password = append(password, cell[:remaining]...)
-			break
-		}
-
-		password = append(password, cell...)
-		currentLen += len(cell)
-	}
-
-	return NewSecureBytes(password), nil
 }

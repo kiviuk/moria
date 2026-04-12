@@ -350,7 +350,7 @@ func main() { //nolint:gocyclo // main has high complexity due to mode switching
 			fmt.Fprintf(os.Stderr, ErrInvalidSpell+": %v\n", err)
 			os.Exit(1)
 		}
-		password, err := magic.ExtractPassword(matrix, cfg.MaxLen)
+		password, err := matrix.ExtractPassword(magic, cfg.MaxLen)
 		if err != nil {
 			matrix.Wipe()
 			fmt.Fprintf(os.Stderr, ErrExtractPassword+": %v\n", err)

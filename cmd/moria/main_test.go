@@ -97,7 +97,7 @@ func TestBatchMode_MaxLen(t *testing.T) {
 	}
 
 	// Test with no truncation (maxLen = 0)
-	password, err := spell.ExtractPassword(matrix, 0)
+	password, err := matrix.ExtractPassword(spell, 0)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -126,7 +126,7 @@ func TestBatchMode_MaxLen(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		result, err := spell.ExtractPassword(matrix, tt.maxLen)
+		result, err := matrix.ExtractPassword(spell, tt.maxLen)
 		if err != nil {
 			t.Errorf("maxLen=%d: unexpected error: %v", tt.maxLen, err)
 			continue
@@ -338,7 +338,7 @@ func TestBatchMode_OutputNoNewline(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	password, err := spell.ExtractPassword(matrix, 0) // 0 = no truncation
+	password, err := matrix.ExtractPassword(spell, 0) // 0 = no truncation
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}

@@ -333,7 +333,7 @@ func TestExtractPassword_Integration(t *testing.T) {
 		t.Fatalf("unexpected error parsing spell: %v", err)
 	}
 
-	password, err := spell.ExtractPassword(matrix, 0) // 0 = no truncation
+	password, err := matrix.ExtractPassword(spell, 0) // 0 = no truncation
 	if err != nil {
 		t.Fatalf("unexpected error extracting password: %v", err)
 	}
