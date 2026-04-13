@@ -56,14 +56,20 @@ const (
 
 // Live mode UI strings.
 const (
+	// PasswordPromptLabel is the label prefix for password display (used for calculating wrap indentation).
+	// Aligned with the first matrix column (after colWidth spaces).
+	PasswordPromptLabel = "    Password: "
+	// SpellPromptLabel is the label prefix for spell display (used for calculating wrap indentation).
+	// Aligned with the first matrix column (after colWidth spaces).
+	SpellPromptLabel = "    Spell:    "
 	// MsgSpellPrompt is the format string for the spell display line.
-	MsgSpellPrompt = "  Spell:    %s%s\n"
+	MsgSpellPrompt = SpellPromptLabel + "%s%s\n"
 	// MsgPasswordWithMaxLen is the format string for password display with max length.
-	MsgPasswordWithMaxLen = "  Password: %s (%d/%d)\n" //nolint:gosec // "Password" refers to the generated password, not a credential
+	MsgPasswordWithMaxLen = PasswordPromptLabel + "%s (%d/%d)\n" //nolint:gosec // "Password" refers to the generated password, not a credential
 	// MsgPasswordNoMaxLen is the format string for password display without max length.
-	MsgPasswordNoMaxLen = "  Password: %s (%d)\n" //nolint:gosec // "Password" refers to the generated password, not a credential
+	MsgPasswordNoMaxLen = PasswordPromptLabel + "%s (%d)\n" //nolint:gosec // "Password" refers to the generated password, not a credential
 	// MsgLiveHint is the hint line shown at the bottom of live mode.
-	MsgLiveHint = "  [Backspace] delete  [Enter] finish  [Ctrl+C]|[ESC] quit"
+	MsgLiveHint = "    [Backspace] delete [Enter] finish [Ctrl+C]|[ESC] quit"
 	// MsgLiveError is the format string for error display in live mode.
 	MsgLiveError = "  %s\n"
 )

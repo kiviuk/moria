@@ -297,7 +297,7 @@ func main() {
 	memguard.SafeExit(run())
 }
 
-func run() int { //nolint:gocyclo // run has high complexity due to mode switching
+func run() int {
 	if len(os.Args) < 2 {
 		printUsage()
 		return 0

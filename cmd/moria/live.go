@@ -283,7 +283,8 @@ func (m liveModel) View() string {
 	} else {
 		cursor = " "
 	}
-	spellChunks := wrapWithIndent(string(m.spell), app.LiveModeWrapWidth, " ")
+	spellIndent := strings.Repeat(" ", len(SpellPromptLabel))
+	spellChunks := wrapWithIndent(string(m.spell), app.LiveModeWrapWidth-len(SpellPromptLabel), spellIndent)
 	for i, chunk := range spellChunks {
 		isLast := i == len(spellChunks)-1
 		if i == 0 {
@@ -325,7 +326,10 @@ func (m liveModel) View() string {
 // Single-line: label + length counter on one line.
 // Multi-line: first line gets "Password:" label, last line gets length counter, middle are just chunks.
 func (m liveModel) renderPasswordChunks(sb *strings.Builder, withMaxLen bool) {
-	wrappedPass := wrapWithIndent(string(m.password), app.LiveModeWrapWidth, " ")
+	passwordIndent := strings.Repeat(" ", len(PasswordPromptLabel))
+	// Calculate available width for content (excluding label)
+	contentWidth := app.LiveModeWrapWidth - len(PasswordPromptLabel)
+	wrappedPass := wrapWithIndent(string(m.password), contentWidth, passwordIndent)
 
 	// Single-line: one line with both label and length counter
 	if len(wrappedPass) == 1 {
@@ -343,11 +347,11 @@ func (m liveModel) renderPasswordChunks(sb *strings.Builder, withMaxLen bool) {
 
 		// First line: prepend "Password:" label
 		if i == 0 {
-			fmt.Fprintf(sb, "  Password: %s\n", passStyle.Render(chunk))
+			fmt.Fprintf(sb, "%s%s\n", PasswordPromptLabel, passStyle.Render(chunk))
 			continue
 		}
 
-		// Last line: append length counter
+		// Last line: append length counter (chunk already has indent from wrapWithIndent)
 		if isLast {
 			if withMaxLen {
 				fmt.Fprintf(sb, "%s (%d/%d)\n", passStyle.Render(chunk), len(m.password), m.maxLen)
@@ -357,7 +361,7 @@ func (m liveModel) renderPasswordChunks(sb *strings.Builder, withMaxLen bool) {
 			continue
 		}
 
-		// Middle lines: just the chunk
+		// Middle lines: just the chunk (already has indent from wrapWithIndent)
 		fmt.Fprintf(sb, "%s\n", passStyle.Render(chunk))
 	}
 }
