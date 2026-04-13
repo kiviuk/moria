@@ -393,8 +393,8 @@ func TestBatchMode_OutputNoNewline(t *testing.T) {
 }
 
 func TestGetMatrix_ValidInput(t *testing.T) {
-	matrixStr := testutil.NewTestMatrixData(app.PasswordMatrixRows, app.PasswordMatrixColumns, app.CharactersPerMatrixCell)
-	sb := app.NewSecureBytesFromString(matrixStr)
+	matrixData := testutil.NewTestMatrixData(app.PasswordMatrixRows, app.PasswordMatrixColumns, app.CharactersPerMatrixCell)
+	sb := app.NewSecureBytes(matrixData)
 	defer sb.Wipe()
 	matrix, err := getMatrix(sb)
 	if err != nil {

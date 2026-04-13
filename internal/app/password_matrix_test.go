@@ -178,7 +178,7 @@ func TestGenerateMasterPassword_NonDeterministic(t *testing.T) {
 
 func TestNewMatrix_LengthMismatch(t *testing.T) {
 	// Verify NewMatrix rejects strings of wrong length
-	_, err := NewMatrix("tooshort")
+	_, err := NewMatrix([]byte("tooshort"))
 	if err == nil {
 		t.Fatal("expected error for short string, got nil")
 	}
@@ -194,7 +194,7 @@ func TestNewMatrix_Population(t *testing.T) {
 	for row := 0; row < PasswordMatrixRows; row++ {
 		for col := 0; col < PasswordMatrixColumns; col++ {
 			start := (row*PasswordMatrixColumns + col) * CharactersPerMatrixCell
-			expected := []byte(input[start : start+CharactersPerMatrixCell])
+			expected := input[start : start+CharactersPerMatrixCell]
 			if !bytesEqual(m[row][col], expected) {
 				t.Errorf("m[%d][%d] = %q, expected %q", row, col, m[row][col], expected)
 			}
@@ -215,7 +215,7 @@ func TestMatrix_Cell(t *testing.T) {
 		{QueryLetter{MatrixRow: PasswordMatrixRows - 1, LetterGroup: PasswordMatrixColumns - 1}, m[PasswordMatrixRows-1][PasswordMatrixColumns-1]},
 	}
 	for _, tt := range tests {
-		got, err := m.Cell(tt.query)
+		got, err := m.PasswordFragment(tt.query)
 		if err != nil {
 			t.Errorf("Cell(%+v) unexpected error: %v", tt.query, err)
 		}
@@ -231,7 +231,7 @@ func TestMatrix_Cell_OutOfRangeRow(t *testing.T) {
 	tests := []int{-1, PasswordMatrixRows, 99}
 	for _, row := range tests {
 		query := QueryLetter{MatrixRow: row, LetterGroup: 0}
-		_, err := m.Cell(query)
+		_, err := m.PasswordFragment(query)
 		if err == nil {
 			t.Errorf("Cell with row %d expected error, got nil", row)
 		}
@@ -244,7 +244,7 @@ func TestMatrix_Cell_OutOfRangeCol(t *testing.T) {
 	tests := []int{-1, PasswordMatrixColumns, 99}
 	for _, col := range tests {
 		query := QueryLetter{MatrixRow: 0, LetterGroup: col}
-		_, err := m.Cell(query)
+		_, err := m.PasswordFragment(query)
 		if err == nil {
 			t.Errorf("Cell with col %d expected error, got nil", col)
 		}

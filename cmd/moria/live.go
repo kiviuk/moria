@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/awnumar/memguard"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 
@@ -52,17 +53,13 @@ var (
 )
 
 // liveModel holds the state for the interactive live mode TUI.
-// SECURITY LIMITATION: password and spell are stored as strings for TUI rendering.
-// Go strings are immutable - every keystroke creates new string allocations,
-// leaving intermediate password prefixes in memory until garbage collection.
-// This is a known limitation of the Bubbletea TUI framework which uses strings.
-// The Wipe() method clears references but cannot wipe the underlying memory.
+// spell and password are stored as []byte for secure memory wiping.
 type liveModel struct {
 	matrix            app.Matrix
 	masterPasswordRaw *app.SecureBytes
-	spell             string
+	spell             []byte
 	queryLetters      []app.QueryLetter
-	password          string
+	password          []byte
 	maxLen            int
 	pasteMode         PasteMode
 	state             LiveState
@@ -70,17 +67,15 @@ type liveModel struct {
 }
 
 // Wipe clears all sensitive data from the model.
-// Note: password and spell are strings (immutable) - only references are cleared.
-// queryLetters backing array is explicitly zeroed.
 func (m *liveModel) Wipe() {
 	if m.masterPasswordRaw != nil {
 		m.masterPasswordRaw.Wipe()
 	}
 	m.matrix.Wipe()
-	// Clear spell and password references (strings are immutable)
-	m.spell = ""
-	m.password = ""
-	// Zero out queryLetters backing array before setting to nil
+	memguard.WipeBytes(m.spell)
+	memguard.WipeBytes(m.password)
+	m.spell = nil
+	m.password = nil
 	for i := range m.queryLetters {
 		m.queryLetters[i] = app.QueryLetter{}
 	}
@@ -132,7 +127,7 @@ func (m liveModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 // The function handles backspace in live mode
 func (m liveModel) doBackspace() liveModel {
 	// Nothing to delete if spell is empty
-	if m.spell == "" {
+	if len(m.spell) == 0 {
 		return m
 	}
 
@@ -153,9 +148,9 @@ func (m liveModel) doBackspace() liveModel {
 		m.password = m.password[:expectedLen]
 	} else {
 		// State is corrupted - clear everything to maintain consistency
-		m.spell = ""
+		m.spell = nil
 		m.queryLetters = nil
-		m.password = ""
+		m.password = nil
 	}
 
 	m.state = StateNormal
@@ -190,7 +185,7 @@ func (m liveModel) doRunes(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		charStr := string(ch)
 		letter := app.MagicLetter{Letter: charStr, LetterPosition: len(m.spell)}
 		query := letter.Query()
-		cell, cellErr := m.matrix.Cell(query)
+		cell, cellErr := m.matrix.PasswordFragment(query)
 		if cellErr != nil {
 			m.err = cellErr.Error()
 			return m, nil
@@ -200,9 +195,9 @@ func (m liveModel) doRunes(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			remaining := m.maxLen - len(m.password)
 			cellStr = cellStr[:remaining]
 		}
-		m.spell += charStr
+		m.spell = append(m.spell, charStr...)
 		m.queryLetters = append(m.queryLetters, query)
-		m.password += cellStr
+		m.password = append(m.password, cellStr...)
 		m.state = StateNormal
 		m.err = ""
 	}
@@ -288,7 +283,7 @@ func (m liveModel) View() string {
 	} else {
 		cursor = " "
 	}
-	spellChunks := wrapWithIndent(m.spell, app.LiveModeWrapWidth, "            ")
+	spellChunks := wrapWithIndent(string(m.spell), app.LiveModeWrapWidth, " ")
 	for i, chunk := range spellChunks {
 		isLast := i == len(spellChunks)-1
 		if i == 0 {
@@ -330,7 +325,7 @@ func (m liveModel) View() string {
 // Single-line: label + length counter on one line.
 // Multi-line: first line gets "Password:" label, last line gets length counter, middle are just chunks.
 func (m liveModel) renderPasswordChunks(sb *strings.Builder, withMaxLen bool) {
-	wrappedPass := wrapWithIndent(m.password, app.LiveModeWrapWidth, "            ")
+	wrappedPass := wrapWithIndent(string(m.password), app.LiveModeWrapWidth, " ")
 
 	// Single-line: one line with both label and length counter
 	if len(wrappedPass) == 1 {

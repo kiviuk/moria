@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 
-	"github.com/awnumar/memguard"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 
@@ -56,13 +55,6 @@ func (m passwordModel) View() string {
 	)
 }
 
-func (m *passwordModel) Wipe() {
-	value := m.input.Value()
-	if value != "" {
-		memguard.WipeBytes([]byte(value))
-	}
-}
-
 func getPassword() (*app.SecureBytes, error) {
 	p := tea.NewProgram(newPasswordModel())
 
@@ -79,9 +71,10 @@ func getPassword() (*app.SecureBytes, error) {
 		return nil, pm.err
 	}
 
-	value := pm.input.Value()
-	sb := app.NewSecureBytesFromString(value)
-	pm.Wipe()
-
+	// Note: pm.input.Value() returns a string from textinput.
+	// Strings are immutable and cannot be securely wiped.
+	// This is a known limitation of the Bubbletea textinput component.
+	// The master password entered here will remain in memory until GC.
+	sb := app.NewSecureBytesFromString(pm.input.Value())
 	return sb, nil
 }

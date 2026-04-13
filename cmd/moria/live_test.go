@@ -132,8 +132,8 @@ func TestLiveModel_Paste_DefaultAllowsPasting(t *testing.T) {
 	m := newLiveModel(matrix, newTestMasterRaw(), 0, PasteAllowed)
 
 	m = simulateKey(m, "amazon")
-	if m.spell != "amazon" {
-		t.Errorf("expected spell 'amazon', got %q", m.spell)
+	if string(m.spell) != "amazon" {
+		t.Errorf("expected spell 'amazon', got %q", string(m.spell))
 	}
 	if len(m.password) != 6*app.CharactersPerMatrixCell {
 		t.Errorf("expected %d chars, got %d", 6*app.CharactersPerMatrixCell, len(m.password))
@@ -152,10 +152,10 @@ func TestLiveModel_Paste_IgnoredWhenFlagSet(t *testing.T) {
 	m := newLiveModel(matrix, newTestMasterRaw(), 0, PasteIgnored)
 
 	m = simulateKey(m, "amazon")
-	if m.spell != "" {
-		t.Errorf("expected empty spell (paste ignored), got %q", m.spell)
+	if len(m.spell) != 0 {
+		t.Errorf("expected empty spell (paste ignored), got %q", string(m.spell))
 	}
-	if m.password != "" {
+	if len(m.password) > 0 {
 		t.Errorf("expected empty password (paste ignored), got %q", m.password)
 	}
 	if m.err == "" {
@@ -169,8 +169,8 @@ func TestLiveModel_Paste_RespectsMaxLen(t *testing.T) {
 	m := newLiveModel(matrix, newTestMasterRaw(), 2*app.CharactersPerMatrixCell, PasteAllowed)
 
 	m = simulateKey(m, "amazon")
-	if m.spell != "am" {
-		t.Errorf("expected spell 'am' (stopped at maxLen), got %q", m.spell)
+	if string(m.spell) != "am" {
+		t.Errorf("expected spell 'am' (stopped at maxLen), got %q", string(m.spell))
 	}
 	if len(m.password) != 2*app.CharactersPerMatrixCell {
 		t.Errorf("expected %d chars (at maxLen), got %d", 2*app.CharactersPerMatrixCell, len(m.password))
@@ -186,8 +186,8 @@ func TestLiveModel_Paste_InvalidCharStops(t *testing.T) {
 	m := newLiveModel(matrix, newTestMasterRaw(), 0, PasteAllowed)
 
 	m = simulateKey(m, "a€b")
-	if m.spell != "a" {
-		t.Errorf("expected spell 'a' (stopped at invalid char), got %q", m.spell)
+	if string(m.spell) != "a" {
+		t.Errorf("expected spell 'a' (stopped at invalid char), got %q", string(m.spell))
 	}
 	if len(m.password) != app.CharactersPerMatrixCell {
 		t.Errorf("expected %d chars, got %d", app.CharactersPerMatrixCell, len(m.password))
@@ -203,14 +203,14 @@ func TestLiveModel_SingleKey_UnaffectedByFlag(t *testing.T) {
 
 	m := newLiveModel(matrix, newTestMasterRaw(), 0, PasteAllowed)
 	m = simulateKey(m, "a")
-	if m.spell != "a" {
-		t.Errorf("without flag: expected spell 'a', got %q", m.spell)
+	if string(m.spell) != "a" {
+		t.Errorf("without flag: expected spell 'a', got %q", string(m.spell))
 	}
 
 	m = newLiveModel(matrix, newTestMasterRaw(), 0, PasteIgnored)
 	m = simulateKey(m, "a")
-	if m.spell != "a" {
-		t.Errorf("with flag: expected spell 'a', got %q", m.spell)
+	if string(m.spell) != "a" {
+		t.Errorf("with flag: expected spell 'a', got %q", string(m.spell))
 	}
 }
 
@@ -225,8 +225,8 @@ func TestLiveModel_Space_SingleKey(t *testing.T) {
 	m = result.(liveModel)
 	m = simulateKey(m, "b")
 
-	if m.spell != "a b" {
-		t.Errorf("expected spell 'a b', got %q", m.spell)
+	if string(m.spell) != "a b" {
+		t.Errorf("expected spell 'a b', got %q", string(m.spell))
 	}
 	if len(m.spell) != 3 {
 		t.Errorf("expected spell length 3, got %d", len(m.spell))
@@ -249,8 +249,8 @@ func TestLiveModel_Space_Pasted(t *testing.T) {
 
 	m = simulateKey(m, "hello world")
 
-	if m.spell != "hello world" {
-		t.Errorf("expected spell 'hello world', got %q", m.spell)
+	if string(m.spell) != "hello world" {
+		t.Errorf("expected spell 'hello world', got %q", string(m.spell))
 	}
 	if len(m.spell) != 11 {
 		t.Errorf("expected spell length 11, got %d", len(m.spell))
@@ -298,21 +298,21 @@ func TestLiveModel_Space_Backspace(t *testing.T) {
 	m = simulateKey(m, "a")
 	m = simulateKey(m, " ")
 	m = simulateKey(m, "b")
-	if m.spell != "a b" {
-		t.Fatalf("setup failed: expected 'a b', got %q", m.spell)
+	if string(m.spell) != "a b" {
+		t.Fatalf("setup failed: expected 'a b', got %q", string(m.spell))
 	}
 
 	m = simulateBackspace(m)
-	if m.spell != "a " {
-		t.Errorf("after backspace: expected spell 'a ', got %q", m.spell)
+	if string(m.spell) != "a " {
+		t.Errorf("after backspace: expected spell 'a ', got %q", string(m.spell))
 	}
 	if len(m.password) != 2*app.CharactersPerMatrixCell {
 		t.Errorf("after backspace: expected %d chars, got %d", 2*app.CharactersPerMatrixCell, len(m.password))
 	}
 
 	m = simulateBackspace(m)
-	if m.spell != "a" {
-		t.Errorf("after 2nd backspace: expected spell 'a', got %q", m.spell)
+	if string(m.spell) != "a" {
+		t.Errorf("after 2nd backspace: expected spell 'a', got %q", string(m.spell))
 	}
 	if len(m.password) != app.CharactersPerMatrixCell {
 		t.Errorf("after 2nd backspace: expected %d chars, got %d", app.CharactersPerMatrixCell, len(m.password))

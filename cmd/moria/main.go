@@ -94,7 +94,7 @@ func flagPermittedInMode(allowedFlags []string, flagToCheck string) bool {
 }
 
 func getMatrix(master *app.SecureBytes) (app.Matrix, error) {
-	matrix, err := app.NewMatrix(master.String())
+	matrix, err := app.NewMatrix(master.Bytes())
 	if err != nil {
 		return app.Matrix{}, fmt.Errorf(ErrFailedCreateMatrix, err)
 	}
@@ -293,39 +293,43 @@ func formatGuessesPerSec(n uint64) string {
 	return fmt.Sprintf("%d", n)
 }
 
-func main() { //nolint:gocyclo // main has high complexity due to mode switching
+func main() {
+	memguard.SafeExit(run())
+}
+
+func run() int { //nolint:gocyclo // run has high complexity due to mode switching
 	if len(os.Args) < 2 {
 		printUsage()
-		memguard.SafeExit(0)
+		return 0
 	}
 
 	cfg, flags, err := parseArgs(os.Args[1:])
 	if err != nil {
 		fmt.Fprintf(os.Stderr, MsgErrorPrefix, err)
-		memguard.SafeExit(1)
+		return 1
 	}
 
 	if flags["--help"] {
 		printUsage()
-		memguard.SafeExit(0)
+		return 0
 	}
 
 	if err := validateConfig(cfg, flags); err != nil {
 		fmt.Fprintf(os.Stderr, MsgErrorPrefix, err)
-		memguard.SafeExit(1)
+		return 1
 	}
 
 	if cfg.Mode.needsStdin() {
 		master, err := readStdin()
 		if err != nil {
 			fmt.Fprintf(os.Stderr, MsgErrorPrefix, err)
-			memguard.SafeExit(1)
+			return 1
 		}
 		cfg.MasterRaw = master
 		expanded, err := app.ExpandToMatrix(master)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, MsgErrorPrefix, err)
-			memguard.SafeExit(1)
+			return 1
 		}
 		cfg.Master = expanded
 		defer cfg.Wipe()
@@ -336,7 +340,7 @@ func main() { //nolint:gocyclo // main has high complexity due to mode switching
 		master, err := app.GenerateMasterPassword(app.MatrixBytes, app.MasterPasswordChars)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, ErrFailedGenerateMaster+"\n", err)
-			memguard.SafeExit(1)
+			return 1
 		}
 		fmt.Print(master.String())
 		master.Wipe()
@@ -346,7 +350,7 @@ func main() { //nolint:gocyclo // main has high complexity due to mode switching
 		if err != nil {
 			matrix.Wipe()
 			fmt.Fprintln(os.Stderr, err)
-			memguard.SafeExit(1)
+			return 1
 		}
 		defer matrix.Wipe()
 		fmt.Print(matrix.Pretty())
@@ -356,7 +360,7 @@ func main() { //nolint:gocyclo // main has high complexity due to mode switching
 		if err != nil {
 			matrix.Wipe()
 			fmt.Fprintln(os.Stderr, err)
-			memguard.SafeExit(1)
+			return 1
 		}
 		defer matrix.Wipe()
 		pasteMode := PasteAllowed
@@ -367,10 +371,9 @@ func main() { //nolint:gocyclo // main has high complexity due to mode switching
 		if err != nil {
 			matrix.Wipe()
 			fmt.Fprintf(os.Stderr, ErrLiveMode+": %v\n", err)
-			memguard.SafeExit(1)
+			return 1
 		}
-		password := finalModel.password
-		passwordBytes := []byte(password)
+		passwordBytes := finalModel.password
 		if cfg.MaxLen > 0 && len(passwordBytes) > cfg.MaxLen {
 			passwordBytes = passwordBytes[:cfg.MaxLen]
 		}
@@ -385,7 +388,7 @@ func main() { //nolint:gocyclo // main has high complexity due to mode switching
 		if err != nil {
 			matrix.Wipe()
 			fmt.Fprintln(os.Stderr, err)
-			memguard.SafeExit(1)
+			return 1
 		}
 		defer matrix.Wipe()
 		dirty := app.DirtySpell{Spell: cfg.Spell}
@@ -393,13 +396,13 @@ func main() { //nolint:gocyclo // main has high complexity due to mode switching
 		if err != nil {
 			matrix.Wipe()
 			fmt.Fprintf(os.Stderr, ErrInvalidSpell+": %v\n", err)
-			memguard.SafeExit(1)
+			return 1
 		}
 		password, err := matrix.ExtractPassword(magic, cfg.MaxLen)
 		if err != nil {
 			matrix.Wipe()
 			fmt.Fprintf(os.Stderr, ErrExtractPassword+": %v\n", err)
-			memguard.SafeExit(1)
+			return 1
 		}
 		defer password.Wipe()
 		if password.Len() > 0 {
@@ -409,6 +412,7 @@ func main() { //nolint:gocyclo // main has high complexity due to mode switching
 	case ModeShowPasswordStrength:
 		runPasswordStrengthMode(cfg.MasterRaw)
 	}
+	return 0
 }
 
 func runPasswordStrengthMode(masterPassword *app.SecureBytes) {

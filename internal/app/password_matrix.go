@@ -20,11 +20,11 @@ import (
 type Matrix [PasswordMatrixRows][PasswordMatrixColumns][]byte
 
 // Matrix factory distributes a random string into the 2D matrix using arithmetic.
-// The random string must be exactly PasswordMatrixRows * PasswordMatrixColumns * CharactersPerMatrixCell bytes.
-func NewMatrix(randomString string) (Matrix, error) {
+// The random data must be exactly PasswordMatrixRows * PasswordMatrixColumns * CharactersPerMatrixCell bytes.
+func NewMatrix(randomData []byte) (Matrix, error) {
 	expectedLen := MatrixBytes
-	if len(randomString) != expectedLen {
-		return Matrix{}, fmt.Errorf("random string length %d, expected %d", len(randomString), expectedLen)
+	if len(randomData) != expectedLen {
+		return Matrix{}, fmt.Errorf("random data length %d, expected %d", len(randomData), expectedLen)
 	}
 	var m Matrix
 	for row := range PasswordMatrixRows {
@@ -32,21 +32,21 @@ func NewMatrix(randomString string) (Matrix, error) {
 			start := (row*PasswordMatrixColumns + col) * CharactersPerMatrixCell
 			// Copy the data into a new slice to ensure each cell owns its own memory
 			m[row][col] = make([]byte, CharactersPerMatrixCell)
-			copy(m[row][col], randomString[start:start+CharactersPerMatrixCell])
+			copy(m[row][col], randomData[start:start+CharactersPerMatrixCell])
 		}
 	}
 	return m, nil
 }
 
-// Cell returns the password fragment for a resolved query letter.
+// PasswordFragment returns the password fragment for a resolved query letter.
 // The row is guaranteed valid by the QueryLetter type, but the column is still validated defensively.
-func (m Matrix) Cell(t QueryLetter) ([]byte, error) {
-	return m.cell(t.MatrixRow, t.LetterGroup)
+func (m Matrix) PasswordFragment(t QueryLetter) ([]byte, error) {
+	return m.passwordFragmentAt(t.MatrixRow, t.LetterGroup)
 }
 
-// cell returns the password fragment at the given row and column.
+// passwordFragmentAt returns the password fragment at the given row and column.
 // Index validation is performed here as a defensive measure, even if input was validated upstream.
-func (m Matrix) cell(row, col int) ([]byte, error) {
+func (m Matrix) passwordFragmentAt(row, col int) ([]byte, error) {
 	if row < 0 || row >= PasswordMatrixRows {
 		return nil, fmt.Errorf("row %d out of range [0, %d)", row, PasswordMatrixRows)
 	}
@@ -89,7 +89,7 @@ func (m Matrix) ExtractPassword(spell MagicSpell, maxLen int) (*SecureBytes, err
 
 	for _, l := range letters {
 		query := l.Query()
-		cell, err := m.Cell(query)
+		cell, err := m.PasswordFragment(query)
 		if err != nil {
 			memguard.WipeBytes(password)
 			return nil, err
@@ -107,7 +107,9 @@ func (m Matrix) ExtractPassword(spell MagicSpell, maxLen int) (*SecureBytes, err
 		currentLen += len(cell)
 	}
 
-	return NewSecureBytes(password), nil
+	sb := NewSecureBytes(password)
+	memguard.WipeBytes(password)
+	return sb, nil
 }
 
 // Pretty returns a human-readable string representation of the matrix.
@@ -151,7 +153,9 @@ func GenerateMasterPassword(length int, pool string) (*SecureBytes, error) {
 	if err != nil {
 		return nil, err
 	}
-	return NewSecureBytes(result), nil
+	sb := NewSecureBytes(result)
+	memguard.WipeBytes(result)
+	return sb, nil
 }
 
 // mapBytesSourceToAlphabet maps bytes from an io.Reader to an alphabet using rejection sampling.
