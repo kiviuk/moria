@@ -89,22 +89,22 @@ func (m Matrix) ExtractPassword(spell MagicSpell, maxLen int) (*SecureBytes, err
 
 	for _, l := range letters {
 		query := l.Query()
-		cell, err := m.PasswordFragment(query)
+		passwordFragmentCell, err := m.PasswordFragment(query)
 		if err != nil {
 			memguard.WipeBytes(password)
 			return nil, err
 		}
 
-		// Check if we need to truncate this cell
-		if maxLen > 0 && currentLen+len(cell) > maxLen {
+		// Check if we need to truncate this password fragment
+		if maxLen > 0 && currentLen+len(passwordFragmentCell) > maxLen {
 			// Only take what fits to reach maxLen
 			remaining := maxLen - currentLen
-			password = append(password, cell[:remaining]...)
+			password = append(password, passwordFragmentCell[:remaining]...)
 			break
 		}
 
-		password = append(password, cell...)
-		currentLen += len(cell)
+		password = append(password, passwordFragmentCell...)
+		currentLen += len(passwordFragmentCell)
 	}
 
 	sb := NewSecureBytes(password)

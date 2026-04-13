@@ -185,19 +185,19 @@ func (m liveModel) doRunes(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		charStr := string(ch)
 		letter := app.MagicLetter{Letter: charStr, LetterPosition: len(m.spell)}
 		query := letter.Query()
-		cell, cellErr := m.matrix.PasswordFragment(query)
-		if cellErr != nil {
-			m.err = cellErr.Error()
+		passwordFragmentCell, err := m.matrix.PasswordFragment(query)
+		if err != nil {
+			m.err = err.Error()
 			return m, nil
 		}
-		cellToAdd := cell
-		if m.maxLen > 0 && len(m.password)+len(cellToAdd) > m.maxLen {
+		passwordFragmentToAdd := passwordFragmentCell
+		if m.maxLen > 0 && len(m.password)+len(passwordFragmentToAdd) > m.maxLen {
 			remaining := m.maxLen - len(m.password)
-			cellToAdd = cellToAdd[:remaining]
+			passwordFragmentToAdd = passwordFragmentToAdd[:remaining]
 		}
 		m.spell = append(m.spell, charStr...)
 		m.queryLetters = append(m.queryLetters, query)
-		m.password = append(m.password, cellToAdd...)
+		m.password = append(m.password, passwordFragmentToAdd...)
 		m.state = StateNormal
 		m.err = ""
 	}
@@ -264,12 +264,12 @@ func (m liveModel) View() string {
 	for row := range app.PasswordMatrixRows {
 		fmt.Fprintf(&sb, "%s", rowNumStyle.Render(fmt.Sprintf("%d", row)))
 		for col := range app.PasswordMatrixColumns {
-			cell := string(m.matrix[row][col])
+			visualCell := string(m.matrix[row][col])
 			key := fmt.Sprintf("%d-%d", row, col)
 			if visited[key] {
-				sb.WriteString(highlightStyle.Render(cell))
+				sb.WriteString(highlightStyle.Render(visualCell))
 			} else {
-				sb.WriteString(cellStyle.Render(cell))
+				sb.WriteString(cellStyle.Render(visualCell))
 			}
 		}
 		sb.WriteByte('\n')
