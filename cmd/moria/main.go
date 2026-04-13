@@ -335,81 +335,103 @@ func run() int {
 		defer cfg.Wipe()
 	}
 
+	return runMode(&cfg, flags)
+}
+
+func runMode(cfg *Config, flags map[string]bool) int {
 	switch cfg.Mode {
 	case ModeMagic:
-		master, err := app.GenerateMasterPassword(app.MatrixBytes, app.MasterPasswordChars)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, ErrFailedGenerateMaster+"\n", err)
-			return 1
-		}
-		fmt.Print(master.String())
-		master.Wipe()
-
+		return runMagicMode()
 	case ModePretty:
-		matrix, err := getMatrix(cfg.Master)
-		if err != nil {
-			matrix.Wipe()
-			fmt.Fprintln(os.Stderr, err)
-			return 1
-		}
-		defer matrix.Wipe()
-		fmt.Print(matrix.Pretty())
-
+		return runPrettyMode(cfg)
 	case ModeLive:
-		matrix, err := getMatrix(cfg.Master)
-		if err != nil {
-			matrix.Wipe()
-			fmt.Fprintln(os.Stderr, err)
-			return 1
-		}
-		defer matrix.Wipe()
-		pasteMode := PasteAllowed
-		if flags["--ignore-paste"] {
-			pasteMode = PasteIgnored
-		}
-		finalModel, err := LiveMode(matrix, cfg.MaxLen, pasteMode, cfg.MasterRaw)
-		if err != nil {
-			matrix.Wipe()
-			fmt.Fprintf(os.Stderr, ErrLiveMode+": %v\n", err)
-			return 1
-		}
-		passwordBytes := finalModel.password
-		if cfg.MaxLen > 0 && len(passwordBytes) > cfg.MaxLen {
-			passwordBytes = passwordBytes[:cfg.MaxLen]
-		}
-		if len(passwordBytes) > 0 {
-			os.Stdout.Write(passwordBytes)
-		}
-		finalModel.Wipe()
-
+		return runLiveMode(cfg, flags)
 	case ModeBatch:
-		matrix, err := getMatrix(cfg.Master)
-		if err != nil {
-			matrix.Wipe()
-			fmt.Fprintln(os.Stderr, err)
-			return 1
-		}
-		defer matrix.Wipe()
-		dirty := app.DirtySpell{Spell: cfg.Spell}
-		magic, err := dirty.Parse()
-		if err != nil {
-			matrix.Wipe()
-			fmt.Fprintf(os.Stderr, ErrInvalidSpell+": %v\n", err)
-			return 1
-		}
-		password, err := matrix.ExtractPassword(magic, cfg.MaxLen)
-		if err != nil {
-			matrix.Wipe()
-			fmt.Fprintf(os.Stderr, ErrExtractPassword+": %v\n", err)
-			return 1
-		}
-		defer password.Wipe()
-		if password.Len() > 0 {
-			os.Stdout.Write(password.Bytes())
-		}
-
+		return runBatchMode(cfg)
 	case ModeShowPasswordStrength:
 		runPasswordStrengthMode(cfg.MasterRaw)
+		return 0
+	default:
+		return 0
+	}
+}
+
+func runMagicMode() int {
+	master, err := app.GenerateMasterPassword(app.MatrixBytes, app.MasterPasswordChars)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, ErrFailedGenerateMaster+"\n", err)
+		return 1
+	}
+	fmt.Print(master.String())
+	master.Wipe()
+	return 0
+}
+
+func runPrettyMode(cfg *Config) int {
+	matrix, err := getMatrix(cfg.Master)
+	if err != nil {
+		matrix.Wipe()
+		fmt.Fprintln(os.Stderr, err)
+		return 1
+	}
+	defer matrix.Wipe()
+	fmt.Print(matrix.Pretty())
+	return 0
+}
+
+func runLiveMode(cfg *Config, flags map[string]bool) int {
+	matrix, err := getMatrix(cfg.Master)
+	if err != nil {
+		matrix.Wipe()
+		fmt.Fprintln(os.Stderr, err)
+		return 1
+	}
+	defer matrix.Wipe()
+	pasteMode := PasteAllowed
+	if flags["--ignore-paste"] {
+		pasteMode = PasteIgnored
+	}
+	finalModel, err := LiveMode(matrix, cfg.MaxLen, pasteMode, cfg.MasterRaw)
+	if err != nil {
+		matrix.Wipe()
+		fmt.Fprintf(os.Stderr, ErrLiveMode+": %v\n", err)
+		return 1
+	}
+	passwordBytes := finalModel.password
+	if cfg.MaxLen > 0 && len(passwordBytes) > cfg.MaxLen {
+		passwordBytes = passwordBytes[:cfg.MaxLen]
+	}
+	if len(passwordBytes) > 0 {
+		os.Stdout.Write(passwordBytes)
+	}
+	finalModel.Wipe()
+	return 0
+}
+
+func runBatchMode(cfg *Config) int {
+	matrix, err := getMatrix(cfg.Master)
+	if err != nil {
+		matrix.Wipe()
+		fmt.Fprintln(os.Stderr, err)
+		return 1
+	}
+	defer matrix.Wipe()
+	dirty := app.DirtySpell{Spell: cfg.Spell}
+	magic, err := dirty.Parse()
+	if err != nil {
+		matrix.Wipe()
+		fmt.Fprintf(os.Stderr, ErrInvalidSpell+": %v\n", err)
+		return 1
+	}
+	password, err := matrix.ExtractPassword(magic, cfg.MaxLen)
+	if err != nil {
+		matrix.Wipe()
+		fmt.Fprintf(os.Stderr, ErrExtractPassword+": %v\n", err)
+		return 1
+	}
+	defer password.Wipe()
+	if password.Len() > 0 {
+		os.Stdout.Write(password.Bytes())
 	}
 	return 0
 }

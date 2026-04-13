@@ -52,9 +52,9 @@ var (
 	hintStyle      = lipgloss.NewStyle().Foreground(colorGray)
 )
 
-// liveModel holds the state for the interactive live mode TUI.
+// LiveModel holds the state for the interactive live mode TUI.
 // spell and password are stored as []byte for secure memory wiping.
-type liveModel struct {
+type LiveModel struct {
 	matrix            app.Matrix
 	masterPasswordRaw *app.SecureBytes
 	spell             []byte
@@ -67,7 +67,7 @@ type liveModel struct {
 }
 
 // Wipe clears all sensitive data from the model.
-func (m *liveModel) Wipe() {
+func (m *LiveModel) Wipe() {
 	if m.masterPasswordRaw != nil {
 		m.masterPasswordRaw.Wipe()
 	}
@@ -83,9 +83,9 @@ func (m *liveModel) Wipe() {
 	m.err = ""
 }
 
-// newLiveModel creates a liveModel initialized with the given matrix and settings.
-func newLiveModel(matrix app.Matrix, masterPasswordRaw *app.SecureBytes, maxLen int, pasteMode PasteMode) liveModel {
-	return liveModel{
+// newLiveModel creates a LiveModel initialized with the given matrix and settings.
+func newLiveModel(matrix app.Matrix, masterPasswordRaw *app.SecureBytes, maxLen int, pasteMode PasteMode) LiveModel {
+	return LiveModel{
 		matrix:            matrix,
 		masterPasswordRaw: masterPasswordRaw,
 		queryLetters:      make([]app.QueryLetter, 0),
@@ -96,12 +96,12 @@ func newLiveModel(matrix app.Matrix, masterPasswordRaw *app.SecureBytes, maxLen 
 }
 
 // Init is the Bubbletea model initialization. Returns nil for no initial command.
-func (m liveModel) Init() tea.Cmd {
+func (m LiveModel) Init() tea.Cmd {
 	return nil
 }
 
 // Update handles keyboard input and updates the model state.
-func (m liveModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m LiveModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	keyMsg, ok := msg.(tea.KeyMsg)
 	if !ok {
 		return m, nil
@@ -125,7 +125,7 @@ func (m liveModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 // The function handles backspace in live mode
-func (m liveModel) doBackspace() liveModel {
+func (m LiveModel) doBackspace() LiveModel {
 	// Nothing to delete if spell is empty
 	if len(m.spell) == 0 {
 		return m
@@ -159,7 +159,7 @@ func (m liveModel) doBackspace() liveModel {
 }
 
 // doRunes processes rune input (regular characters and space).
-func (m liveModel) doRunes(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+func (m LiveModel) doRunes(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	var runes []rune
 	if msg.Type == tea.KeySpace {
 		runes = []rune{' '}
@@ -238,7 +238,7 @@ func wrapWithIndent(text string, width int, indent string) []string {
 }
 
 // View renders the live mode TUI screen.
-func (m liveModel) View() string {
+func (m LiveModel) View() string {
 	var sb strings.Builder
 
 	// Header row
@@ -255,7 +255,7 @@ func (m liveModel) View() string {
 	}
 	sb.WriteByte('\n')
 
-	var visited map[string]bool = make(map[string]bool)
+	visited := make(map[string]bool)
 	for _, q := range m.queryLetters {
 		key := fmt.Sprintf("%d-%d", q.MatrixRow, q.LetterGroup)
 		visited[key] = true
@@ -325,7 +325,7 @@ func (m liveModel) View() string {
 // renderPasswordChunks renders the password with proper line wrapping and alignment.
 // Single-line: label + length counter on one line.
 // Multi-line: first line gets "Password:" label, last line gets length counter, middle are just chunks.
-func (m liveModel) renderPasswordChunks(sb *strings.Builder, withMaxLen bool) {
+func (m LiveModel) renderPasswordChunks(sb *strings.Builder, withMaxLen bool) {
 	passwordIndent := strings.Repeat(" ", len(PasswordPromptLabel))
 	// Calculate available width for content (excluding label)
 	contentWidth := app.LiveModeWrapWidth - len(PasswordPromptLabel)
@@ -369,21 +369,21 @@ func (m liveModel) renderPasswordChunks(sb *strings.Builder, withMaxLen bool) {
 // LiveMode starts the interactive live mode TUI and returns the final model state.
 // It runs the Bubbletea program with an alternate screen buffer.
 // Note: The caller is responsible for wiping the original matrix
-func LiveMode(matrix app.Matrix, maxLen int, pasteMode PasteMode, masterPasswordRaw *app.SecureBytes) (liveModel, error) {
+func LiveMode(matrix app.Matrix, maxLen int, pasteMode PasteMode, masterPasswordRaw *app.SecureBytes) (LiveModel, error) {
 	m := newLiveModel(matrix, masterPasswordRaw, maxLen, pasteMode)
 	p := tea.NewProgram(m, tea.WithAltScreen())
 
 	final, err := p.Run()
 	if err != nil {
-		return liveModel{}, err
+		return LiveModel{}, err
 	}
 
-	lm, ok := final.(liveModel)
+	lm, ok := final.(LiveModel)
 	if !ok {
-		return liveModel{}, errors.New(ErrUnexpectedModel)
+		return LiveModel{}, errors.New(ErrUnexpectedModel)
 	}
 
-	// Wipe the matrix in the liveModel to prevent sensitive data from lingering
+	// Wipe the matrix in the LiveModel to prevent sensitive data from lingering
 	lm.matrix.Wipe()
 
 	return lm, nil

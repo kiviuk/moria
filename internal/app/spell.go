@@ -91,12 +91,8 @@ func (d DirtySpell) Parse() (MagicSpell, error) {
 	}
 	var errs Errors
 	for i, r := range d.Spell {
-		s := string(r)
-		if s == "" {
-			continue
-		}
 		if !IsAllowedSpellChar(r) {
-			errs = append(errs, ParseError{Char: s, Position: i})
+			errs = append(errs, ParseError{Char: string(r), Position: i})
 		}
 	}
 	if len(errs) > 0 {
@@ -129,7 +125,7 @@ func LetterGroup(letter string) int {
 // MagicLetters converts the spell into a slice of MagicLetter values,
 // one for each character, preserving order and position.
 func (m MagicSpell) MagicLetters() []MagicLetter {
-	var letters []MagicLetter = make([]MagicLetter, len(m.Spell))
+	letters := make([]MagicLetter, len(m.Spell))
 	for i, r := range m.Spell {
 		letters[i] = MagicLetter{Letter: string(r), LetterPosition: i}
 	}

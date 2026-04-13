@@ -222,7 +222,7 @@ func TestLiveModel_Space_SingleKey(t *testing.T) {
 	m = simulateKey(m, "a")
 	// Can't use simulateKey(m, " ") here because we need the actual tea.KeySpace type.
 	result, _ := m.Update(tea.KeyMsg{Type: tea.KeySpace})
-	m = result.(liveModel)
+	m = result.(LiveModel)
 	m = simulateKey(m, "b")
 
 	if string(m.spell) != "a b" {
@@ -319,14 +319,14 @@ func TestLiveModel_Space_Backspace(t *testing.T) {
 	}
 }
 
-func simulateKey(m liveModel, key string) liveModel {
+func simulateKey(m LiveModel, key string) LiveModel {
 	result, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune(key)})
-	return result.(liveModel)
+	return result.(LiveModel)
 }
 
-func simulateBackspace(m liveModel) liveModel {
+func simulateBackspace(m LiveModel) LiveModel {
 	result, _ := m.Update(tea.KeyMsg{Type: tea.KeyBackspace})
-	return result.(liveModel)
+	return result.(LiveModel)
 }
 
 func TestWrapWithIndent_Short(t *testing.T) {

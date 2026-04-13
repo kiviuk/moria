@@ -33,9 +33,8 @@ func (m passwordModel) Init() tea.Cmd {
 func (m passwordModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 
-	switch msg := msg.(type) {
-	case tea.KeyMsg:
-		switch msg.Type {
+	if keyMsg, ok := msg.(tea.KeyMsg); ok {
+		switch keyMsg.Type {
 		case tea.KeyEnter:
 			return m, tea.Quit
 		case tea.KeyCtrlC, tea.KeyEsc:
