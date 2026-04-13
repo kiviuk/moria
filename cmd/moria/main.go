@@ -381,7 +381,6 @@ func run() int { //nolint:gocyclo // run has high complexity due to mode switchi
 			os.Stdout.Write(passwordBytes)
 		}
 		finalModel.Wipe()
-		memguard.WipeBytes(passwordBytes)
 
 	case ModeBatch:
 		matrix, err := getMatrix(cfg.Master)

@@ -190,14 +190,14 @@ func (m liveModel) doRunes(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.err = cellErr.Error()
 			return m, nil
 		}
-		cellStr := string(cell)
-		if m.maxLen > 0 && len(m.password)+len(cellStr) > m.maxLen {
+		cellToAdd := cell
+		if m.maxLen > 0 && len(m.password)+len(cellToAdd) > m.maxLen {
 			remaining := m.maxLen - len(m.password)
-			cellStr = cellStr[:remaining]
+			cellToAdd = cellToAdd[:remaining]
 		}
 		m.spell = append(m.spell, charStr...)
 		m.queryLetters = append(m.queryLetters, query)
-		m.password = append(m.password, cellStr...)
+		m.password = append(m.password, cellToAdd...)
 		m.state = StateNormal
 		m.err = ""
 	}
