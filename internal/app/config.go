@@ -36,6 +36,7 @@ const AllowedSpecialChars = `!@#$%^&*()-_=+[]{}|;:,.<>?/~` + " " + "`" + "'" + "
 const MasterPasswordChars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789@-_=+:%.^/,"
 
 // Argon2Salt is the salt used for Argon2id key derivation.
+// Users may personalize this value. But it must be consistent across all devices to generate the same password matrix.  
 const Argon2Salt = "moria-argon-salt-v1"
 
 // MatrixBytes is the exact number of characters needed for the matrix.

@@ -16,30 +16,35 @@ moria derives unique passwords from a single master secret and a memorable "spel
 
 ### Example
 
-Spell: `"phrase-i-can-remember"` (18 characters, including hyphens)
+Spell: `"phrase-i-can-remember"` (21 characters, including hyphens)
 
 | Char | Position | Row | Group | Column | Cell |
 |------|----------|-----|-------|--------|------|
 | p | 0 | 0 | 6 (PQR) | 6 | (0,6) |
-| w | 1 | 1 | 8 (VWX) | 8 | (1,8) |
-| d | 2 | 2 | 2 (DEF) | 2 | (2,2) |
-| - | 3 | 3 | 0 (Non) | 0 | (3,0) |
-| i | 4 | 4 | 3 (GHI) | 3 | (4,3) |
-| - | 5 | 5 | 0 (Non) | 0 | (5,0) |
-| c | 6 | 6 | 1 (ABC) | 1 | (6,1) |
-| a | 7 | 7 | 1 (ABC) | 1 | (7,1) |
-| n | 8 | 8 | 5 (MNO) | 5 | (8,5) |
-| - | 9 | 9 | 0 (Non) | 0 | (9,0) |
-| r | 10 | 10 | 6 (PQR) | 6 | (10,6) |
-| e | 11 | 11 | 2 (DEF) | 2 | (11,2) |
-| m | 12 | 12 | 5 (MNO) | 5 | (12,5) |
-| e | 13 | 13 | 2 (DEF) | 2 | (13,2) |
-| m | 14 | 14 | 5 (MNO) | 5 | (14,5) |
-| b | 15 | 15 | 1 (ABC) | 1 | (15,1) |
+| h | 1 | 1 | 3 (GHI) | 3 | (1,3) |
+| r | 2 | 2 | 6 (PQR) | 6 | (2,6) |
+| a | 3 | 3 | 1 (ABC) | 1 | (3,1) |
+| s | 4 | 4 | 7 (STU) | 7 | (4,7) |
+| e | 5 | 5 | 2 (DEF) | 2 | (5,2) |
+| - | 6 | 6 | 0 (Non) | 0 | (6,0) |
+| i | 7 | 7 | 3 (GHI) | 3 | (7,3) |
+| - | 8 | 8 | 0 (Non) | 0 | (8,0) |
+| c | 9 | 9 | 1 (ABC) | 1 | (9,1) |
+| a | 10 | 10 | 1 (ABC) | 1 | (10,1) |
+| n | 11 | 11 | 5 (MNO) | 5 | (11,5) |
+| - | 12 | 12 | 0 (Non) | 0 | (12,0) |
+| r | 13 | 13 | 6 (PQR) | 6 | (13,6) |
+| e | 14 | 14 | 2 (DEF) | 2 | (14,2) |
+| m | 15 | 15 | 5 (MNO) | 5 | (15,5) |
 | e | 16 | 16 | 2 (DEF) | 2 | (16,2) |
-| r | 17 | 17 | 6 (PQR) | 6 | (17,6) |
+| m | 17 | 17 | 5 (MNO) | 5 | (17,5) |
+| b | 18 | 18 | 1 (ABC) | 1 | (18,1) |
+| e | 19 | 19 | 2 (DEF) | 2 | (19,2) |
+| r | 20 | 0 | 6 (PQR) | 6 | (0,6) |
 
-Output: 18 cells × 3 chars = 54-character password.
+Note: position 20 wraps to row 0 (20 mod 20 = 0), the same row as 'p'.
+
+Output: 21 cells × 3 chars = 63-character password.
 
 ### Case Sensitivity
 
@@ -161,7 +166,7 @@ Takes any input (random string, passphrase, SSH key) and produces a 32-byte high
 
 ```go
 hkdfReader := hkdf.New(sha256.New, key, nil, []byte("moria-matrix-expansion"))
-matrix := mapStringSourceToAlphabet(hkdfReader, MasterPasswordChars, MatrixBytes)
+matrix := mapBytesSourceToAlphabet(hkdfReader, MasterPasswordChars, MatrixBytes)
 ```
 
 Expands the 32-byte key to 600 characters using HKDF (RFC 5869). The output is deterministic — same key always produces the same matrix.
@@ -205,12 +210,11 @@ Use `--show-strength` to check your master password:
 
 ```bash
 $ echo "i'm super hunger today" | moria --show-strength
-Master password entropy: 50 bits
+zxcvbn master password entropy: 50 bits
+
 zxcvbn crack time estimate (generic): centuries
-Time to guess (master password, via Argon2id):
-  Single CPU               1.8 million years
-  Single GPU               1.8 thousand years
-  GPU cluster              178 years
+
+Assuming attacker 100K guesses/sec and 50 bits (from zxcvbn), worst case: 357 years
 ```
 
 **zxcvbn** detects dictionary words, patterns, and common substitutions — giving a realistic entropy estimate rather than naive `length × charset` math.
@@ -222,12 +226,11 @@ When you run `moria --magic`, the tool bypasses human psychology entirely. It go
 ```bash
 $ moria --magic > master.txt
 $ cat master.txt | moria --show-strength
-Master password entropy: 3346 bits
+zxcvbn master password entropy: 3346 bits
+
 zxcvbn crack time estimate (generic): effectively uncrackable
-Time to guess (master password, via Argon2id):
-  Single CPU               effectively uncrackable
-  Single GPU               effectively uncrackable
-  GPU cluster              effectively uncrackable
+
+Assuming attacker 100K guesses/sec and 3346 bits (from zxcvbn), worst case: effectively uncrackable
 ```
 
 **Why did it score 3346 bits?**

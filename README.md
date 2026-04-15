@@ -1,9 +1,9 @@
 # moria
 
-A deterministic, matrix-based password generator for developers. Generate unique, strong passwords for every service/login/vault from a single master password and a memorable spell.
+A deterministic, matrix-based password generator for developers. Generate passwords from a single master secret and a memorable spell.
 
 ```
-Master Password (secret) + Spell (pass-phrase) → Unique Password
+Master Secret + Spell → Password
 ```
 
 Example: Your `id_ed25519` key grants access to GitHub? Use the same key to generate your GitHub password, personal access tokens, or other GitHub-related credentials.
@@ -12,7 +12,7 @@ Example: Your `id_ed25519` key grants access to GitHub? Use the same key to gene
 cat ~/.ssh/id_ed25519 | ./bin/moria "g g i i t t h h u u b b" | pbcopy
 ```
 
-Moria has also a visual live mode.
+Moria has also a visual live mode, but it's less safe (data can remain in memory because of Bubble Tea).
 
 > *"Speak, friend, and enter."* — Your spell is the password. The matrix is the mine.
 
@@ -127,7 +127,7 @@ zxcvbn master password entropy: 50 bits
 
 zxcvbn crack time estimate (generic): centuries
 
-Assuming attacker 100k guesses/sec and 50 bits (from zxcvbn), worst case: 357 years
+Assuming attacker 100K guesses/sec and 50 bits (from zxcvbn), worst case: 357 years
 ```
 
 ## Security Model
@@ -158,12 +158,12 @@ zxcvbn master password entropy: 50 bits
 
 zxcvbn crack time estimate (generic): centuries
 
-Assuming attacker 100k guesses/sec and 50 bits (from zxcvbn), worst case: 357 years
+Assuming attacker 100K guesses/sec and 50 bits (from zxcvbn), worst case: 357 years
 ```
 
 [zxcvbn](https://github.com/ccojocar/zxcvbn-go) detects that `"i'm super hunger today"` is four common English words. Instead of multiplying 22 × 6 bits (which assumes random gibberish), it calculates the actual entropy of a dictionary-word passphrase.
 
-The **357 years** estimate is calculated as: `(2^50 guesses) ÷ (100k guesses/sec)`. The 50 bits reflects the effective entropy after accounting for dictionary patterns.
+The **357 years** estimate is calculated as: `(2^50 guesses) ÷ (100K guesses/sec)`. The 50 bits reflects the effective entropy after accounting for dictionary patterns.
 
 All four words ("i'm", "super", "hungry", "today") are common, but zxcvbn can't detect *semantic combinations*. It sees 4 dictionary words, not a common phrase. The password "i'm super hungry today" is memorable and guessable to humans — but it's not in any attacker's wordlist. **Pattern detection is limited to what attackers precompute**.
 
@@ -185,15 +185,15 @@ To change the matrix size, edit the constants and run `make test && make build`.
 ## CLI Reference
 
 ```
-Usage: moria [--magic|--pretty|--live|--show-strength] [--max-len N] [--ignore-paste] [--] [spell]
+Usage: moria [--magic|--pretty|--live|--show-strength] [--max-len N] [--ignore-paste] [--] <spell>
 
 Options:
 --magic Generate a master password
 --pretty Display the password matrix from your master password
 --live Interactive mode: type your spell and see the password build in real-time
---show-strength Analyze password strength from stdin (standalone, no spell)
---max-len N Truncate output to N > 0 characters (live and batch modes only)
---ignore-paste Ignore pasted input in live mode (live mode only)
+--show-strength Show strength of password from stdin (standalone mode)
+--max-len N Truncate generated output to N characters (live and batch modes only)
+--ignore-paste Ignore pasted input in live mode (single characters only, live mode only)
 -- Spell separator (use before spells starting with --)
 -h, --help Show this help message
 ```
@@ -215,7 +215,11 @@ moria/
 │   │   ├── spell.go                # Core domain types (MagicLetter, QueryLetter, etc.)
 │   │   ├── spell_test.go           # Tests for parsing, grouping, resolution
 │   │   ├── password_matrix.go      # Matrix type, generation, Pretty(), Cell access
-│   │   └── password_matrix_test.go # Matrix dimension, content, and integration tests
+│   │   ├── password_matrix_test.go # Matrix dimension, content, and integration tests
+│   │   ├── secure_bytes.go         # SecureBytes type for in-memory secret management
+│   │   ├── secure_bytes_test.go    # Tests for SecureBytes
+│   │   ├── strength.go             # Time-to-guess calculation and human-readable formatting
+│   │   └── strength_test.go        # Tests for CrackTime, FormatSeconds, Entropy
 │   └── testutil/
 │       └── testutil.go             # Shared test data generator (no import cycles)
 ├── .golangci.yml                   # golangci-lint configuration
