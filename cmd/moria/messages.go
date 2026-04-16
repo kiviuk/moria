@@ -4,6 +4,8 @@ package main
 const (
 	// MsgMaxPasswordReached is shown when the user tries to type beyond the configured max length.
 	MsgMaxPasswordReached = "max password length %d reached"
+	// MsgMaxSpellLengthReached is shown when the spell reaches the global maximum length.
+	MsgMaxSpellLengthReached = "max spell length %d reached"
 	// MsgPasteIgnored is shown when the user attempts to paste while --ignore-paste is active.
 	MsgPasteIgnored = "paste ignored, use --live without --ignore-paste to allow pasting"
 	// MsgInvalidChar is a format string shown when an invalid character is typed.
@@ -30,6 +32,9 @@ const (
 	ErrUnknownFlag = "unknown flag: %s (use '--' before spell if intentional)"
 	// ErrFailedReadMaster is a format string returned when reading the master password from stdin fails.
 	ErrFailedReadMaster = "Failed to read master password from pipe: %v"
+	// ErrStdinTooLarge is returned when stdin input exceeds the safety limit.
+	// The format verb receives the limit in KB.
+	ErrStdinTooLarge = "stdin input exceeds %d KB limit"
 	// ErrFailedGenerateMaster is a format string returned when master password generation fails.
 	ErrFailedGenerateMaster = "Failed to generate master password: %v"
 	// ErrFailedCreateMatrix is a format string returned when matrix creation fails.

@@ -110,7 +110,7 @@ Argon2id is a **memory-hard key derivation function**. Unlike fast hashes (MD5, 
 
 | Parameter | Value | Purpose |
 |-----------|-------|---------|
-| Time cost | 1 iteration | ~500ms derivation time |
+| Time cost | 1 iteration | ~500ms derivation time (OWASP minimum; t=2 would double attacker work at ~2× user latency cost) |
 | Memory | 64 MB | Forces RAM bottleneck |
 | Parallelism | 4 threads | Balances speed vs. security |
 | Key length | 32 bytes | High-entropy output |
@@ -161,6 +161,8 @@ key := argon2.IDKey(password, salt, 1, 64*1024, 4, 32)
 ```
 
 Takes any input (random string, passphrase, SSH key) and produces a 32-byte high-entropy key. The 64MB memory requirement makes brute-force attacks computationally expensive.
+
+**Static salt trade-off:** moria uses a fixed, public salt (`"moria-argon-salt-v1"`) rather than a random per-user salt. This is a deliberate design decision: a random salt would need to be stored and synchronised across devices, defeating the "no storage required" property. The primary protection is Argon2id's memory-hardness — the cost of the memory-hard function makes precomputed attacks infeasible at useful scale regardless of salt uniqueness.
 
 ### Stage 2: HKDF Expansion
 

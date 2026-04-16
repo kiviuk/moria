@@ -109,9 +109,15 @@ func readStdin() (*app.SecureBytes, error) {
 	isPiped := (stat.Mode() & os.ModeCharDevice) == 0
 
 	if isPiped {
-		data, err := io.ReadAll(os.Stdin)
+		// Read one byte beyond the limit so we can detect oversized input.
+		limited := io.LimitReader(os.Stdin, app.MaxMasterPasswordInputBytes+1)
+		data, err := io.ReadAll(limited)
 		if err != nil {
 			return nil, fmt.Errorf(ErrFailedReadMaster, err)
+		}
+		if len(data) > app.MaxMasterPasswordInputBytes {
+			memguard.WipeBytes(data)
+			return nil, fmt.Errorf(ErrStdinTooLarge, app.MaxMasterPasswordInputBytes/1024)
 		}
 		sb := app.NewSecureBytes(data)
 		memguard.WipeBytes(data)

@@ -216,16 +216,14 @@ func ExpandToMatrix(input *SecureBytes) (*SecureBytes, error) {
 	cpus := uint8(4)
 	saltBytes := []byte(Argon2Salt)
 	key := argon2.IDKey(input.Bytes(), saltBytes, 1, 64*1024, cpus, 32)
+	defer memguard.WipeBytes(key)
 
 	hkdfReader := hkdf.New(sha256.New, key, nil, []byte("moria-matrix-expansion"))
 
 	result, err := mapBytesSourceToAlphabet(hkdfReader, MasterPasswordChars, MatrixBytes)
 	if err != nil {
-		memguard.WipeBytes(key)
 		return nil, fmt.Errorf("deterministic expansion failed: %w", err)
 	}
-
-	memguard.WipeBytes(key)
 
 	sb := NewSecureBytes(result)
 	memguard.WipeBytes(result)

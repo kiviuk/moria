@@ -140,6 +140,8 @@ Your master password and spell are secret. The generated password is what you us
 | **Spell** | Yes | Your memorable phrase per service. Keep private. |
 | **Generated password** | Until leaked | What you type to log in. Safe if master is secure. |
 
+> **Note:** The spell is passed as a command-line argument (`moria "amazon"`). It is therefore visible in `ps aux`, shell history, and OS audit logs. For most use cases (service names like `"amazon"`, `"github"`) this is low risk. If your spell is sensitive, be aware of process-list visibility on shared systems.
+
 ## Understanding Your Security
 
 The strength of your derived passwords is limited by your master password. A long spell cannot compensate for a weak master.

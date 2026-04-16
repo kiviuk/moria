@@ -20,6 +20,7 @@ func newPasswordModel() passwordModel {
 	ti.Focus()
 	ti.EchoMode = textinput.EchoPassword
 	ti.EchoCharacter = '•'
+	ti.CharLimit = app.MaxMasterPasswordInputBytes
 
 	return passwordModel{
 		input: ti,

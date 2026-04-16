@@ -36,7 +36,7 @@ const AllowedSpecialChars = `!@#$%^&*()-_=+[]{}|;:,.<>?/~` + " " + "`" + "'" + "
 const MasterPasswordChars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789@-_=+:%.^/,"
 
 // Argon2Salt is the salt used for Argon2id key derivation.
-// Users may personalize this value. But it must be consistent across all devices to generate the same password matrix.  
+// Users may personalize this value. But it must be consistent across all devices to generate the same password matrix.
 const Argon2Salt = "moria-argon-salt-v1"
 
 // MatrixBytes is the exact number of characters needed for the matrix.
@@ -48,3 +48,8 @@ const LiveModeWrapWidth = (80 + CharactersPerMatrixCell - 1) / CharactersPerMatr
 // MaxSpellLength is the maximum allowed length for a spell to prevent memory issues.
 // Spells longer than this will be rejected during parsing.
 const MaxSpellLength = 1000
+
+// MaxMasterPasswordInputBytes is the maximum number of bytes accepted from stdin
+// for the master password. Large enough for any SSH/GPG key or passphrase; small
+// enough to reject accidental piping of large files.
+const MaxMasterPasswordInputBytes = 64 * 1024

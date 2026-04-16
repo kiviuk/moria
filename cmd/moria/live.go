@@ -178,6 +178,10 @@ func (m LiveModel) doRunes(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.err = fmt.Sprintf(MsgInvalidChar, string(ch))
 			return m, nil
 		}
+		if len(m.spell) >= app.MaxSpellLength {
+			m.err = fmt.Sprintf(MsgMaxSpellLengthReached, app.MaxSpellLength)
+			return m, nil
+		}
 		if m.maxLen > 0 && len(m.password) >= m.maxLen {
 			m.state = StateMaxLenReached
 			return m, nil
