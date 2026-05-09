@@ -85,6 +85,10 @@ const (
 	MsgPasswordPrompt = "Enter master password:\n\n  %s\n\n  (press Enter to confirm, Esc to cancel)"
 	// MsgPasswordCancelled is returned when the user cancels password entry.
 	MsgPasswordCancelled = "password entry cancelled"
+	// MsgSpellInputPrompt is the format string for the interactive spell prompt.
+	MsgSpellInputPrompt = "Enter spell:\n\n  %s\n\n  (press Enter to confirm, Esc to cancel)"
+	// MsgSpellCancelled is returned when the user cancels spell entry.
+	MsgSpellCancelled = "spell entry cancelled"
 )
 
 // Help and usage messages.
@@ -92,7 +96,7 @@ const (
 	// MsgUsageTitle is the title line of the help output.
 	MsgUsageTitle = "moria — deterministic password generator"
 	// MsgUsageHeader is the usage format line.
-	MsgUsageHeader = "Usage: moria [--magic|--pretty|--live|--show-strength] [--max-len N] [--ignore-paste] [--] <spell>"
+	MsgUsageHeader = "Usage: moria [--magic|--pretty|--live|--show-strength] [--max-len N] [--ignore-paste] [--] [<spell>]"
 	// MsgUsageOptions is the options header.
 	MsgUsageOptions = "Options:"
 	// MsgOptMagic is the description for --magic.
@@ -115,10 +119,14 @@ const (
 	MsgUsageExamples = "Examples:"
 	// MsgExMagic is the example for --magic.
 	MsgExMagic = "  moria --magic                              # Generate a new master password"
-	// MsgExSpell is the example for spell usage.
-	MsgExSpell = "  moria \"amazon\"                             # Generate password for Amazon"
-	// MsgExPipe is the example for piped usage.
-	MsgExPipe = "  cat master.txt | moria \"amazon\"             # Piped from password manager"
+	// MsgExSpell is the example for spell on argv with interactive master prompt.
+	MsgExSpell = "  moria \"amazon\"                             # Prompted for master, spell on argv"
+	// MsgExInteractive is the example for fully interactive (no args).
+	MsgExInteractive = "  moria                                      # Prompted for master, then for spell"
+	// MsgExPipe is the example for piped master with spell on argv.
+	MsgExPipe = "  cat master.txt | moria \"amazon\"             # Master piped, spell on argv"
+	// MsgExPipeNoSpell is the example for piped master with interactive spell prompt.
+	MsgExPipeNoSpell = "  cat master.txt | moria                     # Master piped, prompted for spell"
 	// MsgExPretty is the example for --pretty.
 	MsgExPretty = "  cat master.txt | moria --pretty             # Display the matrix"
 	// MsgExLive is the example for --live.

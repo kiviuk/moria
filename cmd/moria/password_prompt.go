@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
@@ -56,9 +57,30 @@ func (m passwordModel) View() string {
 }
 
 func getPassword() (*app.SecureBytes, error) {
-	p := tea.NewProgram(newPasswordModel())
+	// Prefer os.Stdin/os.Stdout when they are TTYs (common when running under a PTY).
+	in := os.Stdin
+	out := os.Stdout
+	ttyOpen := false
 
+	if stat, err := os.Stdin.Stat(); err == nil && (stat.Mode()&os.ModeCharDevice) != 0 {
+		debugf("getPassword: using os.Stdin/os.Stdout as TTY")
+	} else {
+		// Try opening /dev/tty when stdin is not a TTY (e.g., master was piped).
+		tty, err := os.OpenFile("/dev/tty", os.O_RDWR, 0)
+		if err != nil {
+			debugf("getPassword: could not open /dev/tty: %v", err)
+			return nil, fmt.Errorf("no TTY available for password prompt")
+		}
+		in = tty
+		out = tty
+		ttyOpen = true
+		defer tty.Close()
+	}
+
+	debugf("getPassword: starting Bubbletea (ttyOpen=%v)", ttyOpen)
+	p := tea.NewProgram(newPasswordModel(), tea.WithInput(in), tea.WithOutput(out))
 	finalModel, err := p.Run()
+	debugf("getPassword: Bubbletea.Run returned err=%v finalModelType=%T", err, finalModel)
 	if err != nil {
 		return nil, err
 	}
@@ -76,5 +98,6 @@ func getPassword() (*app.SecureBytes, error) {
 	// This is a known limitation of the Bubbletea textinput component.
 	// The master password entered here will remain in memory until GC.
 	sb := app.NewSecureBytesFromString(pm.input.Value())
+	debugf("getPassword: received password length=%d", sb.Len())
 	return sb, nil
 }

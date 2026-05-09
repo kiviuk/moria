@@ -9,7 +9,8 @@ Master Secret + Spell → Password
 Example: Your `id_ed25519` key grants access to GitHub? Use the same key to generate your GitHub password, personal access tokens, or other GitHub-related credentials.
 
 ```bash
-cat ~/.ssh/id_ed25519 | ./bin/moria "g g i i t t h h u u b b" | pbcopy
+# Pipe your SSH key, type the spell when prompted, copy to clipboard
+cat ~/.ssh/id_ed25519 | ./bin/moria | pbcopy
 ```
 
 Moria has also a visual live mode, but it's less safe (data can remain in memory because of Bubble Tea).
@@ -48,9 +49,15 @@ The binary is built to `bin/moria`.
 
 **Option A: Use your existing SSH key (recommended)**
 If you already have an SSH private key, use it directly — no new secret to manage:
+
 ```bash
-cat ~/.ssh/id_ed25519 | ./bin/moria "phrase-i-can-remember"
-# → xK9!nQ7#5$wYBcD4
+# Pipe your SSH key; you will be prompted for the spell interactively
+cat ~/.ssh/id_ed25519 | ./bin/moria | pbcopy
+# Enter spell:
+# > amazon
+
+# Spell on argv (visible in shell history and ps — see Security note below)
+cat ~/.ssh/id_ed25519 | ./bin/moria "amazon" | pbcopy
 ```
 
 **Option B: Generate a new master password with `--magic`**
@@ -62,13 +69,21 @@ This outputs a 600-character random string. **Save this securely.**
 
 You can then pipe it or store it in a password manager:
 ```bash
-# Pipe from file
+# Pipe from file, prompted for spell interactively
+cat the-key.txt | ./bin/moria | pbcopy
+# Enter spell:
+# > phrase-i-can-remember
+
+# Pipe from file, spell on argv
 cat the-key.txt | ./bin/moria "phrase-i-can-remember"
 # → xK9!nQ7#5$wYBcD4
 
-# Interactive prompt (password manager)
-./bin/moria "phrase-i-can-remember"
-# → you'll be prompted to paste your master password (input is masked with •••)
+# No pipe — prompted for master (masked •••) then for spell
+./bin/moria
+# Enter master password:
+# > •••••••••••••••
+# Enter spell:
+# > phrase-i-can-remember
 ```
 
 ### 2. Interactive Live Mode
@@ -140,7 +155,7 @@ Your master password and spell are secret. The generated password is what you us
 | **Spell** | Yes | Your memorable phrase per service. Keep private. |
 | **Generated password** | Until leaked | What you type to log in. Safe if master is secure. |
 
-> **Note:** The spell is passed as a command-line argument (`moria "amazon"`). It is therefore visible in `ps aux`, shell history, and OS audit logs. For most use cases (service names like `"amazon"`, `"github"`) this is low risk. If your spell is sensitive, be aware of process-list visibility on shared systems.
+> **Note on spell visibility:** When the spell is passed as a command-line argument (`moria "amazon"`), it is visible in `ps aux`, shell history, and OS audit logs. For most use cases (service names like `"amazon"`, `"github"`) this is low risk. If your spell is sensitive, run `moria` without arguments (or with just a pipe) so the spell is entered interactively via the prompt — it will never appear in the process list or shell history.
 
 ## Understanding Your Security
 
@@ -187,17 +202,28 @@ To change the matrix size, edit the constants and run `make test && make build`.
 ## CLI Reference
 
 ```
-Usage: moria [--magic|--pretty|--live|--show-strength] [--max-len N] [--ignore-paste] [--] <spell>
+Usage: moria [--magic|--pretty|--live|--show-strength] [--max-len N] [--ignore-paste] [--] [<spell>]
 
 Options:
---magic Generate a master password
---pretty Display the password matrix from your master password
---live Interactive mode: type your spell and see the password build in real-time
---show-strength Show strength of password from stdin (standalone mode)
---max-len N Truncate generated output to N characters (live and batch modes only)
---ignore-paste Ignore pasted input in live mode (single characters only, live mode only)
--- Spell separator (use before spells starting with --)
--h, --help Show this help message
+ --magic          Generate a master password
+ --pretty         Display the password matrix from your master password
+ --live           Interactive mode: type your spell and see the password build in real-time
+ --show-strength  Show strength of password from stdin (standalone mode)
+ --max-len N      Truncate generated output to N characters (live and batch modes only)
+ --ignore-paste   Ignore pasted input in live mode (single characters only, live mode only)
+ --               Spell separator (use before spells starting with --)
+ -h, --help       Show this help message
+
+Examples:
+  moria --magic                               # Generate a new master password
+  moria "amazon"                              # Prompted for master, spell on argv
+  moria                                       # Prompted for master, then for spell
+  cat master.txt | moria "amazon"             # Master piped, spell on argv
+  cat master.txt | moria                      # Master piped, prompted for spell
+  cat master.txt | moria --pretty             # Display the matrix
+  cat master.txt | moria --live               # Interactive live mode (paste allowed)
+  cat master.txt | moria --live --ignore-paste # Interactive live mode (paste blocked)
+  cat master.txt | moria --max-len 16 "amazon" # Limited length
 ```
 
 ## Project Structure
@@ -205,12 +231,18 @@ Options:
 ```
 moria/
 ├── cmd/moria/
-│   ├── main.go                # CLI entry point
-│   ├── live.go                # Bubbletea TUI for interactive mode
-│   ├── live_test.go           # Tests for live mode
-│   ├── password_prompt.go     # Bubbletea password input prompt
-│   ├── messages.go            # CLI error messages and live mode UI strings
-│   └── main_test.go           # Tests for CLI, flag parsing, validation
+│   ├── main.go                     # CLI entry point, input state machine, run loop
+│   ├── live.go                     # Bubbletea TUI for interactive live mode
+│   ├── live_test.go                # Tests for live mode model
+│   ├── password_prompt.go          # Bubbletea masked password input prompt (•••)
+│   ├── spell_prompt.go             # Bubbletea spell input prompt (visible text)
+│   ├── debug_helpers.go            # debugf() logging (MORIA_DEBUG env var)
+│   ├── messages.go                 # All CLI error messages and UI strings
+│   ├── main_test.go                # Tests for batch mode, flag parsing, validation
+│   ├── cli_integration_test.go     # Integration tests (pipe + runCLI helper)
+│   ├── cli_pty_integration_test.go # Integration tests using MORIA_MASTER_FILE/SPELL
+│   ├── read_stdin_test.go          # Tests for readStdin / size limits
+│   └── test_main_test.go           # TestMain: builds binary once for all CLI tests
 ├── internal/
 │   ├── app/
 │   │   ├── config.go               # Package-level constants

@@ -5,11 +5,13 @@
 //
 // Usage:
 //
-//	moria --magic                  # Generate a master password
-//	moria "amazon"                 # Generate password for Amazon
-//	cat master.txt | moria "amazon"  # Piped from password manager
-//	cat master.txt | moria --pretty # Display the matrix
-//	cat master.txt | moria --live   # Interactive mode
+//	moria --magic                    # Generate a master password
+//	moria "amazon"                   # Prompted for master, spell on argv
+//	cat master.txt | moria "amazon"  # Master piped, spell on argv
+//	cat master.txt | moria           # Master piped, prompted for spell
+//	moria                            # Prompted for master, then for spell
+//	cat master.txt | moria --pretty  # Display the matrix
+//	cat master.txt | moria --live    # Interactive live mode
 package main
 
 import (
@@ -35,6 +37,53 @@ const (
 	ModeLive                      // Interactive mode
 	ModeShowPasswordStrength      // Analyze password strength
 )
+
+type InputState int
+
+const (
+	// InputStateUnknown indicates the stdin/arg state could not be determined.
+	InputStateUnknown InputState = iota
+	// InputStatePipedMasterWithSpellArg: master provided on stdin (pipe) and spell provided as argv.
+	// Non-interactive, suitable for scripting: no prompts required.
+	InputStatePipedMasterWithSpellArg
+	// InputStatePipedMasterNoSpell: master provided on stdin (pipe) but no spell on argv.
+	// Typical flow: read master from stdin, then prompt for spell interactively (TTY) if available.
+	InputStatePipedMasterNoSpell
+	// InputStateInteractiveMasterWithSpellArg: no piped master (interactive TTY) but spell provided as argv.
+	// Typical flow: prompt for masked master password via TTY and use provided spell.
+	InputStateInteractiveMasterWithSpellArg
+	// InputStateInteractiveMasterNoSpell: neither master nor spell provided (interactive only).
+	// Typical flow: prompt for master (masked) and then prompt for spell (unmasked) via TTY.
+	InputStateInteractiveMasterNoSpell
+)
+
+func determineInputState(cfg Config) (InputState, error) {
+	// If MORIA_MASTER_FILE is set, treat input as piped master so tests can override stdin.
+	if mf := os.Getenv("MORIA_MASTER_FILE"); mf != "" {
+		debugf("determineInputState: MORIA_MASTER_FILE set; treating stdin as piped")
+		if cfg.Spell != "" {
+			return InputStatePipedMasterWithSpellArg, nil
+		}
+		return InputStatePipedMasterNoSpell, nil
+	}
+
+	stat, err := os.Stdin.Stat()
+	if err != nil {
+		return InputStateUnknown, fmt.Errorf("could not stat stdin: %w", err)
+	}
+	isPiped := (stat.Mode() & os.ModeCharDevice) == 0
+	spellProvided := cfg.Spell != ""
+	if isPiped {
+		if spellProvided {
+			return InputStatePipedMasterWithSpellArg, nil
+		}
+		return InputStatePipedMasterNoSpell, nil
+	}
+	if spellProvided {
+		return InputStateInteractiveMasterWithSpellArg, nil
+	}
+	return InputStateInteractiveMasterNoSpell, nil
+}
 
 func (m Mode) String() string {
 	return [...]string{"batch", "magic", "pretty", "live", "show-strength"}[m]
@@ -102,25 +151,51 @@ func getMatrix(master *app.SecureBytes) (app.Matrix, error) {
 }
 
 func readStdin() (*app.SecureBytes, error) {
-	stat, err := os.Stdin.Stat()
-	if err != nil {
-		return nil, fmt.Errorf("could not stat stdin: %w", err)
-	}
-	isPiped := (stat.Mode() & os.ModeCharDevice) == 0
-
-	if isPiped {
-		// Read one byte beyond the limit so we can detect oversized input.
-		limited := io.LimitReader(os.Stdin, app.MaxMasterPasswordInputBytes+1)
-		data, err := io.ReadAll(limited)
+	// Support an environment override to read the master password from a file.
+	// This makes PTY-based tests easier without changing normal CLI behavior.
+	if mf := os.Getenv("MORIA_MASTER_FILE"); mf != "" {
+		debugf("readStdin: MORIA_MASTER_FILE set: %s", mf)
+		data, err := os.ReadFile(mf)
 		if err != nil {
+			debugf("readStdin: failed to read master file: %v", err)
 			return nil, fmt.Errorf(ErrFailedReadMaster, err)
 		}
+		debugf("readStdin: read %d bytes from file", len(data))
 		if len(data) > app.MaxMasterPasswordInputBytes {
+			debugf("readStdin: master file too large: %d bytes", len(data))
 			memguard.WipeBytes(data)
 			return nil, fmt.Errorf(ErrStdinTooLarge, app.MaxMasterPasswordInputBytes/1024)
 		}
 		sb := app.NewSecureBytes(data)
 		memguard.WipeBytes(data)
+		return sb.TrimSpace(), nil
+	}
+
+	stat, err := os.Stdin.Stat()
+	if err != nil {
+		return nil, fmt.Errorf("could not stat stdin: %w", err)
+	}
+	isPiped := (stat.Mode() & os.ModeCharDevice) == 0
+	debugf("readStdin: isPiped=%v", isPiped)
+
+	if isPiped {
+		debugf("Limiting stdin to %d bytes (reading limit+1 to detect oversize)", app.MaxMasterPasswordInputBytes)
+		// Read one byte beyond the limit so we can detect oversized input.
+		limited := io.LimitReader(os.Stdin, app.MaxMasterPasswordInputBytes+1)
+		data, err := io.ReadAll(limited)
+		if err != nil {
+			debugf("readStdin: read error: %v", err)
+			return nil, fmt.Errorf(ErrFailedReadMaster, err)
+		}
+		debugf("readStdin: read %d bytes", len(data))
+		if len(data) > app.MaxMasterPasswordInputBytes {
+			debugf("readStdin: stdin too large: %d bytes", len(data))
+			memguard.WipeBytes(data)
+			return nil, fmt.Errorf(ErrStdinTooLarge, app.MaxMasterPasswordInputBytes/1024)
+		}
+		sb := app.NewSecureBytes(data)
+		memguard.WipeBytes(data)
+		debugf("readStdin: secure bytes length after trim: %d", sb.Len())
 		return sb.TrimSpace(), nil
 	}
 	return getPassword()
@@ -265,7 +340,9 @@ func printUsage() {
 	fmt.Println(MsgUsageExamples)
 	fmt.Println(MsgExMagic)
 	fmt.Println(MsgExSpell)
+	fmt.Println(MsgExInteractive)
 	fmt.Println(MsgExPipe)
+	fmt.Println(MsgExPipeNoSpell)
 	fmt.Println(MsgExPretty)
 	fmt.Println(MsgExLive)
 	fmt.Println(MsgExLiveIgnorePaste)
@@ -304,11 +381,6 @@ func main() {
 }
 
 func run() int {
-	if len(os.Args) < 2 {
-		printUsage()
-		return 0
-	}
-
 	cfg, flags, err := parseArgs(os.Args[1:])
 	if err != nil {
 		fmt.Fprintf(os.Stderr, MsgErrorPrefix, err)
@@ -320,12 +392,50 @@ func run() int {
 		return 0
 	}
 
+	state, serr := determineInputState(cfg)
+	if serr != nil {
+		fmt.Fprintf(os.Stderr, MsgErrorPrefix, serr)
+		return 1
+	}
+	debugf("determined input state: %s", inputStateName(state))
+
+	// If master was piped (or we are in an interactive TTY with no spell),
+	// read the master first to consume stdin, then prompt for the spell via the TTY.
+	if state == InputStatePipedMasterNoSpell || state == InputStateInteractiveMasterNoSpell {
+		debugf("input state requires reading master then prompting for spell: %s", inputStateName(state))
+		debugf("reading master from stdin (limit=%d bytes)", app.MaxMasterPasswordInputBytes)
+		master, err := readStdin()
+		if err != nil {
+			fmt.Fprintf(os.Stderr, MsgErrorPrefix, err)
+			return 1
+		}
+		debugf("read master: len=%d", master.Len())
+		cfg.MasterRaw = master
+		expanded, err := app.ExpandToMatrix(master)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, MsgErrorPrefix, err)
+			return 1
+		}
+		cfg.Master = expanded
+		defer cfg.Wipe()
+
+		debugf("prompting for spell on TTY")
+		spell, perr := getSpell()
+		if perr != nil {
+			fmt.Fprintf(os.Stderr, MsgErrorPrefix, perr)
+			return 1
+		}
+		debugf("received spell: len=%d", len(spell))
+		cfg.Spell = spell
+	}
+
 	if err := validateConfig(cfg, flags); err != nil {
 		fmt.Fprintf(os.Stderr, MsgErrorPrefix, err)
 		return 1
 	}
 
-	if cfg.Mode.needsStdin() {
+	// Only read stdin here if we haven't already consumed it above based on input state.
+	if cfg.Mode.needsStdin() && cfg.MasterRaw == nil {
 		master, err := readStdin()
 		if err != nil {
 			fmt.Fprintf(os.Stderr, MsgErrorPrefix, err)

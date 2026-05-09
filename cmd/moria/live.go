@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/awnumar/memguard"
@@ -375,9 +376,31 @@ func (m LiveModel) renderPasswordChunks(sb *strings.Builder, withMaxLen bool) {
 // Note: The caller is responsible for wiping the original matrix
 func LiveMode(matrix app.Matrix, maxLen int, pasteMode PasteMode, masterPasswordRaw *app.SecureBytes) (LiveModel, error) {
 	m := newLiveModel(matrix, masterPasswordRaw, maxLen, pasteMode)
-	p := tea.NewProgram(m, tea.WithAltScreen())
 
+	// Prefer os.Stdin/os.Stdout when they are TTYs (common when running under a PTY).
+	in := os.Stdin
+	out := os.Stdout
+	ttyOpen := false
+
+	if stat, err := os.Stdin.Stat(); err == nil && (stat.Mode()&os.ModeCharDevice) != 0 {
+		debugf("LiveMode: using os.Stdin/os.Stdout as TTY")
+	} else {
+		// Try opening /dev/tty when stdin is not a TTY (e.g., master was piped).
+		tty, err := os.OpenFile("/dev/tty", os.O_RDWR, 0)
+		if err != nil {
+			debugf("LiveMode: could not open /dev/tty: %v", err)
+			return LiveModel{}, fmt.Errorf("no TTY available for live mode")
+		}
+		in = tty
+		out = tty
+		ttyOpen = true
+		defer tty.Close()
+	}
+
+	debugf("LiveMode: starting Bubbletea (ttyOpen=%v)", ttyOpen)
+	p := tea.NewProgram(m, tea.WithAltScreen(), tea.WithInput(in), tea.WithOutput(out))
 	final, err := p.Run()
+	debugf("LiveMode: Bubbletea.Run returned err=%v finalType=%T", err, final)
 	if err != nil {
 		return LiveModel{}, err
 	}
