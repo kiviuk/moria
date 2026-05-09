@@ -401,7 +401,9 @@ func run() int {
 
 	// If master was piped (or we are in an interactive TTY with no spell),
 	// read the master first to consume stdin, then prompt for the spell via the TTY.
-	if state == InputStatePipedMasterNoSpell || state == InputStateInteractiveMasterNoSpell {
+	// Only applies to modes that both need stdin and require a spell (i.e. batch mode).
+	if cfg.Mode.needsStdin() && cfg.Mode.needsSpell() &&
+		(state == InputStatePipedMasterNoSpell || state == InputStateInteractiveMasterNoSpell) {
 		debugf("input state requires reading master then prompting for spell: %s", inputStateName(state))
 		debugf("reading master from stdin (limit=%d bytes)", app.MaxMasterPasswordInputBytes)
 		master, err := readStdin()

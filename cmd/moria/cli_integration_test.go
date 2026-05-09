@@ -24,6 +24,23 @@ func TestCLI_WithPipe_Succeeds(t *testing.T) {
 	}
 }
 
+func TestCLI_Magic_NoPrompt(t *testing.T) {
+	// --magic generates a master password and must exit immediately without prompting.
+	// If it blocks waiting for input, runCLI will hang and the test will time out.
+	t.Setenv("MORIA_MASTER_FILE", "")
+	out, err := runCLI("", "--magic")
+	if err != nil {
+		t.Fatalf("--magic failed: %v\noutput: %s", err, out)
+	}
+	out = strings.TrimSpace(out)
+	if out == "" {
+		t.Fatalf("expected non-empty master password output, got empty")
+	}
+	if strings.Contains(out, "Error") {
+		t.Fatalf("unexpected 'Error' in output: %s", out)
+	}
+}
+
 func TestCLI_OversizedStdin_Fails(t *testing.T) {
 	t.Setenv("MORIA_MASTER_FILE", "")
 	oversized := string(bytes.Repeat([]byte("x"), int(app.MaxMasterPasswordInputBytes)+1))
