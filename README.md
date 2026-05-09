@@ -1,37 +1,20 @@
 # moria
 
-A deterministic, matrix-based password generator for developers. Generate passwords from a single master secret and a memorable spell.
+A deterministic, matrix-based password generator. Derive unique, reproducible passwords from a master secret and a memorable spell.
 
 ```
 Master Secret + Spell → Password
 ```
 
-Example: Your `id_ed25519` key grants access to GitHub? Use the same key to generate your GitHub password, personal access tokens, or other GitHub-related credentials.
-
-```bash
-# Pipe your SSH key, type the spell when prompted, copy to clipboard
-cat ~/.ssh/id_ed25519 | ./bin/moria | pbcopy
-```
-
-Moria has also a visual live mode, but it's less safe (data can remain in memory because of Bubble Tea).
-
 > *"Speak, friend, and enter."* — Your spell is the password. The matrix is the mine.
-
-```bash
-cat ~/.ssh/id_ed25519 | ./bin/moria --live
-```
 
 ![Moria live mode](docs/moria-live.png)
 
-Inspired by [pwgen](https://www.uni-muenster.de/CERT/pwgen/index.php?lang=en&mode=pwcard)
-
-Based on [zxcvb](https://github.com/ccojocar/zxcvbn-go) and [Argon2id](https://en.wikipedia.org/wiki/Argon2)
-
-Videos: [zxcvbn](https://www.youtube.com/watch?v=vf37jh3dV2I) [Argon2id](https://youtu.be/Sc3aHMCc4h0?t=114)
+Inspired by [pwgen](https://www.uni-muenster.de/CERT/pwgen/index.php?lang=en&mode=pwcard) · Based on [zxcvbn](https://github.com/ccojocar/zxcvbn-go) and [Argon2id](https://en.wikipedia.org/wiki/Argon2) · Videos: [zxcvbn](https://www.youtube.com/watch?v=vf37jh3dV2I) [Argon2id](https://youtu.be/Sc3aHMCc4h0?t=114)
 
 ## Core Concept
 
-`moria` uses a **password matrix** — a grid of random character fragments — combined with a **spell** (any memorable key phrase) to derive unique passwords. The same master password + spell always produces the same password.
+`moria` uses a **password matrix** — a grid of random character fragments — combined with a **spell** (any memorable service name or phrase) to derive unique passwords. The same master secret + spell always produces the same password.
 
 ## Installation
 
@@ -45,71 +28,82 @@ The binary is built to `bin/moria`.
 
 ## Quick Start
 
-### 1. Generate a Password
+moria needs two inputs: a **master secret** (your only secret — never echoed to the terminal) and a **spell** (one per service). Each can be supplied in two ways:
 
-**Option A: Use your existing SSH key (recommended)**
-If you already have an SSH private key, use it directly — no new secret to manage:
+| Input | How to provide | Notes |
+|---|---|---|
+| **Master secret** | Pipe from file: `cat key \| moria` | Recommended — key never touches the terminal |
+| | Interactive prompt when no pipe | Input masked with `•••` |
+| **Spell** | Interactive prompt (omit from command line) | Never recorded in shell history or `ps` |
+| | Command-line argument: `moria "amazon"` | Visible in shell history and `ps aux` |
 
-```bash
-# Pipe your SSH key; you will be prompted for the spell interactively
-cat ~/.ssh/id_ed25519 | ./bin/moria | pbcopy
-# Enter spell:
-# > amazon
-
-# Spell on argv (visible in shell history and ps — see Security note below)
-cat ~/.ssh/id_ed25519 | ./bin/moria "amazon" | pbcopy
-```
-
-**Option B: Generate a new master password with `--magic`**
-If you don't have an SSH key, generate a cryptographically secure master password:
-```bash
-./bin/moria --magic
-```
-This outputs a 600-character random string. **Save this securely.**
-
-You can then pipe it or store it in a password manager:
-```bash
-# Pipe from file, prompted for spell interactively
-cat the-key.txt | ./bin/moria | pbcopy
-# Enter spell:
-# > phrase-i-can-remember
-
-# Pipe from file, spell on argv
-cat the-key.txt | ./bin/moria "phrase-i-can-remember"
-# → xK9!nQ7#5$wYBcD4
-
-# No pipe — prompted for master (masked •••) then for spell
-./bin/moria
-# Enter master password:
-# > •••••••••••••••
-# Enter spell:
-# > phrase-i-can-remember
-```
-
-### 2. Interactive Live Mode
+### Input Flows
 
 ```bash
-cat the-key.txt | ./bin/moria --live
-# Or without piping — you'll be prompted to paste your master password
-./bin/moria --live
+# ① Pipe master, type spell when prompted  (most private)
+cat ~/.ssh/id_ed25519 | moria | pbcopy
+#   Enter spell: _
+
+# ② Pipe master, spell on argv  (convenient for scripting)
+cat ~/.ssh/id_ed25519 | moria "amazon" | pbcopy
+
+# ③ Fully interactive — prompted for both  (no file, no args)
+moria
+#   Enter master password: •••••••••••••••
+#   Enter spell: _
 ```
 
-Type your spell character by character. The matrix highlights visited cells and the password builds in real-time. Press Enter to output the final password.
+### Choosing a Master Secret
 
-```
-Spell:    phrase-i-can-remember
-Password: xK9!nQ7#5$wYBcD4 (18/18)
-```
-
-### 3. Display the Matrix
+**Option A — Use your SSH key (recommended):** no new secret to manage; your existing key is your master.
 
 ```bash
-cat the-key.txt | ./bin/moria --pretty
-# Or without piping — you'll be prompted to paste your master password
-./bin/moria --pretty
+cat ~/.ssh/id_ed25519 | moria | pbcopy
 ```
 
-Shows the full password matrix with column headers:
+**Option B — Generate a dedicated master password:**
+
+```bash
+moria --magic          # prints a 600-char cryptographically secure string
+moria --magic > key.txt && chmod 600 key.txt   # save it, then use it:
+cat key.txt | moria | pbcopy
+```
+
+### Modes
+
+| Command | Description |
+|---|---|
+| `cat key \| moria "spell"` | **Batch** — output password to stdout |
+| `cat key \| moria` | **Batch** — master piped, spell prompted interactively |
+| `moria` | **Batch** — both master and spell prompted interactively |
+| `cat key \| moria --live` | **Live** — type spell character by character, see password build in real-time |
+| `cat key \| moria --pretty` | **Pretty** — display the full password matrix |
+| `cat key \| moria --max-len 16 "spell"` | Truncate output to 16 characters |
+| `echo "passphrase" \| moria --show-strength` | Analyze master password strength |
+| `moria --magic` | Generate a new master password |
+
+### Live Mode
+
+Type your spell character by character. The matrix highlights visited cells and the password builds in real-time. Press Enter to copy the final password.
+
+```bash
+cat ~/.ssh/id_ed25519 | moria --live
+# or fully interactive:
+moria --live
+```
+
+```
+Spell:    amazon
+Password: xK9!nQ7# (8/8)
+```
+
+> Live mode keeps the entered spell in Bubbletea's memory until GC. For maximum security, prefer batch mode.
+
+### Display the Matrix
+
+```bash
+cat the-key.txt | moria --pretty
+```
 
 ```
        Non    ABC    DEF    GHI    JKL    MNO    PQR    STU    VWX    YZ
@@ -119,24 +113,21 @@ Shows the full password matrix with column headers:
 ...
 ```
 
-### 4. Limit Password Length
+### Limit Password Length
 
 Some sites cap password length. Use `--max-len` to truncate:
 
 ```bash
-cat the-key.txt | ./bin/moria --max-len 16 "phrase-i-can-remember"
+cat the-key.txt | moria --max-len 16 "amazon"
 # → xK9!nQ7#5$wYBcD4
 ```
 
-### 5. Check Password Strength
-
-Analyze the strength of any password using [zxcvbn](https://github.com/ccojocar/zxcvbn-go) pattern detection:
+### Check Master Password Strength
 
 ```bash
-echo "i'm super hunger today" | ./bin/moria --show-strength
+echo "i'm super hunger today" | moria --show-strength
 ```
 
-Output:
 ```
 zxcvbn master password entropy: 50 bits
 
@@ -163,26 +154,15 @@ The strength of your derived passwords is limited by your master password. A lon
 
 `--show-strength` analyzes your master password strength using `zxcvbn` pattern detection:
 
-### Example: A Passphrase Master Password
-
 ```bash
-echo "i'm super hunger today" | ./bin/moria --show-strength
-```
-
-Output:
-```
-zxcvbn master password entropy: 50 bits
-
-zxcvbn crack time estimate (generic): centuries
-
-Assuming attacker 100K guesses/sec and 50 bits (from zxcvbn), worst case: 357 years
+echo "i'm super hunger today" | moria --show-strength
 ```
 
 [zxcvbn](https://github.com/ccojocar/zxcvbn-go) detects that `"i'm super hunger today"` is four common English words. Instead of multiplying 22 × 6 bits (which assumes random gibberish), it calculates the actual entropy of a dictionary-word passphrase.
 
 The **357 years** estimate is calculated as: `(2^50 guesses) ÷ (100K guesses/sec)`. The 50 bits reflects the effective entropy after accounting for dictionary patterns.
 
-All four words ("i'm", "super", "hungry", "today") are common, but zxcvbn can't detect *semantic combinations*. It sees 4 dictionary words, not a common phrase. The password "i'm super hungry today" is memorable and guessable to humans — but it's not in any attacker's wordlist. **Pattern detection is limited to what attackers precompute**.
+All four words are common, but zxcvbn can't detect *semantic combinations*. It sees 4 dictionary words, not a specific phrase. **Pattern detection is limited to what attackers precompute**.
 
 **Practical takeaway:** Combine common words in unique, memorable ways. Even simple phrases are safer than you think because attackers can't precompute every possible combination.
 
