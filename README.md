@@ -8,7 +8,7 @@ Master Secret + Spell → Password
 
 > *"Speak, friend, and enter."* — Your spell is the password. The matrix is the mine.
 
-![Moria live mode](docs/moria-live.png)
+![Moria live mode](docs/moria.gif)
 
 Inspired by [pwgen](https://www.uni-muenster.de/CERT/pwgen/index.php?lang=en&mode=pwcard) · Based on [zxcvbn](https://github.com/ccojocar/zxcvbn-go) and [Argon2id](https://en.wikipedia.org/wiki/Argon2) · Videos: [zxcvbn](https://www.youtube.com/watch?v=vf37jh3dV2I) [Argon2id](https://youtu.be/Sc3aHMCc4h0?t=114)
 
