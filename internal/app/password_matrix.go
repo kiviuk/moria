@@ -215,7 +215,7 @@ func ExpandToMatrix(input *SecureBytes) (*SecureBytes, error) {
 	}
 	cpus := uint8(4)
 	saltBytes := []byte(Argon2Salt)
-	key := argon2.IDKey(input.Bytes(), saltBytes, 1, 64*1024, cpus, 32)
+	key := argon2.IDKey(input.Bytes(), saltBytes, 2, 64*1024, cpus, 32)
 	defer memguard.WipeBytes(key)
 
 	hkdfReader := hkdf.New(sha256.New, key, nil, []byte("moria-matrix-expansion"))

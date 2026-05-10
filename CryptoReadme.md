@@ -110,7 +110,7 @@ Argon2id is a **memory-hard key derivation function**. Unlike fast hashes (MD5, 
 
 | Parameter | Value | Purpose |
 |-----------|-------|---------|
-| Time cost | 1 iteration | ~500ms derivation time (OWASP minimum; t=2 would double attacker work at ~2× user latency cost) |
+| Time cost | 2 iterations | ~1s derivation time; doubles attacker work vs. t=1 at ~2× user latency cost |
 | Memory | 64 MB | Forces RAM bottleneck |
 | Parallelism | 4 threads | Balances speed vs. security |
 | Key length | 32 bytes | High-entropy output |
@@ -142,7 +142,7 @@ Your master password goes through a two-stage process:
 ```
 Master Password
     ↓
-Argon2id (1 iter, 64MB, 4 threads)
+Argon2id (2 iter, 64MB, 4 threads)
     ↓ 32-byte high-entropy key
 HKDF-SHA256 (expand to 600 chars)
     ↓ 600 random characters
@@ -157,7 +157,7 @@ Generated Password
 
 ```go
 salt := []byte("moria-argon-salt-v1")
-key := argon2.IDKey(password, salt, 1, 64*1024, 4, 32)
+key := argon2.IDKey(password, salt, 2, 64*1024, 4, 32)
 ```
 
 Takes any input (random string, passphrase, SSH key) and produces a 32-byte high-entropy key. The 64MB memory requirement makes brute-force attacks computationally expensive.
