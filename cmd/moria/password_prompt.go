@@ -1,103 +1,129 @@
 package main
 
 import (
-	"fmt"
-	"os"
+"fmt"
+"os"
+"strings"
 
-	"github.com/charmbracelet/bubbles/textinput"
-	tea "github.com/charmbracelet/bubbletea"
+"github.com/charmbracelet/bubbles/textinput"
+tea "github.com/charmbracelet/bubbletea"
 
-	"github.com/kiviuk/moria/internal/app"
+"github.com/kiviuk/moria/internal/app"
 )
 
-type passwordModel struct {
-	input textinput.Model
-	err   error
+type promptConfig struct {
+echoMode    textinput.EchoMode
+echoChar    rune
+placeholder string
+charLimit   int
+promptFmt   string
+cancelMsg   string
 }
 
-func newPasswordModel() passwordModel {
-	ti := textinput.New()
-	ti.Placeholder = "master password"
-	ti.Focus()
-	ti.EchoMode = textinput.EchoPassword
-	ti.EchoCharacter = '•'
-	ti.CharLimit = app.MaxMasterPasswordInputBytes
-
-	return passwordModel{
-		input: ti,
-	}
+var passwordPromptCfg = promptConfig{
+echoMode:    textinput.EchoPassword,
+echoChar:    '•',
+placeholder: "master password",
+charLimit:   app.MaxMasterPasswordInputBytes,
+promptFmt:   MsgPasswordPrompt,
+cancelMsg:   MsgPasswordCancelled,
 }
 
-func (m passwordModel) Init() tea.Cmd {
-	return textinput.Blink
+var spellPromptCfg = promptConfig{
+echoMode:    textinput.EchoNormal,
+placeholder: "spell",
+promptFmt:   MsgSpellInputPrompt,
+cancelMsg:   MsgSpellCancelled,
 }
 
-func (m passwordModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	var cmd tea.Cmd
-
-	if keyMsg, ok := msg.(tea.KeyMsg); ok {
-		switch keyMsg.Type {
-		case tea.KeyEnter:
-			return m, tea.Quit
-		case tea.KeyCtrlC, tea.KeyEsc:
-			m.err = fmt.Errorf("%s", MsgPasswordCancelled)
-			return m, tea.Quit
-		}
-	}
-
-	m.input, cmd = m.input.Update(msg)
-	return m, cmd
+type promptModel struct {
+input textinput.Model
+cfg   promptConfig
+err   error
 }
 
-func (m passwordModel) View() string {
-	return fmt.Sprintf(
-		MsgPasswordPrompt,
-		m.input.View(),
-	)
+func newPromptModel(cfg promptConfig) promptModel {
+ti := textinput.New()
+ti.Placeholder = cfg.placeholder
+ti.Focus()
+ti.EchoMode = cfg.echoMode
+if cfg.echoChar != 0 {
+ti.EchoCharacter = cfg.echoChar
+}
+if cfg.charLimit > 0 {
+ti.CharLimit = cfg.charLimit
+}
+return promptModel{input: ti, cfg: cfg}
+}
+
+func (m promptModel) Init() tea.Cmd { return textinput.Blink }
+
+func (m promptModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+var cmd tea.Cmd
+if key, ok := msg.(tea.KeyMsg); ok {
+switch key.Type {
+case tea.KeyEnter:
+return m, tea.Quit
+case tea.KeyCtrlC, tea.KeyEsc:
+m.err = fmt.Errorf("%s", m.cfg.cancelMsg)
+return m, tea.Quit
+}
+}
+m.input, cmd = m.input.Update(msg)
+return m, cmd
+}
+
+func (m promptModel) View() string {
+return fmt.Sprintf(m.cfg.promptFmt, m.input.View())
+}
+
+// runPrompt opens a TTY if needed, runs a Bubbletea text-input prompt, and returns the trimmed value.
+func runPrompt(cfg promptConfig) (string, error) {
+in, out, closeFn, err := openTTY()
+if err != nil {
+return "", fmt.Errorf("no TTY available")
+}
+defer closeFn()
+p := tea.NewProgram(newPromptModel(cfg), tea.WithInput(in), tea.WithOutput(out))
+final, runErr := p.Run()
+if runErr != nil {
+return "", runErr
+}
+pm, ok := final.(promptModel)
+if !ok {
+return "", fmt.Errorf("%s", ErrUnexpectedModel)
+}
+if pm.err != nil {
+return "", pm.err
+}
+return strings.TrimSpace(pm.input.Value()), nil
 }
 
 func getPassword() (*app.SecureBytes, error) {
-	// Prefer os.Stdin/os.Stdout when they are TTYs (common when running under a PTY).
-	in := os.Stdin
-	out := os.Stdout
-	ttyOpen := false
+debugf("getPassword: starting prompt")
+// Note: textinput.Value() returns a string — the backing array cannot be wiped.
+// This is a known limitation of the Bubbletea textinput component.
+val, err := runPrompt(passwordPromptCfg)
+if err != nil {
+return nil, err
+}
+sb := app.NewSecureBytesFromString(val)
+debugf("getPassword: received password length=%d", sb.Len())
+return sb, nil
+}
 
-	if stat, err := os.Stdin.Stat(); err == nil && (stat.Mode()&os.ModeCharDevice) != 0 {
-		debugf("getPassword: using os.Stdin/os.Stdout as TTY")
-	} else {
-		// Try opening /dev/tty when stdin is not a TTY (e.g., master was piped).
-		tty, err := os.OpenFile("/dev/tty", os.O_RDWR, 0)
-		if err != nil {
-			debugf("getPassword: could not open /dev/tty: %v", err)
-			return nil, fmt.Errorf("no TTY available for password prompt")
-		}
-		in = tty
-		out = tty
-		ttyOpen = true
-		defer tty.Close()
-	}
-
-	debugf("getPassword: starting Bubbletea (ttyOpen=%v)", ttyOpen)
-	p := tea.NewProgram(newPasswordModel(), tea.WithInput(in), tea.WithOutput(out))
-	finalModel, err := p.Run()
-	debugf("getPassword: Bubbletea.Run returned err=%v finalModelType=%T", err, finalModel)
-	if err != nil {
-		return nil, err
-	}
-
-	pm, ok := finalModel.(passwordModel)
-	if !ok {
-		return nil, fmt.Errorf("unexpected model type returned by bubbletea")
-	}
-	if pm.err != nil {
-		return nil, pm.err
-	}
-
-	// Note: pm.input.Value() returns a string from textinput.
-	// Strings are immutable and cannot be securely wiped.
-	// This is a known limitation of the Bubbletea textinput component.
-	// The master password entered here will remain in memory until GC.
-	sb := app.NewSecureBytesFromString(pm.input.Value())
-	debugf("getPassword: received password length=%d", sb.Len())
-	return sb, nil
+func getSpell() (string, error) {
+// Test harness override: if MORIA_SPELL is set, print the prompt and return immediately.
+if s := os.Getenv("MORIA_SPELL"); s != "" {
+debugf("getSpell: MORIA_SPELL set, returning it")
+fmt.Fprintln(os.Stdout, "Enter spell:")
+return strings.TrimSpace(s), nil
+}
+debugf("getSpell: starting prompt")
+spell, err := runPrompt(spellPromptCfg)
+if err != nil {
+return "", err
+}
+debugf("getSpell: received spell length=%d", len(spell))
+return spell, nil
 }

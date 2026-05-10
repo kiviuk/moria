@@ -377,51 +377,32 @@ func TestGetMatrix_ValidInput(t *testing.T) {
 }
 
 func TestGetMatrix_InvalidInput(t *testing.T) {
-	sb := app.NewSecureBytesFromString("too-short")
-	defer sb.Wipe()
-	_, err := getMatrix(sb)
-	if err == nil {
-		t.Error("expected error for invalid input")
-	}
-}
-
-func TestGetMatrix_WrongLength(t *testing.T) {
-	sb := app.NewSecureBytesFromString("a")
-	defer sb.Wipe()
-	_, err := getMatrix(sb)
-	if err == nil {
-		t.Error("expected error for wrong length input")
+	// Verify getMatrix rejects inputs with wrong or insufficient length
+	for _, input := range []string{"too-short", "a"} {
+		sb := app.NewSecureBytesFromString(input)
+		defer sb.Wipe()
+		if _, err := getMatrix(sb); err == nil {
+			t.Errorf("getMatrix(%q): expected error, got nil", input)
+		}
 	}
 }
 
 func TestConfig_Wipe(t *testing.T) {
-	masterRaw := app.NewSecureBytesFromString("raw-master-password")
-	master := app.NewSecureBytesFromString("expanded-master-password")
-
+	// Verify Wipe clears both fields and handles nil fields without panic
 	cfg := Config{
 		Mode:      ModeBatch,
-		MasterRaw: masterRaw,
-		Master:    master,
+		MasterRaw: app.NewSecureBytesFromString("raw-master-password"),
+		Master:    app.NewSecureBytesFromString("expanded-master-password"),
 	}
-
 	cfg.Wipe()
-
 	if !cfg.MasterRaw.IsWiped() {
 		t.Error("expected MasterRaw to be wiped")
 	}
 	if !cfg.Master.IsWiped() {
 		t.Error("expected Master to be wiped")
 	}
-}
 
-func TestConfig_Wipe_NilFields(t *testing.T) {
-	cfg := Config{
-		Mode:      ModeBatch,
-		MasterRaw: nil,
-		Master:    nil,
-	}
-
-	cfg.Wipe() // Should not panic
+	(&Config{Mode: ModeBatch}).Wipe() // nil fields must not panic
 }
 
 func TestMode_Validate(t *testing.T) {
@@ -522,28 +503,23 @@ func TestPrintStrengthTable_NonZeroEntropy(t *testing.T) {
 	}
 }
 
-func TestDetermineInputState_PipedMasterWithSpell(t *testing.T) {
-	// Verify MORIA_MASTER_FILE env var + spell yields InputStatePipedMasterWithSpellArg.
-	t.Setenv("MORIA_MASTER_FILE", "/any/path")
-	cfg := Config{Spell: "amazon"}
-	state, err := determineInputState(cfg)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
+func TestDetermineInputState(t *testing.T) {
+	// Verify MORIA_MASTER_FILE env var drives piped-master states
+	tests := []struct {
+		spell string
+		want  InputState
+	}{
+		{"amazon", InputStatePipedMasterWithSpellArg},
+		{"", InputStatePipedMasterNoSpell},
 	}
-	if state != InputStatePipedMasterWithSpellArg {
-		t.Errorf("expected InputStatePipedMasterWithSpellArg (%d), got %d", InputStatePipedMasterWithSpellArg, state)
-	}
-}
-
-func TestDetermineInputState_PipedMasterNoSpell(t *testing.T) {
-	// Verify MORIA_MASTER_FILE env var + empty spell yields InputStatePipedMasterNoSpell.
-	t.Setenv("MORIA_MASTER_FILE", "/any/path")
-	cfg := Config{Spell: ""}
-	state, err := determineInputState(cfg)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if state != InputStatePipedMasterNoSpell {
-		t.Errorf("expected InputStatePipedMasterNoSpell (%d), got %d", InputStatePipedMasterNoSpell, state)
+	for _, tt := range tests {
+		t.Setenv("MORIA_MASTER_FILE", "/any/path")
+		state, err := determineInputState(Config{Spell: tt.spell})
+		if err != nil {
+			t.Fatalf("spell=%q: unexpected error: %v", tt.spell, err)
+		}
+		if state != tt.want {
+			t.Errorf("spell=%q: got state %d, want %d", tt.spell, state, tt.want)
+		}
 	}
 }
