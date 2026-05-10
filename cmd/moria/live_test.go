@@ -330,26 +330,23 @@ func simulateBackspace(m LiveModel) LiveModel {
 }
 
 func TestWrapWithIndent_Short(t *testing.T) {
-	// Verify text shorter than width is returned as a single-element slice
-	got := wrapWithIndent("hello", 80, "            ")
+	got := wrapWithIndent([]byte("hello"), 80, "            ")
 	if len(got) != 1 || got[0] != "hello" {
 		t.Errorf("expected [%q], got %v", "hello", got)
 	}
 }
 
 func TestWrapWithIndent_ExactWidth(t *testing.T) {
-	// Verify text exactly at width is returned as a single-element slice
 	text := "12345678901234567890123456789012345678901234567890123456789012345678901234567890"
-	got := wrapWithIndent(text, 80, "            ")
+	got := wrapWithIndent([]byte(text), 80, "            ")
 	if len(got) != 1 || got[0] != text {
 		t.Errorf("expected [%q], got %v", text, got)
 	}
 }
 
 func TestWrapWithIndent_OneOver(t *testing.T) {
-	// Verify text one character over width wraps to two elements
 	text := "123456789012345678901234567890123456789012345678901234567890123456789012345678901"
-	got := wrapWithIndent(text, 80, "  ")
+	got := wrapWithIndent([]byte(text), 80, "  ")
 	expected := []string{
 		"12345678901234567890123456789012345678901234567890123456789012345678901234567890",
 		"  1",
@@ -360,10 +357,8 @@ func TestWrapWithIndent_OneOver(t *testing.T) {
 }
 
 func TestWrapWithIndent_MultipleWraps(t *testing.T) {
-	// Verify text requiring multiple wraps produces correct number of elements
-	// 81 chars / 10 = 8 full lines + 1 remaining = 9 elements
 	text := "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
-	got := wrapWithIndent(text, 10, "  ")
+	got := wrapWithIndent([]byte(text), 10, "  ")
 	if len(got) != 9 {
 		t.Errorf("expected 9 chunks, got %d: %v", len(got), got)
 	}
@@ -376,8 +371,7 @@ func TestWrapWithIndent_MultipleWraps(t *testing.T) {
 }
 
 func TestWrapWithIndent_Empty(t *testing.T) {
-	// Verify empty string returns a single-element slice containing empty string
-	got := wrapWithIndent("", 80, "            ")
+	got := wrapWithIndent([]byte(""), 80, "            ")
 	if len(got) != 1 || got[0] != "" {
 		t.Errorf("expected [%q], got %v", "", got)
 	}

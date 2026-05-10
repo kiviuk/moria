@@ -212,31 +212,32 @@ func (m LiveModel) doRunes(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 // wrapWithIndent breaks text into lines of max width, indenting continuation lines.
 // Returns each visual line as a separate string for independent per-chunk rendering.
 // Purely visual — never modifies the underlying model data.
-// Uses strings.Builder for efficient string construction.
-func wrapWithIndent(text string, width int, indent string) []string {
+// wrapWithIndent splits text into chunks of specified width, prepending indent to all lines except the first.
+// Accepts []byte to avoid storing sensitive data as immutable strings.
+func wrapWithIndent(text []byte, width int, indent string) []string {
 	if len(text) <= width {
-		return []string{text}
+		return []string{string(text)}
 	}
 
 	var lines []string
 	var sb strings.Builder
 	sb.Grow(width + len(indent))
 
-	sb.WriteString(text[:width])
+	sb.Write(text[:width])
 	lines = append(lines, sb.String())
 	sb.Reset()
 
 	remaining := text[width:]
 	for len(remaining) > width {
 		sb.WriteString(indent)
-		sb.WriteString(remaining[:width])
+		sb.Write(remaining[:width])
 		lines = append(lines, sb.String())
 		sb.Reset()
 		remaining = remaining[width:]
 	}
-	if remaining != "" {
+	if len(remaining) > 0 {
 		sb.WriteString(indent)
-		sb.WriteString(remaining)
+		sb.Write(remaining)
 		lines = append(lines, sb.String())
 	}
 	return lines
@@ -289,7 +290,7 @@ func (m LiveModel) View() string {
 		cursor = " "
 	}
 	spellIndent := strings.Repeat(" ", len(SpellPromptLabel))
-	spellChunks := wrapWithIndent(string(m.spell), app.LiveModeWrapWidth-len(SpellPromptLabel), spellIndent)
+	spellChunks := wrapWithIndent(m.spell, app.LiveModeWrapWidth-len(SpellPromptLabel), spellIndent)
 	for i, chunk := range spellChunks {
 		isLast := i == len(spellChunks)-1
 		if i == 0 {
@@ -332,9 +333,8 @@ func (m LiveModel) View() string {
 // Multi-line: first line gets "Password:" label, last line gets length counter, middle are just chunks.
 func (m LiveModel) renderPasswordChunks(sb *strings.Builder, withMaxLen bool) {
 	passwordIndent := strings.Repeat(" ", len(PasswordPromptLabel))
-	// Calculate available width for content (excluding label)
 	contentWidth := app.LiveModeWrapWidth - len(PasswordPromptLabel)
-	wrappedPass := wrapWithIndent(string(m.password), contentWidth, passwordIndent)
+	wrappedPass := wrapWithIndent(m.password, contentWidth, passwordIndent)
 
 	// Single-line: one line with both label and length counter
 	if len(wrappedPass) == 1 {

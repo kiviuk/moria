@@ -480,7 +480,7 @@ func runMagicMode() int {
 		fmt.Fprintf(os.Stderr, ErrFailedGenerateMaster+"\n", err)
 		return 1
 	}
-	fmt.Print(master.String())
+	os.Stdout.Write(master.Bytes())
 	master.Wipe()
 	return 0
 }
