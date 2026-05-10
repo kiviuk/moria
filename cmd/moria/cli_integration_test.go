@@ -53,3 +53,22 @@ func TestCLI_OversizedStdin_Fails(t *testing.T) {
 		t.Fatalf("expected error containing %q; got output: %s", want, out)
 	}
 }
+
+func TestCLI_Determinism(t *testing.T) {
+	// Verify same master + spell always produces identical output (core security property).
+	t.Setenv("MORIA_MASTER_FILE", "")
+	out1, err := runCLI("my-master-password\n", "amazon")
+	if err != nil {
+		t.Fatalf("first run failed: %v; output: %s", err, out1)
+	}
+	out2, err := runCLI("my-master-password\n", "amazon")
+	if err != nil {
+		t.Fatalf("second run failed: %v; output: %s", err, out2)
+	}
+	if out1 != out2 {
+		t.Errorf("determinism violation: first=%q second=%q", out1, out2)
+	}
+	if strings.TrimSpace(out1) == "" {
+		t.Error("expected non-empty password output")
+	}
+}

@@ -2,12 +2,46 @@ package main
 
 import (
 	"bytes"
+	"io"
+	"os"
 	"strings"
 	"testing"
 
 	"github.com/kiviuk/moria/internal/app"
 	"github.com/kiviuk/moria/internal/testutil"
 )
+
+// captureStdout redirects os.Stdout to a pipe for the duration of f, returns captured output.
+func captureStdout(t *testing.T, f func()) string {
+	t.Helper()
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatalf("os.Pipe: %v", err)
+	}
+	old := os.Stdout
+	os.Stdout = w
+	f()
+	w.Close()
+	os.Stdout = old
+	out, _ := io.ReadAll(r)
+	return string(out)
+}
+
+// captureStderr redirects os.Stderr to a pipe for the duration of f, returns captured output.
+func captureStderr(t *testing.T, f func()) string {
+	t.Helper()
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatalf("os.Pipe: %v", err)
+	}
+	old := os.Stderr
+	os.Stderr = w
+	f()
+	w.Close()
+	os.Stderr = old
+	out, _ := io.ReadAll(r)
+	return string(out)
+}
 
 const (
 	expectsError = true
@@ -20,70 +54,6 @@ func flagsSet(flags ...string) map[string]bool {
 		m[f] = true
 	}
 	return m
-}
-
-func TestPipeInput_PlainText(t *testing.T) {
-	// Verify plain text is returned unchanged when piped
-	input := "my-secret"
-	got := strings.TrimSpace(input)
-	if got != "my-secret" {
-		t.Errorf("expected %q, got %q", "my-secret", got)
-	}
-}
-
-func TestPipeInput_TrailingNewline(t *testing.T) {
-	// Verify trailing newline from piped input is stripped
-	input := "my-secret\n"
-	got := strings.TrimSpace(input)
-	if got != "my-secret" {
-		t.Errorf("expected %q, got %q", "my-secret", got)
-	}
-}
-
-func TestPipeInput_CRLF(t *testing.T) {
-	// Verify Windows-style line endings are stripped
-	input := "my-secret\r\n"
-	got := strings.TrimSpace(input)
-	if got != "my-secret" {
-		t.Errorf("expected %q, got %q", "my-secret", got)
-	}
-}
-
-func TestPipeInput_LeadingTrailingSpaces(t *testing.T) {
-	// Verify leading and trailing whitespace is stripped
-	input := "  my-secret  "
-	got := strings.TrimSpace(input)
-	if got != "my-secret" {
-		t.Errorf("expected %q, got %q", "my-secret", got)
-	}
-}
-
-func TestPipeInput_MultiLine(t *testing.T) {
-	// Verify multi-line input (SSH key) preserves internal content
-	input := "-----BEGIN KEY-----\nabc123\n-----END KEY-----\n"
-	got := strings.TrimSpace(input)
-	expected := "-----BEGIN KEY-----\nabc123\n-----END KEY-----"
-	if got != expected {
-		t.Errorf("expected %q, got %q", expected, got)
-	}
-}
-
-func TestPipeInput_Empty(t *testing.T) {
-	// Verify empty input returns empty string
-	input := ""
-	got := strings.TrimSpace(input)
-	if got != "" {
-		t.Errorf("expected empty string, got %q", got)
-	}
-}
-
-func TestPipeInput_OnlyWhitespace(t *testing.T) {
-	// Verify whitespace-only input returns empty string
-	input := "   \n\t  "
-	got := strings.TrimSpace(input)
-	if got != "" {
-		t.Errorf("expected empty string, got %q", got)
-	}
 }
 
 func TestBatchMode_MaxLen(t *testing.T) {
@@ -518,5 +488,62 @@ func TestFormatGuessesPerSec(t *testing.T) {
 		if got := formatGuessesPerSec(tt.n); got != tt.expected {
 			t.Errorf("formatGuessesPerSec(%d) = %q, expected %q", tt.n, got, tt.expected)
 		}
+	}
+}
+
+func TestPrintUsage_ContainsOptions(t *testing.T) {
+	// Verify printUsage writes the expected flags and sections to stdout.
+	out := captureStdout(t, printUsage)
+	for _, want := range []string{"--magic", "--pretty", "--live", "--max-len", "--help", "Examples:"} {
+		if !strings.Contains(out, want) {
+			t.Errorf("printUsage output missing %q", want)
+		}
+	}
+}
+
+func TestPrintStrengthTable_ZeroEntropy(t *testing.T) {
+	// Verify printStrengthTable writes nothing when entropy is 0.
+	result := app.MasterPasswordResult{Entropy: 0}
+	out := captureStderr(t, func() { printStrengthTable(result) })
+	if out != "" {
+		t.Errorf("expected no output for zero entropy, got %q", out)
+	}
+}
+
+func TestPrintStrengthTable_NonZeroEntropy(t *testing.T) {
+	// Verify printStrengthTable writes entropy and crack time to stderr when entropy > 0.
+	result := app.MasterPasswordResult{Entropy: 100, CrackTimeDisplay: "centuries", CrackTimeSeconds: 1e10, Score: 4}
+	out := captureStderr(t, func() { printStrengthTable(result) })
+	if !strings.Contains(out, "100") {
+		t.Errorf("expected entropy 100 in output, got %q", out)
+	}
+	if !strings.Contains(out, "centuries") {
+		t.Errorf("expected crack time display in output, got %q", out)
+	}
+}
+
+func TestDetermineInputState_PipedMasterWithSpell(t *testing.T) {
+	// Verify MORIA_MASTER_FILE env var + spell yields InputStatePipedMasterWithSpellArg.
+	t.Setenv("MORIA_MASTER_FILE", "/any/path")
+	cfg := Config{Spell: "amazon"}
+	state, err := determineInputState(cfg)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if state != InputStatePipedMasterWithSpellArg {
+		t.Errorf("expected InputStatePipedMasterWithSpellArg (%d), got %d", InputStatePipedMasterWithSpellArg, state)
+	}
+}
+
+func TestDetermineInputState_PipedMasterNoSpell(t *testing.T) {
+	// Verify MORIA_MASTER_FILE env var + empty spell yields InputStatePipedMasterNoSpell.
+	t.Setenv("MORIA_MASTER_FILE", "/any/path")
+	cfg := Config{Spell: ""}
+	state, err := determineInputState(cfg)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if state != InputStatePipedMasterNoSpell {
+		t.Errorf("expected InputStatePipedMasterNoSpell (%d), got %d", InputStatePipedMasterNoSpell, state)
 	}
 }

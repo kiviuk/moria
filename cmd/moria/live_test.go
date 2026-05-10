@@ -1,6 +1,7 @@
 package main
 
 import (
+	"strings"
 	"testing"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -374,5 +375,89 @@ func TestWrapWithIndent_Empty(t *testing.T) {
 	got := wrapWithIndent([]byte(""), 80, "            ")
 	if len(got) != 1 || got[0] != "" {
 		t.Errorf("expected [%q], got %v", "", got)
+	}
+}
+
+func TestLiveModel_View_Empty(t *testing.T) {
+	// Verify View() returns a non-empty string with structural elements when no spell is entered.
+	matrix := newTestMatrix()
+	m := newLiveModel(matrix, newTestMasterRaw(), 0, PasteAllowed)
+	view := m.View()
+	if view == "" {
+		t.Error("expected non-empty View() output, got empty string")
+	}
+	if !strings.Contains(view, "Non") {
+		t.Errorf("expected matrix header 'Non' in View() output")
+	}
+	if !strings.Contains(view, "─") {
+		t.Errorf("expected separator '─' in View() output")
+	}
+}
+
+func TestLiveModel_View_WithSpell(t *testing.T) {
+	// Verify View() output contains spell-related content after typing.
+	matrix := newTestMatrix()
+	m := newLiveModel(matrix, newTestMasterRaw(), 0, PasteAllowed)
+	m = simulateKey(m, "ab")
+	view := m.View()
+	if !strings.Contains(view, "Password:") {
+		t.Errorf("expected 'Password:' in View() output after typing, got:\n%s", view)
+	}
+	if !strings.Contains(view, "Spell:") {
+		t.Errorf("expected 'Spell:' in View() output after typing, got:\n%s", view)
+	}
+}
+
+func TestRenderPasswordChunks_Short(t *testing.T) {
+	// Verify renderPasswordChunks produces a single line for a short password.
+	matrix := newTestMatrix()
+	m := newLiveModel(matrix, newTestMasterRaw(), 0, PasteAllowed)
+	m = simulateKey(m, "a")
+
+	var sb strings.Builder
+	m.renderPasswordChunks(&sb, false)
+	out := sb.String()
+	if !strings.Contains(out, "Password:") {
+		t.Errorf("expected 'Password:' label in renderPasswordChunks output, got %q", out)
+	}
+	if !strings.Contains(out, "(") {
+		t.Errorf("expected length counter in renderPasswordChunks output, got %q", out)
+	}
+}
+
+func TestRenderPasswordChunks_WithMaxLen(t *testing.T) {
+	// Verify renderPasswordChunks shows n/maxLen format when withMaxLen is true.
+	matrix := newTestMatrix()
+	maxLen := 4 * app.CharactersPerMatrixCell
+	m := newLiveModel(matrix, newTestMasterRaw(), maxLen, PasteAllowed)
+	m = simulateKey(m, "ab")
+
+	var sb strings.Builder
+	m.renderPasswordChunks(&sb, true)
+	out := sb.String()
+	if !strings.Contains(out, "/") {
+		t.Errorf("expected n/maxLen format in renderPasswordChunks output with maxLen, got %q", out)
+	}
+}
+
+func TestLiveModel_Wipe(t *testing.T) {
+	// Verify Wipe() zeroes spell, password, and queryLetters.
+	matrix := newTestMatrix()
+	m := newLiveModel(matrix, newTestMasterRaw(), 0, PasteAllowed)
+	m = simulateKey(m, "amazon")
+	if len(m.spell) == 0 || len(m.password) == 0 || len(m.queryLetters) == 0 {
+		t.Fatal("setup failed: model should have spell/password/queryLetters after typing")
+	}
+
+	m.Wipe()
+
+	if m.spell != nil {
+		t.Errorf("expected spell to be nil after Wipe, got %v", m.spell)
+	}
+	if m.password != nil {
+		t.Errorf("expected password to be nil after Wipe, got %v", m.password)
+	}
+	if m.queryLetters != nil {
+		t.Errorf("expected queryLetters to be nil after Wipe, got %v", m.queryLetters)
 	}
 }
