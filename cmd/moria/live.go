@@ -146,12 +146,17 @@ func (m LiveModel) doBackspace() LiveModel {
 
 	// Truncate password to match expected length
 	if len(m.password) >= expectedLen {
+		for i := expectedLen; i < len(m.password); i++ {
+			m.password[i] = 0
+		}
 		m.password = m.password[:expectedLen]
 	} else {
 		// State is corrupted - clear everything to maintain consistency
+		memguard.WipeBytes(m.password)
+		m.password = nil
+		memguard.WipeBytes(m.spell)
 		m.spell = nil
 		m.queryLetters = nil
-		m.password = nil
 	}
 
 	m.state = StateNormal
