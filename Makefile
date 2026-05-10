@@ -34,3 +34,11 @@ deps:
 
 lint: deps
 	$(GOLANGCI_LINT) run ./...
+
+win64:
+	mkdir -p bin/win64
+	CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -ldflags="-s -w" -o bin/win64/moria.exe ./cmd/moria
+
+linux64:
+	mkdir -p bin/linux64
+	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o bin/linux64/moria ./cmd/moria

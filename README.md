@@ -254,6 +254,18 @@ go test ./... -run TestQuery       # Run single test by name
 
 All tests pass with any `CharactersPerMatrixCell` and `PasswordMatrixRows` values — expected values are computed from constants, not hardcoded.
 
+## Cross-Compilation
+
+Pre-built binaries for other platforms can be cross-compiled on any machine.
+
+| Target | Command | Output |
+|--------|---------|--------|
+| macOS (default) | `make build` | `bin/moria` |
+| Windows x86-64 | `make win64` | `bin/win64/moria.exe` |
+| Linux x86-64 | `make linux64` | `bin/linux64/moria` |
+
+All cross-compiled binaries use `CGO_ENABLED=0` and are stripped of debug info (`-ldflags="-s -w"`).
+
 ## License
 
 MIT
