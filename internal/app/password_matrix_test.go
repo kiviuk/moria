@@ -18,8 +18,25 @@ func newTestMatrix() Matrix {
 	return m
 }
 
+func TestExpandToMatrix_NilInput(t *testing.T) {
+	// Verify ExpandToMatrix returns an error for nil input.
+	_, err := ExpandToMatrix(nil)
+	if err == nil {
+		t.Fatal("expected error for nil input, got nil")
+	}
+}
+
+func TestExpandToMatrix_EmptyInput(t *testing.T) {
+	// Verify ExpandToMatrix returns an error for an empty SecureBytes.
+	in := NewSecureBytesFromString("")
+	defer in.Wipe()
+	_, err := ExpandToMatrix(in)
+	if err == nil {
+		t.Fatal("expected error for empty input, got nil")
+	}
+}
+
 func TestExpandToMatrix_Deterministic(t *testing.T) {
-	// Verify same input always produces same output
 	in1 := NewSecureBytesFromString("test-secret")
 	in2 := NewSecureBytesFromString("test-secret")
 	defer in1.Wipe()
@@ -380,45 +397,17 @@ func TestExtractPassword_Integration(t *testing.T) {
 }
 
 func TestMatrix_Wipe(t *testing.T) {
-	m := newTestMatrix()
-
-	// Store original values to verify they're wiped
-	originalCell := m[0][0]
-
-	m.Wipe()
-
-	// Verify all cells are nil after wipe
-	for row := 0; row < PasswordMatrixRows; row++ {
-		for col := 0; col < PasswordMatrixColumns; col++ {
-			if m[row][col] != nil {
-				t.Errorf("m[%d][%d] = %q after wipe, expected nil", row, col, m[row][col])
-			}
-		}
-	}
-
-	// Verify original data reference is no longer accessible
-	_ = originalCell // Keep for documentation - original value was stored
+	// Matrix.Wipe() was removed — plain heap []byte; OS zeroes pages on reuse.
+	// This test is intentionally left as a no-op placeholder.
+	_ = newTestMatrix()
 }
 
 func TestMatrix_Wipe_ZeroizesData(t *testing.T) {
-	// Create a matrix with known content
+	// Matrix.Wipe() was removed — plain heap []byte; OS zeroes pages on reuse.
+	// This test is intentionally left as a no-op placeholder.
 	input := testutil.NewTestMatrixData(PasswordMatrixRows, PasswordMatrixColumns, CharactersPerMatrixCell)
-	m, err := NewMatrix(input)
+	_, err := NewMatrix(input)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-
-	// Capture a cell value before wipe
-	originalValue := m[0][0]
-
-	m.Wipe()
-
-	// After wipe, the cell should be nil
-	if m[0][0] != nil {
-		t.Errorf("cell not nil after wipe: got %q", m[0][0])
-	}
-
-	// The original value should still exist in our local variable
-	// (proving we can't truly wipe byte slices, only our matrix references)
-	_ = originalValue
 }

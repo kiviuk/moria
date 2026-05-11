@@ -3,6 +3,7 @@ package app
 import (
 	"fmt"
 	"strings"
+	"unicode/utf8"
 )
 
 // MagicLetter represents a single character from a validated spell, paired with
@@ -16,7 +17,7 @@ type MagicLetter struct {
 }
 
 // QueryLetter is a MagicLetter whose position has been resolved to a valid matrix row.
-// MatrixRow is the wrapped row index (0-9), not the original spell position.
+// MatrixRow is the wrapped row index (0 to PasswordMatrixRows-1), not the original spell position.
 // This type is used to query the matrix for its password fragment.
 type QueryLetter struct {
 	Letter      string
@@ -52,6 +53,9 @@ type Errors []ParseError
 
 // Error returns a formatted string listing all invalid characters and their positions.
 func (e Errors) Error() string {
+	if len(e) == 0 {
+		return ""
+	}
 	parts := make([]string, len(e))
 	for i, pe := range e {
 		parts[i] = fmt.Sprintf("%q at %d", pe.Char, pe.Position)
@@ -109,7 +113,7 @@ func LetterGroup(letter string) int {
 	if letter == "" {
 		return 0
 	}
-	r := rune(letter[0])
+	r, _ := utf8.DecodeRuneInString(letter)
 	selected := rune(0)
 	if r >= 'A' && r <= 'Z' {
 		selected = 'A'
@@ -140,20 +144,15 @@ func ModN(value, n int) int {
 // Query transforms a MagicLetter into a QueryLetter with resolved matrix coordinates.
 // Each character in the spell acts as a pointer into the password matrix.
 // The spell position determines the matrix row (wrapped via modulo to fit PasswordMatrixRows rows).
-// Uppercase letters shift the row by PasswordMatrixRows/2, making case significant.
-// Dividing by 2 ensures zero overlap: every uppercase letter lands on a row
-// that no lowercase letter can reach at the same position.
-// The letter determines the column via LetterGroup.
+// Case is ignored: 'a' and 'A' at the same position produce the same row, giving
+// the full row space to position-based selection.
+// The letter determines the column via LetterGroup (also case-insensitive).
 // This creates a deterministic path through the matrix: the same spell always
 // reads the same cells, producing the same password from the same matrix.
 func (m MagicLetter) Query() QueryLetter {
-	row := ModN(m.LetterPosition, PasswordMatrixRows)
-	if m.Letter >= "A" && m.Letter <= "Z" {
-		row = ModN(m.LetterPosition+PasswordMatrixRows/2, PasswordMatrixRows)
-	}
 	return QueryLetter{
 		Letter:      m.Letter,
-		MatrixRow:   row,
+		MatrixRow:   ModN(m.LetterPosition, PasswordMatrixRows),
 		LetterGroup: LetterGroup(m.Letter),
 	}
 }

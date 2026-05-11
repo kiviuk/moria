@@ -58,6 +58,8 @@ const (
 )
 
 func determineInputState(cfg Config) (InputState, error) {
+	// SECURITY NOTE: MORIA_MASTER_FILE is a development/scripting aid.
+	// Environment variables are visible to all processes owned by the same user.
 	// If MORIA_MASTER_FILE is set, treat input as piped master so tests can override stdin.
 	if mf := os.Getenv("MORIA_MASTER_FILE"); mf != "" {
 		debugf("determineInputState: MORIA_MASTER_FILE set; treating stdin as piped")
@@ -129,15 +131,6 @@ type Config struct {
 	MasterRaw *app.SecureBytes
 }
 
-func (c *Config) Wipe() {
-	if c.Master != nil {
-		c.Master.Wipe()
-	}
-	if c.MasterRaw != nil {
-		c.MasterRaw.Wipe()
-	}
-}
-
 func flagPermittedInMode(allowedFlags []string, flagToCheck string) bool {
 	return slices.Contains(allowedFlags, flagToCheck)
 }
@@ -151,8 +144,9 @@ func getMatrix(master *app.SecureBytes) (app.Matrix, error) {
 }
 
 func readStdin() (*app.SecureBytes, error) {
-	// Support an environment override to read the master password from a file.
-	// This makes PTY-based tests easier without changing normal CLI behavior.
+	// SECURITY NOTE: MORIA_MASTER_FILE is a development/scripting aid.
+	// Environment variables are visible to all processes owned by the same user
+	// via /proc/<PID>/environ on Linux. Avoid using this in sensitive environments.
 	if mf := os.Getenv("MORIA_MASTER_FILE"); mf != "" {
 		debugf("readStdin: MORIA_MASTER_FILE set: %s", mf)
 		data, err := os.ReadFile(mf)
@@ -163,12 +157,9 @@ func readStdin() (*app.SecureBytes, error) {
 		debugf("readStdin: read %d bytes from file", len(data))
 		if len(data) > app.MaxMasterPasswordInputBytes {
 			debugf("readStdin: master file too large: %d bytes", len(data))
-			memguard.WipeBytes(data)
 			return nil, fmt.Errorf(ErrStdinTooLarge, app.MaxMasterPasswordInputBytes/1024)
 		}
-		sb := app.NewSecureBytes(data)
-		memguard.WipeBytes(data)
-		return sb.TrimSpace(), nil
+		return app.NewSecureBytes(data).TrimSpace(), nil
 	}
 
 	stat, err := os.Stdin.Stat()
@@ -190,11 +181,9 @@ func readStdin() (*app.SecureBytes, error) {
 		debugf("readStdin: read %d bytes", len(data))
 		if len(data) > app.MaxMasterPasswordInputBytes {
 			debugf("readStdin: stdin too large: %d bytes", len(data))
-			memguard.WipeBytes(data)
 			return nil, fmt.Errorf(ErrStdinTooLarge, app.MaxMasterPasswordInputBytes/1024)
 		}
 		sb := app.NewSecureBytes(data)
-		memguard.WipeBytes(data)
 		debugf("readStdin: secure bytes length after trim: %d", sb.Len())
 		return sb.TrimSpace(), nil
 	}
@@ -419,7 +408,6 @@ func run() int {
 			return 1
 		}
 		cfg.Master = expanded
-		defer cfg.Wipe()
 
 		debugf("prompting for spell on TTY")
 		spell, perr := getSpell()
@@ -450,7 +438,6 @@ func run() int {
 			return 1
 		}
 		cfg.Master = expanded
-		defer cfg.Wipe()
 	}
 
 	return runMode(&cfg, flags)
@@ -475,24 +462,21 @@ func runMode(cfg *Config, flags map[string]bool) int {
 }
 
 func runMagicMode() int {
-	master, err := app.GenerateMasterPassword(app.MatrixBytes, app.MasterPasswordChars)
+	master, err := app.GenerateMasterPassword(app.MasterPasswordLength, app.MasterPasswordChars)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, ErrFailedGenerateMaster+"\n", err)
 		return 1
 	}
 	os.Stdout.Write(master.Bytes())
-	master.Wipe()
 	return 0
 }
 
 func runPrettyMode(cfg *Config) int {
 	matrix, err := getMatrix(cfg.Master)
 	if err != nil {
-		matrix.Wipe()
 		fmt.Fprintln(os.Stderr, err)
 		return 1
 	}
-	defer matrix.Wipe()
 	fmt.Print(matrix.Pretty())
 	return 0
 }
@@ -500,18 +484,15 @@ func runPrettyMode(cfg *Config) int {
 func runLiveMode(cfg *Config, flags map[string]bool) int {
 	matrix, err := getMatrix(cfg.Master)
 	if err != nil {
-		matrix.Wipe()
 		fmt.Fprintln(os.Stderr, err)
 		return 1
 	}
-	defer matrix.Wipe()
 	pasteMode := PasteAllowed
 	if flags["--ignore-paste"] {
 		pasteMode = PasteIgnored
 	}
 	finalModel, err := LiveMode(matrix, cfg.MaxLen, pasteMode, cfg.MasterRaw)
 	if err != nil {
-		matrix.Wipe()
 		fmt.Fprintf(os.Stderr, ErrLiveMode+": %v\n", err)
 		return 1
 	}
@@ -522,28 +503,23 @@ func runLiveMode(cfg *Config, flags map[string]bool) int {
 	if len(passwordBytes) > 0 {
 		os.Stdout.Write(passwordBytes)
 	}
-	finalModel.Wipe()
 	return 0
 }
 
 func runBatchMode(cfg *Config) int {
 	matrix, err := getMatrix(cfg.Master)
 	if err != nil {
-		matrix.Wipe()
 		fmt.Fprintln(os.Stderr, err)
 		return 1
 	}
-	defer matrix.Wipe()
 	dirty := app.DirtySpell{Spell: cfg.Spell}
 	magic, err := dirty.Parse()
 	if err != nil {
-		matrix.Wipe()
 		fmt.Fprintf(os.Stderr, ErrInvalidSpell+": %v\n", err)
 		return 1
 	}
 	password, err := matrix.ExtractPassword(magic, cfg.MaxLen)
 	if err != nil {
-		matrix.Wipe()
 		fmt.Fprintf(os.Stderr, ErrExtractPassword+": %v\n", err)
 		return 1
 	}
@@ -557,5 +533,4 @@ func runBatchMode(cfg *Config) int {
 func runPasswordStrengthMode(masterPassword *app.SecureBytes) {
 	masterResult := app.CalculateMasterPasswordStrength(masterPassword.Bytes())
 	printStrengthTable(masterResult)
-	masterPassword.Wipe()
 }

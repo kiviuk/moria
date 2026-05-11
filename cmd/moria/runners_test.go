@@ -46,7 +46,6 @@ func TestRunMagicMode_OutputCharsFromPool(t *testing.T) {
 func TestRunPrettyMode_OutputFormat(t *testing.T) {
 	// Verify runPrettyMode prints a matrix with column headers and a separator row.
 	cfg := newTestConfig("")
-	defer cfg.Wipe()
 
 	out := captureStdout(t, func() {
 		code := runPrettyMode(cfg)
@@ -65,7 +64,6 @@ func TestRunPrettyMode_OutputFormat(t *testing.T) {
 func TestRunBatchMode_ValidSpell(t *testing.T) {
 	// Verify runBatchMode writes a non-empty password to stdout for a valid spell.
 	cfg := newTestConfig("amazon")
-	defer cfg.Wipe()
 
 	out := captureStdout(t, func() {
 		code := runBatchMode(cfg)
@@ -81,7 +79,6 @@ func TestRunBatchMode_ValidSpell(t *testing.T) {
 func TestRunBatchMode_InvalidSpell(t *testing.T) {
 	// Verify runBatchMode returns exit code 1 and writes to stderr for an invalid spell.
 	cfg := newTestConfig("inv€lid")
-	defer cfg.Wipe()
 
 	errOut := captureStderr(t, func() {
 		code := runBatchMode(cfg)
@@ -118,7 +115,6 @@ func TestRunMode_MagicDispatch(t *testing.T) {
 func TestRunMode_BatchDispatch(t *testing.T) {
 	// Verify runMode dispatches to runBatchMode and exits cleanly for a valid spell.
 	cfg := newTestConfig("amazon")
-	defer cfg.Wipe()
 	captureStdout(t, func() {
 		code := runMode(cfg, map[string]bool{})
 		if code != 0 {

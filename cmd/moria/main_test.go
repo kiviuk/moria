@@ -388,21 +388,14 @@ func TestGetMatrix_InvalidInput(t *testing.T) {
 }
 
 func TestConfig_Wipe(t *testing.T) {
-	// Verify Wipe clears both fields and handles nil fields without panic
+	// Config.Wipe() was removed — SafeExit handles LockedBuffer cleanup.
+	// Verify Config struct fields exist and can be assigned without panic.
 	cfg := Config{
 		Mode:      ModeBatch,
 		MasterRaw: app.NewSecureBytesFromString("raw-master-password"),
 		Master:    app.NewSecureBytesFromString("expanded-master-password"),
 	}
-	cfg.Wipe()
-	if !cfg.MasterRaw.IsWiped() {
-		t.Error("expected MasterRaw to be wiped")
-	}
-	if !cfg.Master.IsWiped() {
-		t.Error("expected Master to be wiped")
-	}
-
-	(&Config{Mode: ModeBatch}).Wipe() // nil fields must not panic
+	_ = cfg
 }
 
 func TestMode_Validate(t *testing.T) {

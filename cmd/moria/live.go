@@ -4,8 +4,8 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"unicode/utf8"
 
-	"github.com/awnumar/memguard"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 
@@ -71,9 +71,6 @@ func (m *LiveModel) Wipe() {
 	if m.masterPasswordRaw != nil {
 		m.masterPasswordRaw.Wipe()
 	}
-	m.matrix.Wipe()
-	memguard.WipeBytes(m.spell)
-	memguard.WipeBytes(m.password)
 	m.spell = nil
 	m.password = nil
 	for i := range m.queryLetters {
@@ -131,8 +128,9 @@ func (m LiveModel) doBackspace() LiveModel {
 		return m
 	}
 
-	// Remove the last character from the spell
-	m.spell = m.spell[:len(m.spell)-1]
+	// Remove the last rune (not byte) from the spell
+	_, runeSize := utf8.DecodeLastRune(m.spell)
+	m.spell = m.spell[:len(m.spell)-runeSize]
 
 	// Remove the last query letter from the slice
 	if len(m.queryLetters) > 0 {
@@ -145,15 +143,10 @@ func (m LiveModel) doBackspace() LiveModel {
 
 	// Truncate password to match expected length
 	if len(m.password) >= expectedLen {
-		for i := expectedLen; i < len(m.password); i++ {
-			m.password[i] = 0
-		}
 		m.password = m.password[:expectedLen]
 	} else {
 		// State is corrupted - clear everything to maintain consistency
-		memguard.WipeBytes(m.password)
 		m.password = nil
-		memguard.WipeBytes(m.spell)
 		m.spell = nil
 		m.queryLetters = nil
 	}
@@ -399,9 +392,6 @@ func LiveMode(matrix app.Matrix, maxLen int, pasteMode PasteMode, masterPassword
 	if !ok {
 		return LiveModel{}, errors.New(ErrUnexpectedModel)
 	}
-
-	// Wipe the matrix in the LiveModel to prevent sensitive data from lingering
-	lm.matrix.Wipe()
 
 	return lm, nil
 }

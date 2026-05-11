@@ -4,98 +4,99 @@ import (
 	"github.com/awnumar/memguard"
 )
 
-// SecureBytes holds a mutable byte buffer that can be securely wiped from memory.
-// Unlike Go strings which are immutable and cannot be securely erased,
-// SecureBytes uses a mutable byte slice that can be zeroized when no longer needed.
+// SecureBytes holds a mutable byte buffer that is locked into physical RAM,
+// preventing the OS from writing it to swap (disk). The buffer is securely
+// zeroed when Wipe is called.
+//
+// WARNING: Bytes() returns a direct reference to the locked buffer.
+// Do not retain the slice after calling Wipe().
 type SecureBytes struct {
-	data []byte
+	buf *memguard.LockedBuffer
 }
 
-// NewSecureBytes creates a SecureBytes from a byte slice, copying the data.
-// The original slice can be safely wiped by the caller after this call.
+// NewSecureBytes creates a SecureBytes from a byte slice, copying the data into
+// a locked memory region. The original slice can be safely wiped by the caller.
 func NewSecureBytes(data []byte) *SecureBytes {
-	sb := &SecureBytes{
-		data: make([]byte, len(data)),
+	if len(data) == 0 {
+		return &SecureBytes{buf: memguard.NewBuffer(0)}
 	}
-	copy(sb.data, data)
-	return sb
+	return &SecureBytes{buf: memguard.NewBufferFromBytes(data)}
 }
 
-// NewSecureBytesFromString creates a SecureBytes from a string.
-// Note: The original string's backing array cannot be wiped - only this copy can be.
+// NewSecureBytesFromString creates a SecureBytes from a string, copying the data
+// into a locked memory region.
+// Note: The original string's backing array cannot be wiped — only this copy can be.
 func NewSecureBytesFromString(s string) *SecureBytes {
-	sb := &SecureBytes{
-		data: make([]byte, len(s)),
-	}
-	copy(sb.data, s)
-	return sb
+	return NewSecureBytes([]byte(s))
 }
 
-// Bytes returns the underlying byte slice.
-// WARNING: The returned slice references the internal buffer; do not retain it after Wipe().
+// Bytes returns the underlying byte slice from the locked buffer.
+// WARNING: The returned slice references locked memory; do not retain it after Wipe().
 func (sb *SecureBytes) Bytes() []byte {
-	return sb.data
+	if sb.buf == nil || !sb.buf.IsAlive() {
+		return nil
+	}
+	return sb.buf.Bytes()
 }
 
-// String returns the data as a string.
-// WARNING: This creates a copy - the string cannot be wiped. Use sparingly.
+// String returns the data as a string copy.
+// WARNING: The created string cannot be wiped from memory. Use sparingly.
 func (sb *SecureBytes) String() string {
-	return string(sb.data)
+	if sb.buf == nil || !sb.buf.IsAlive() {
+		return ""
+	}
+	// Use string([]byte) conversion which copies, NOT buf.String() which
+	// returns an unsafe pointer into the locked buffer and dangling after Destroy.
+	return string(sb.buf.Bytes())
 }
 
 // Len returns the length of the data.
 func (sb *SecureBytes) Len() int {
-	return len(sb.data)
+	if sb.buf == nil || !sb.buf.IsAlive() {
+		return 0
+	}
+	return sb.buf.Size()
 }
 
-// Wipe securely erases the data from memory.
-// After calling Wipe, the SecureBytes is empty and should not be used.
+// Wipe securely zeroes and releases the locked memory region.
+// After calling Wipe, the SecureBytes is empty and must not be used.
 func (sb *SecureBytes) Wipe() {
-	memguard.WipeBytes(sb.data)
-	sb.data = nil
+	if sb.buf != nil && sb.buf.IsAlive() {
+		sb.buf.Destroy()
+	}
+	sb.buf = nil
 }
 
 // IsWiped returns true if the data has been wiped.
 func (sb *SecureBytes) IsWiped() bool {
-	return sb.data == nil
+	return sb.buf == nil || !sb.buf.IsAlive()
 }
 
-// TrimSpace removes leading/trailing whitespace in-place, returning the same SecureBytes.
-// This avoids creating intermediate strings.
+// TrimSpace removes leading/trailing whitespace, returning a new SecureBytes
+// with the trimmed content. The original is wiped.
 func (sb *SecureBytes) TrimSpace() *SecureBytes {
-	if sb.data == nil {
+	if sb.buf == nil || !sb.buf.IsAlive() {
 		return sb
 	}
+	data := sb.buf.Bytes()
 
-	// Find first non-whitespace byte
 	start := 0
-	for start < len(sb.data) {
-		if !isWhitespace(sb.data[start]) {
-			break
-		}
+	for start < len(data) && isWhitespace(data[start]) {
 		start++
 	}
-
-	// Find last non-whitespace byte
-	end := len(sb.data)
-	for end > start {
-		if !isWhitespace(sb.data[end-1]) {
-			break
-		}
+	end := len(data)
+	for end > start && isWhitespace(data[end-1]) {
 		end--
 	}
 
-	// Zero out the trimmed portions
-	for i := range start {
-		sb.data[i] = 0
-	}
-	for i := end; i < len(sb.data); i++ {
-		sb.data[i] = 0
-	}
+	// Copy trimmed region to a plain []byte before destroying the locked buffer.
+	// We must NOT pass a sub-slice of a locked buffer to NewBufferFromBytes:
+	// memguard wipes the source after copying, which would fault on the guard pages.
+	tmp := make([]byte, end-start)
+	copy(tmp, data[start:end])
+	sb.Wipe()
 
-	// Slice to the trimmed portion
-	sb.data = sb.data[start:end]
-	return sb
+	return NewSecureBytes(tmp)
 }
 
 // isWhitespace returns true if the byte is whitespace (space, tab, newline, carriage return).

@@ -12,17 +12,17 @@ func TestSecureBytes_Wipe_ZeroizesData(t *testing.T) {
 
 	sb.Wipe()
 
-	// Verify the slice is nil after wipe
-	if sb.data != nil {
-		t.Error("expected data to be nil after wipe")
+	// Verify the buffer is destroyed after wipe
+	if !sb.IsWiped() {
+		t.Error("expected IsWiped to be true after wipe")
 	}
 
 	// Create a new SecureBytes and verify wiping works
 	sb2 := NewSecureBytes([]byte("another-secret"))
 	_ = sb2.Bytes() // Get reference
 	sb2.Wipe()
-	if sb2.data != nil {
-		t.Error("expected data to be nil after wipe")
+	if !sb2.IsWiped() {
+		t.Error("expected IsWiped to be true after wipe")
 	}
 }
 
@@ -60,12 +60,7 @@ func TestSecureBytes_TrimSpace(t *testing.T) {
 			t.Errorf("TrimSpace(%q) = %q, expected %q", tt.input, trimmed.String(), tt.expected)
 		}
 
-		// TrimSpace now modifies in-place, so sb and trimmed are the same
-		if sb != trimmed {
-			t.Error("TrimSpace should return the same SecureBytes (in-place modification)")
-		}
-
-		sb.Wipe()
+		trimmed.Wipe()
 	}
 }
 
@@ -78,7 +73,7 @@ func TestSecureBytes_TrimSpace_Newline(t *testing.T) {
 		t.Errorf("TrimSpace: got %q, expected %q", trimmed.String(), "master-password")
 	}
 
-	sb.Wipe()
+	trimmed.Wipe()
 }
 
 func TestSecureBytes_Len(t *testing.T) {
@@ -94,18 +89,13 @@ func TestSecureBytes_Len(t *testing.T) {
 }
 
 func TestSecureBytes_Bytes(t *testing.T) {
-	original := []byte("test-data")
-	sb := NewSecureBytes(original)
+	expected := []byte("test-data")
+	sb := NewSecureBytes([]byte("test-data"))
 
-	// Bytes() returns the underlying slice
-	bytes := sb.Bytes()
-	if !bytesEqual(bytes, original) {
-		t.Errorf("Bytes: got %v, expected %v", bytes, original)
-	}
-
-	// Verify it's the same underlying data (not a copy)
-	if &bytes[0] != &sb.data[0] {
-		t.Error("Bytes() should return reference to underlying data")
+	// Bytes() returns the underlying slice from locked memory
+	got := sb.Bytes()
+	if !bytesEqual(got, expected) {
+		t.Errorf("Bytes: got %v, expected %v", got, expected)
 	}
 
 	sb.Wipe()
@@ -154,7 +144,7 @@ func TestSecureBytes_DoubleWipe(t *testing.T) {
 
 func TestSecureBytes_WipeOnEmpty(t *testing.T) {
 	// Verify wiping empty/nil data is safe
-	sb := &SecureBytes{data: nil}
+	sb := &SecureBytes{buf: nil}
 	sb.Wipe() // Should not panic
 
 	sb2 := NewSecureBytes([]byte{})

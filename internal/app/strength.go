@@ -14,8 +14,9 @@ const MasterPasswordGPUCluster = uint64(100_000)
 // Uncrackable label returned when entropy exceeds displayable range.
 const Uncrackable = "effectively uncrackable"
 
-// TimeToGuess returns the average seconds to exhaust half the keyspace
-// at the given guessing speed. Uses log-based calculation to avoid float64 overflow.
+// TimeToGuess returns the worst-case seconds to exhaust the full keyspace
+// at the given guessing speed (2^entropyBits / guessesPerSec).
+// Use this for a conservative upper bound on crack time.
 func TimeToGuess(entropyBits int, guessesPerSec uint64) float64 {
 	if guessesPerSec == 0 {
 		return math.Inf(1)
@@ -98,8 +99,11 @@ type MasterPasswordResult struct {
 }
 
 // CalculateMasterPasswordStrength returns detailed strength analysis from zxcvbn.
-// NOTE: This function must convert to string for zxcvbn, which creates an immutable copy.
-// The caller should wipe the original []byte after calling this function.
+// SECURITY NOTE: zxcvbn requires a Go string. This conversion allocates an immutable
+// string on the heap that cannot be securely wiped — it will remain readable in memory
+// until the garbage collector reclaims it. This function should only be used when
+// the user explicitly requests strength analysis (--show-strength) and the tradeoff
+// is accepted.
 func CalculateMasterPasswordStrength(input []byte) MasterPasswordResult {
 	if len(input) == 0 {
 		return MasterPasswordResult{}

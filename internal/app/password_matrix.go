@@ -56,20 +56,6 @@ func (m Matrix) passwordFragmentAt(row, col int) ([]byte, error) {
 	return m[row][col], nil
 }
 
-// Wipe zeroizes all cells in the matrix.
-// Should be called when the matrix is no longer needed to prevent sensitive
-// data from lingering in memory after the program exits.
-func (m *Matrix) Wipe() {
-	for row := range PasswordMatrixRows {
-		for col := range PasswordMatrixColumns {
-			if m[row][col] != nil {
-				memguard.WipeBytes(m[row][col])
-				m[row][col] = nil
-			}
-		}
-	}
-}
-
 // ExtractPassword generates the final password by reading cells from the matrix
 // along the path defined by the spell. Each character in the spell contributes
 // CharactersPerMatrixCell characters to the output.
@@ -91,7 +77,6 @@ func (m Matrix) ExtractPassword(spell MagicSpell, maxLen int) (*SecureBytes, err
 		query := l.Query()
 		passwordFragmentCell, err := m.PasswordFragment(query)
 		if err != nil {
-			memguard.WipeBytes(password)
 			return nil, err
 		}
 
@@ -107,9 +92,7 @@ func (m Matrix) ExtractPassword(spell MagicSpell, maxLen int) (*SecureBytes, err
 		currentLen += len(passwordFragmentCell)
 	}
 
-	sb := NewSecureBytes(password)
-	memguard.WipeBytes(password)
-	return sb, nil
+	return NewSecureBytes(password), nil
 }
 
 // Pretty returns a human-readable string representation of the matrix.
@@ -153,14 +136,12 @@ func GenerateMasterPassword(length int, pool string) (*SecureBytes, error) {
 	if err != nil {
 		return nil, err
 	}
-	sb := NewSecureBytes(result)
-	memguard.WipeBytes(result)
-	return sb, nil
+	return NewSecureBytes(result), nil
 }
 
 // mapBytesSourceToAlphabet maps bytes from an io.Reader to an alphabet using rejection sampling.
 // Guarantees zero modulo bias regardless of alphabet size by discarding bytes that would create bias.
-// Returns a []byte that should be wiped by the caller or wrapped in SecureBytes.
+// Returns a []byte that should be wrapped in SecureBytes by the caller.
 func mapBytesSourceToAlphabet(source io.Reader, alphabet string, length int) ([]byte, error) {
 	alphabetLen := len(alphabet)
 	threshold := 256 - (256 % alphabetLen)
@@ -175,15 +156,11 @@ func mapBytesSourceToAlphabet(source io.Reader, alphabet string, length int) ([]
 			if j >= bytesRead {
 				n, err := source.Read(buf)
 				if err != nil && err != io.EOF {
-					memguard.WipeBytes(result)
-					memguard.WipeBytes(buf)
 					return nil, fmt.Errorf("entropy source failed: %w", err)
 				}
 				bytesRead = n
 				j = 0
 				if bytesRead == 0 {
-					memguard.WipeBytes(result)
-					memguard.WipeBytes(buf)
 					return nil, fmt.Errorf("entropy source returned no data")
 				}
 			}
@@ -198,7 +175,6 @@ func mapBytesSourceToAlphabet(source io.Reader, alphabet string, length int) ([]
 		}
 	}
 
-	memguard.WipeBytes(buf)
 	return result, nil
 }
 
@@ -213,21 +189,18 @@ func ExpandToMatrix(input *SecureBytes) (*SecureBytes, error) {
 	if input.Len() == 0 {
 		return nil, fmt.Errorf("input cannot be empty")
 	}
-	cpus := uint8(4)
 	saltBytes := []byte(Argon2Salt)
-	key := argon2.IDKey(input.Bytes(), saltBytes, 2, 64*1024, cpus, 32)
+	key := argon2.IDKey(input.Bytes(), saltBytes, Argon2Time, Argon2Memory, Argon2Parallelism, Argon2KeyLen)
 	defer memguard.WipeBytes(key)
 
-	hkdfReader := hkdf.New(sha256.New, key, nil, []byte("moria-matrix-expansion"))
+	hkdfReader := hkdf.New(sha256.New, key, []byte("moria-hkdf-v1"), []byte("moria-matrix-expansion"))
 
 	result, err := mapBytesSourceToAlphabet(hkdfReader, MasterPasswordChars, MatrixBytes)
 	if err != nil {
 		return nil, fmt.Errorf("deterministic expansion failed: %w", err)
 	}
 
-	sb := NewSecureBytes(result)
-	memguard.WipeBytes(result)
-	return sb, nil
+	return NewSecureBytes(result), nil
 }
 
 // ColHeader returns the display name for a matrix column.
