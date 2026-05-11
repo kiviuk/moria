@@ -27,14 +27,14 @@ Inspired by [pwgen](https://www.uni-muenster.de/CERT/pwgen/index.php?lang=en&mod
 | **Master secret** | Any input (SSH key, passphrase, random string) | Master password | GPG key | Master password |
 | **Key derivation** | Argon2id (64 MB, memory-hard) | N/A | N/A | PBKDF2 (100 rounds) |
 | **Per-service passwords** | Spell → matrix path | Randomly generated | Randomly generated | Spell + counter |
-| **Memory safety** | SecureBytes wiping, memguard | N/A | N/A | N/A |
+| **Memory safety** | Master password + extracted password mlock'd via memguard | N/A | N/A | N/A |
 | **Offline** | Yes | Varies (some need sync) | Yes | Yes |
 
 **Key differentiators:**
 
 - **Use your SSH key as master** — no new secret to create or remember. Your existing `id_ed25519` is your master.
 - **Memory-hard key derivation** — Argon2id with 64 MB memory makes GPU/ASIC attacks impractical even on weak passphrases.
-- **Secure memory wiping** — master passwords and derived secrets are zeroized in memory via `memguard`. No lingering secrets after exit.
+- **Secure memory** — master password and final extracted password are mlock'd via `memguard`, excluded from swap/hibernation images.
 - **Matrix-based derivation** — each character of your spell navigates a 20×10 grid, making the relationship between spell and password non-obvious.
 
 ---
@@ -49,7 +49,6 @@ Your **spell** (typically a service name like `"amazon"`) navigates this grid, o
 |---|---|---|
 | **Which row** | Position in the spell, mod 20 | `a`(0) → row 0, `m`(1) → row 1, `a`(2) → row 2, … |
 | **Which column** | Letter group (case-insensitive) | A-C → col 1, D-F → col 2, G-I → col 3, …, X-Z → col 9 |
-| **Uppercase shift** | Row offset by +10 | `"A"` at position 0 → row 10 instead of row 0 |
 | **Non-letters** | Column 0 | Digits, spaces, and special characters always read from column 0 |
 
 ### Walkthrough: spell `"amazon"`
@@ -76,8 +75,7 @@ Each character picks a cell; the cell contents concatenate to form the password.
 **Key properties:**
 
 - **Deterministic** — same inputs, same output, every time. No state stored anywhere.
-- **Case-sensitive rows** — `"Amazon"` (capital A) reads from row 10 at position 0, producing a different password than `"amazon"`.
-- **Case-insensitive grouping** — `a` and `A` both map to column 1 (ABC). Only the row differs.
+- **Case-insensitive** — `"Amazon"` and `"amazon"` produce the same password. Case is ignored for row selection, giving the full 20-row space to position-based navigation.
 - **Length = spell length × 3** — each character contributes `CharactersPerMatrixCell` (default: 3) characters to the password.
 
 ---
@@ -251,9 +249,9 @@ When the spell is passed as a command-line argument (`moria "amazon"`), it is vi
 
 ### Memory Safety
 
-moria uses [`SecureBytes`](docs/SECURE_MEMORY_WIPE.md) backed by `memguard` to ensure master passwords and derived secrets are zeroized in memory after use. The matrix cells are mutable `[]byte` (not immutable Go strings), so `Matrix.Wipe()` truly erases all data. On exit, `memguard.SafeExit()` performs final cleanup.
+moria uses [`SecureBytes`](docs/SECURE_MEMORY_WIPE.md) backed by `memguard` to keep the master password and the extracted password in mlock'd memory — excluded from swap and hibernation images. On exit, `memguard.SafeExit()` destroys all live locked buffers.
 
-**Known limitation:** Displaying the matrix (`--pretty`, `--live`) temporarily creates string copies that cannot be wiped. The underlying cell data is still properly zeroized.
+**Known limitation:** The password matrix and intermediate spell/password bytes in live mode live on the plain Go heap. The OS zeroes pages on reuse, so nothing leaks to other processes, but a hibernation event while moria is running could capture them in the hibernation image. For maximum protection, avoid hibernating while moria is active.
 
 ---
 
@@ -315,7 +313,9 @@ moria/
 │   ├── live_test.go             # Tests for live mode model
 │   ├── password_prompt.go       # Bubbletea masked password input prompt (•••)
 │   ├── spell_prompt.go          # Bubbletea spell input prompt (visible text)
-│   ├── debug_helpers.go         # debugf() logging (MORIA_DEBUG env var)
+│   ├── debug_helpers_common.go  # debugf() logging (MORIA_DEBUG env var)
+│   ├── debug_helpers_unix.go    # openTTY() for Unix (build tag: !windows)
+│   ├── debug_helpers_windows.go # openTTY() for Windows (build tag: windows)
 │   ├── messages.go              # All CLI error messages and UI strings
 │   ├── main_test.go             # Tests for batch mode, flag parsing, validation
 │   ├── cli_integration_test.go  # Integration tests (pipe + runCLI helper)

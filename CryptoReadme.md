@@ -10,7 +10,7 @@ moria derives unique passwords from a single master secret and a memorable "spel
 
 1. **Master Password → Matrix**: Your master password is deterministically expanded into a grid of random character fragments
 2. **Spell → Path**: Each character in your spell determines a cell to read:
-   - **Row** = character position in spell, modulo `PasswordMatrixRows` (uppercase letters shift by `PasswordMatrixRows/2`)
+   - **Row** = character position in spell, modulo `PasswordMatrixRows` (case-insensitive — `'a'` and `'A'` map to the same row)
    - **Column** = letter group (A-C→1, D-F→2, ..., Y-Z→9, non-letters→0)
 3. **Extract Password**: Concatenate the cell contents along the path
 
@@ -48,7 +48,7 @@ Output: 21 cells × 3 chars = 63-character password.
 
 ### Case Sensitivity
 
-Uppercase letters shift the row by `PasswordMatrixRows/2`, making `"PHrase-I-can-remember"` and `"phrase-i-can-remember"` produce completely different passwords. This adds entropy without requiring a longer spell.
+Spells are fully case-insensitive. `'a'` and `'A'` at the same position produce the same row and the same column, so `"amazon"` and `"AMAZON"` generate identical passwords. This gives the full 20-row space to position-based navigation rather than splitting it between upper and lower case.
 
 ### Entropy
 
@@ -167,7 +167,7 @@ Takes any input (random string, passphrase, SSH key) and produces a 32-byte high
 ### Stage 2: HKDF Expansion
 
 ```go
-hkdfReader := hkdf.New(sha256.New, key, nil, []byte("moria-matrix-expansion"))
+hkdfReader := hkdf.New(sha256.New, key, []byte("moria-hkdf-v1"), []byte("moria-matrix-expansion"))
 matrix := mapBytesSourceToAlphabet(hkdfReader, MasterPasswordChars, MatrixBytes)
 ```
 
