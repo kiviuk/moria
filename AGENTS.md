@@ -28,15 +28,27 @@ moria/
 │   ├── live.go                # Bubbletea TUI for interactive password generation
 │   ├── live_test.go           # Tests for live mode model
 │   ├── password_prompt.go     # Bubbletea password input prompt (masked with •)
+│   ├── password_prompt_test.go # Tests for password prompt
+│   ├── spell_prompt.go        # Bubbletea spell input prompt (visible text)
+│   ├── debug_helpers_common.go # debugf() logging (MORIA_DEBUG env var)
+│   ├── debug_helpers_unix.go  # openTTY() for Unix (build tag: !windows)
+│   ├── debug_helpers_windows.go # openTTY() for Windows (build tag: windows)
 │   ├── messages.go            # CLI error messages and live mode UI strings
-│   └── main_test.go           # Tests for batch mode, flag parsing, validation, pipe input
+│   ├── main_test.go           # Tests for batch mode, flag parsing, validation, pipe input
+│   ├── cli_integration_test.go # Integration tests (pipe + runCLI helper)
+│   ├── cli_pty_integration_test.go # Integration tests using MORIA_MASTER_FILE/SPELL
+│   ├── read_stdin_test.go     # Tests for readStdin / size limits
+│   ├── runners_test.go        # Tests for mode runners
+│   └── test_main_test.go      # TestMain: builds binary once for all CLI tests
 ├── internal/
 │   ├── app/
 │   │   ├── config.go               # Package-level constants
 │   │   ├── spell.go                # Core domain types (MagicLetter, QueryLetter, MagicSpell, DirtySpell)
 │   │   ├── spell_test.go           # Tests for parsing, grouping, resolution, case sensitivity, IsAllowedSpellChar
-│   │   ├── password_matrix.go      # Matrix type, generation, Pretty(), Cell access, ExpandToMatrix()
+│   │   ├── password_matrix.go      # Matrix type, generation, Pretty(), PasswordFragment access, ExpandToMatrix()
 │   │   ├── password_matrix_test.go # Matrix dimension, content, and integration tests
+│   │   ├── secure_bytes.go         # SecureBytes type for mlock'd in-memory secret management
+│   │   ├── secure_bytes_test.go    # Tests for SecureBytes
 │   │   ├── strength.go             # Time-to-guess calculation and human-readable formatting
 │   │   └── strength_test.go        # Tests for CrackTime, FormatSeconds, Entropy
 │   └── testutil/
@@ -64,8 +76,8 @@ moria "amazon" < master.txt
 # With max length (live and batch modes only)
 moria --max-len 16 "amazon" < master.txt
 
-# Show time-to-guess estimates (batch mode only)
-moria --show-strength "amazon" < master.txt
+# Show strength of master password (standalone mode — reads from stdin, no spell)
+echo "my master passphrase" | moria --show-strength
 
 # Spell starting with -- (use -- separator)
 moria -- "--my-spell" < master.txt
@@ -108,7 +120,7 @@ moria -h
 - **Exported types:** `PascalCase` — `MagicLetter`, `QueryLetter`, `MagicSpell`, `DirtySpell`, `Matrix`, `ParseError`, `Errors`
 - **Exported constants:** `PascalCase` — `PasswordMatrixRows`, `CharactersPerMatrixCell`, `AlphabetSize`, `MaxLetterGroups`, `PasswordMatrixColumns`, `MasterPasswordChars`, `MatrixBytes`, `LiveModeWrapWidth`
 - **Exported functions:** `PascalCase` — `IsAllowedSpellChar()`, `LetterGroup()`, `ModN()`, `GenerateMasterPassword()`, `NewMatrix()`, `ColHeader()`, `ExpandToMatrix()`, `ExtractPassword()`, `FormatSeconds()`, `CalculateMasterPasswordStrength()`. Note: `ExpandToMatrix()` returns `(*SecureBytes, error)`.
-- **Unexported:** `camelCase` — `cell()`, `mapStringSourceToAlphabet()`, `newTestMatrix()`, `getPassword()`, `wrapWithIndent()`
+- **Unexported:** `camelCase` — `mapStringSourceToAlphabet()`, `newTestMatrix()`, `getPassword()`, `wrapWithIndent()`
 - **Test functions:** `Test<TypeName>_<Method>_<Scenario>` — e.g., `TestDirtySpell_Parse_Valid`
 - **Receiver names:** Short, single-letter abbreviations — `d` for `DirtySpell`, `m` for `MagicSpell`/`MagicLetter`, `e` for `Errors`
 
@@ -148,17 +160,17 @@ moria -h
 
 ### Architecture Patterns
 - **Parse pattern:** `DirtySpell` (untrusted) → `.Parse()` → `MagicSpell` (validated)
-- **Resolution pipeline:** `MagicSpell.MagicLetters()` → `[]MagicLetter` → `.Query()` → `[]QueryLetter` → `Matrix.Cell()` → password
+- **Resolution pipeline:** `MagicSpell.MagicLetters()` → `[]MagicLetter` → `.Query()` → `[]QueryLetter` → `Matrix.PasswordFragment()` → password
 - **Key derivation:** Any input → `ExpandToMatrix()` (Argon2id + HKDF) → `*SecureBytes` (caller checks error) → `NewMatrix()` → `Matrix`
 - **Constants-driven:** All magic numbers and character sets live in `config.go`
 - **Matrix navigation:** `MatrixRow` = row (0-19, wrapped via modulo), `LetterGroup` = col (0 = non-letters, 1+ = letter groups)
-- **Case-sensitive rows:** Uppercase letters shift row by `PasswordMatrixRows/2`, making case significant
+- **Case-insensitive rows:** Row is determined solely by spell position (`ModN(position, PasswordMatrixRows)`); letter case has no effect on row selection
 - **Case-insensitive grouping:** `a` and `A` both map to group 1
 - **Deterministic:** Same master password + same spell = same password every time
 - **No trailing newline** in password output — safe for piping to `pbcopy`
 - **Bash-friendly master password:** Uses `MasterPasswordChars` (excludes `{}`, `[]`, `~`, `"`, `'`, space, `$`, `!`, `#`, `&`, `*`, `?`, `()`, `|`, `<>`, `;`, `\`, `` ` ``)
 - **SRP:** `GenerateMasterPassword(length, pool)` accepts character pool as parameter — no hardcoded pools
-- **Defensive access:** `Matrix.Cell(t QueryLetter)` validates column bounds; row is guaranteed valid by `QueryLetter` type
+- **Defensive access:** `Matrix.PasswordFragment(query QueryLetter)` validates column bounds; row is guaranteed valid by `QueryLetter` type
 - **Rejection sampling:** `mapStringSourceToAlphabet()` ensures zero modulo bias when mapping random bytes to character pool
 - **Matrix cells are []byte:** Each cell owns its own memory, allowing secure wiping via `Matrix.Wipe()`
 

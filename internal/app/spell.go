@@ -106,7 +106,7 @@ func (d DirtySpell) Parse() (MagicSpell, error) {
 }
 
 // LetterGroup returns the column group number for a given letter.
-// Letters A-C map to 1, D-F to 2, and so on through X-Z to 9.
+// Letters A-C map to 1, D-F to 2, and so on through V-X to 8 and Y-Z to 9.
 // Non-letter characters return 0 (the non-letter column).
 // The function is case-insensitive: both 'a' and 'A' return group 1.
 func LetterGroup(letter string) int {

@@ -48,7 +48,7 @@ Your **spell** (typically a service name like `"amazon"`) navigates this grid, o
 | Spell character | Determines… | How |
 |---|---|---|
 | **Which row** | Position in the spell, mod 20 | `a`(0) → row 0, `m`(1) → row 1, `a`(2) → row 2, … |
-| **Which column** | Letter group (case-insensitive) | A-C → col 1, D-F → col 2, G-I → col 3, …, X-Z → col 9 |
+| **Which column** | Letter group (case-insensitive) | A-C → col 1, D-F → col 2, G-I → col 3, …, V-X → col 8, Y-Z → col 9 |
 | **Non-letters** | Column 0 | Digits, spaces, and special characters always read from column 0 |
 
 ### Walkthrough: spell `"amazon"`
@@ -64,7 +64,7 @@ Your **spell** (typically a service name like `"amazon"`) navigates this grid, o
 ```
 Spell:  a      m      a      z      o      n
 Row:    0      1      2      3      4      5
-Col:    1(ABC) 6(MNO) 1(ABC) 9(YZ)  6(MNO) 6(MNO)
+Col:    1(ABC) 5(MNO) 1(ABC) 9(YZ)  5(MNO) 5(MNO)
 Cell:   nQ7    zA6    oP5    9bC    1lM    3pQ
         ───────────────────────────────────────
 Password: nQ7zA6oP59bC1lM3pQ
